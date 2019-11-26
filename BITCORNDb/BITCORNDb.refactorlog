@@ -1,0 +1,66 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Operations Version="1.0" xmlns="http://schemas.microsoft.com/sqlserver/dac/Serialization/2012/02">
+  <Operation Name="Rename Refactor" Key="5512cfae-40b5-4645-b779-b23218d13702" ChangeDateTime="11/24/2019 00:45:26">
+    <Property Name="ElementName" Value="[dbo].[UserWallet].[Id]" />
+    <Property Name="ElementType" Value="SqlSimpleColumn" />
+    <Property Name="ParentElementName" Value="[dbo].[UserWallet]" />
+    <Property Name="ParentElementType" Value="SqlTable" />
+    <Property Name="NewName" Value="UserId" />
+  </Operation>
+  <Operation Name="Rename Refactor" Key="e512dd2f-2bc4-4dca-971e-74877c6e2927" ChangeDateTime="11/24/2019 01:00:32">
+    <Property Name="ElementName" Value="[dbo].[User].[Id]" />
+    <Property Name="ElementType" Value="SqlSimpleColumn" />
+    <Property Name="ParentElementName" Value="[dbo].[User]" />
+    <Property Name="ParentElementType" Value="SqlTable" />
+    <Property Name="NewName" Value="UserId" />
+  </Operation>
+  <Operation Name="Rename Refactor" Key="32d584e7-d00e-4166-868b-afaa41f16218" ChangeDateTime="11/24/2019 01:10:25">
+    <Property Name="ElementName" Value="[dbo].[UserStat].[Id]" />
+    <Property Name="ElementType" Value="SqlSimpleColumn" />
+    <Property Name="ParentElementName" Value="[dbo].[UserStat]" />
+    <Property Name="ParentElementType" Value="SqlTable" />
+    <Property Name="NewName" Value="UserId" />
+  </Operation>
+  <Operation Name="Rename Refactor" Key="b5e095a7-86d0-47a5-8cb1-9e90354a61fb" ChangeDateTime="11/24/2019 01:36:45">
+    <Property Name="ElementName" Value="[dbo].[UserStat].[Id]" />
+    <Property Name="ElementType" Value="SqlSimpleColumn" />
+    <Property Name="ParentElementName" Value="[dbo].[UserStat]" />
+    <Property Name="ParentElementType" Value="SqlTable" />
+    <Property Name="NewName" Value="UserId" />
+  </Operation>
+  <Operation Name="Rename Refactor" Key="e4f24df0-7406-44de-8ae9-663abe230a7f" ChangeDateTime="11/24/2019 01:37:15">
+    <Property Name="ElementName" Value="[dbo].[UserStat].[TopTip]" />
+    <Property Name="ElementType" Value="SqlSimpleColumn" />
+    <Property Name="ParentElementName" Value="[dbo].[UserStat]" />
+    <Property Name="ParentElementType" Value="SqlTable" />
+    <Property Name="NewName" Value="TopTiped" />
+  </Operation>
+  <Operation Name="Rename Refactor" Key="2023eea8-4675-4fc8-b3d0-cdee3d258209" ChangeDateTime="11/24/2019 01:38:45">
+    <Property Name="ElementName" Value="[dbo].[UserStat].[Rain]" />
+    <Property Name="ElementType" Value="SqlSimpleColumn" />
+    <Property Name="ParentElementName" Value="[dbo].[UserStat]" />
+    <Property Name="ParentElementType" Value="SqlTable" />
+    <Property Name="NewName" Value="Rained" />
+  </Operation>
+  <Operation Name="Rename Refactor" Key="0b675775-1138-4329-8cf1-6afd3e19b401" ChangeDateTime="11/24/2019 06:25:46">
+    <Property Name="ElementName" Value="[dbo].[CornTransaction].[amount]" />
+    <Property Name="ElementType" Value="SqlSimpleColumn" />
+    <Property Name="ParentElementName" Value="[dbo].[CornTransaction]" />
+    <Property Name="ParentElementType" Value="SqlTable" />
+    <Property Name="NewName" Value="Amount" />
+  </Operation>
+  <Operation Name="Rename Refactor" Key="29d49bb2-4fc0-4411-bd68-dbb7328bb53c" ChangeDateTime="11/24/2019 19:38:40">
+    <Property Name="ElementName" Value="[dbo].[CornTransaction].[Id]" />
+    <Property Name="ElementType" Value="SqlSimpleColumn" />
+    <Property Name="ParentElementName" Value="[dbo].[CornTransaction]" />
+    <Property Name="ParentElementType" Value="SqlTable" />
+    <Property Name="NewName" Value="CornTxId" />
+  </Operation>
+  <Operation Name="Rename Refactor" Key="c1d68f04-7d15-4811-aafa-1f17185ef686" ChangeDateTime="11/24/2019 20:39:49">
+    <Property Name="ElementName" Value="[dbo].[UnclaimedTx].[Expired]" />
+    <Property Name="ElementType" Value="SqlSimpleColumn" />
+    <Property Name="ParentElementName" Value="[dbo].[UnclaimedTx]" />
+    <Property Name="ParentElementType" Value="SqlTable" />
+    <Property Name="NewName" Value="Refunded" />
+  </Operation>
+</Operations>
