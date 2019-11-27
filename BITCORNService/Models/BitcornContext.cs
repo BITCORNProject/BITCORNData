@@ -226,7 +226,7 @@ namespace BITCORNService.Models
                     .HasColumnType("numeric(19, 8)")
                     .HasDefaultValueSql("((0))");
 
-                entity.Property(e => e.TopTiped)
+                entity.Property(e => e.TopTipped)
                     .HasColumnType("numeric(19, 8)")
                     .HasDefaultValueSql("((0))");
 
