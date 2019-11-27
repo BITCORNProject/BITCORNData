@@ -63,4 +63,102 @@
     <Property Name="ParentElementType" Value="SqlTable" />
     <Property Name="NewName" Value="Refunded" />
   </Operation>
+  <Operation Name="Rename Refactor" Key="37fde87f-4286-4981-96f3-25e2b8b40117" ChangeDateTime="11/26/2019 20:10:06">
+    <Property Name="ElementName" Value="[dbo].[UserIdentity].[Twitchid]" />
+    <Property Name="ElementType" Value="SqlSimpleColumn" />
+    <Property Name="ParentElementName" Value="[dbo].[UserIdentity]" />
+    <Property Name="ParentElementType" Value="SqlTable" />
+    <Property Name="NewName" Value="TwitchId" />
+  </Operation>
+  <Operation Name="Rename Refactor" Key="607312e7-e0d6-4a43-bd24-4993ae12d0aa" ChangeDateTime="11/26/2019 20:10:10">
+    <Property Name="ElementName" Value="[dbo].[UserIdentity].[Discordid]" />
+    <Property Name="ElementType" Value="SqlSimpleColumn" />
+    <Property Name="ParentElementName" Value="[dbo].[UserIdentity]" />
+    <Property Name="ParentElementType" Value="SqlTable" />
+    <Property Name="NewName" Value="DiscordId" />
+  </Operation>
+  <Operation Name="Rename Refactor" Key="10a3e5ee-bcc6-426a-8df6-97fd0341275a" ChangeDateTime="11/26/2019 20:10:15">
+    <Property Name="ElementName" Value="[dbo].[UserIdentity].[Twitterid]" />
+    <Property Name="ElementType" Value="SqlSimpleColumn" />
+    <Property Name="ParentElementName" Value="[dbo].[UserIdentity]" />
+    <Property Name="ParentElementType" Value="SqlTable" />
+    <Property Name="NewName" Value="TwitterId" />
+  </Operation>
+  <Operation Name="Rename Refactor" Key="342023ab-6efb-4979-be86-f6f8170daf73" ChangeDateTime="11/26/2019 20:10:19">
+    <Property Name="ElementName" Value="[dbo].[UserIdentity].[Redditid]" />
+    <Property Name="ElementType" Value="SqlSimpleColumn" />
+    <Property Name="ParentElementName" Value="[dbo].[UserIdentity]" />
+    <Property Name="ParentElementType" Value="SqlTable" />
+    <Property Name="NewName" Value="RedditId" />
+  </Operation>
+  <Operation Name="Rename Refactor" Key="3a313ac5-d323-4f3b-9a70-cb4f91679525" ChangeDateTime="11/26/2019 22:56:41">
+    <Property Name="ElementName" Value="[dbo].[UserIdentity].[Auth0Id]" />
+    <Property Name="ElementType" Value="SqlSimpleColumn" />
+    <Property Name="ParentElementName" Value="[dbo].[UserIdentity]" />
+    <Property Name="ParentElementType" Value="SqlTable" />
+    <Property Name="NewName" Value="Auth0" />
+  </Operation>
+  <Operation Name="Rename Refactor" Key="13818de2-8823-4ebd-885d-3bf195b812ca" ChangeDateTime="11/26/2019 22:56:43">
+    <Property Name="ElementName" Value="[dbo].[UserIdentity].[TwitchId]" />
+    <Property Name="ElementType" Value="SqlSimpleColumn" />
+    <Property Name="ParentElementName" Value="[dbo].[UserIdentity]" />
+    <Property Name="ParentElementType" Value="SqlTable" />
+    <Property Name="NewName" Value="Twitch" />
+  </Operation>
+  <Operation Name="Rename Refactor" Key="4836a6a8-a79d-4245-82ca-9a97264b81a0" ChangeDateTime="11/26/2019 22:56:46">
+    <Property Name="ElementName" Value="[dbo].[UserIdentity].[DiscordId]" />
+    <Property Name="ElementType" Value="SqlSimpleColumn" />
+    <Property Name="ParentElementName" Value="[dbo].[UserIdentity]" />
+    <Property Name="ParentElementType" Value="SqlTable" />
+    <Property Name="NewName" Value="Discord" />
+  </Operation>
+  <Operation Name="Rename Refactor" Key="0528f39b-1492-4f64-b7e4-9f14456e7ad5" ChangeDateTime="11/26/2019 22:56:48">
+    <Property Name="ElementName" Value="[dbo].[UserIdentity].[TwitterId]" />
+    <Property Name="ElementType" Value="SqlSimpleColumn" />
+    <Property Name="ParentElementName" Value="[dbo].[UserIdentity]" />
+    <Property Name="ParentElementType" Value="SqlTable" />
+    <Property Name="NewName" Value="Twitter" />
+  </Operation>
+  <Operation Name="Rename Refactor" Key="aab07f5e-2e21-4820-b9d5-0804f4712e78" ChangeDateTime="11/26/2019 22:56:50">
+    <Property Name="ElementName" Value="[dbo].[UserIdentity].[RedditId]" />
+    <Property Name="ElementType" Value="SqlSimpleColumn" />
+    <Property Name="ParentElementName" Value="[dbo].[UserIdentity]" />
+    <Property Name="ParentElementType" Value="SqlTable" />
+    <Property Name="NewName" Value="Reddit" />
+  </Operation>
+  <Operation Name="Rename Refactor" Key="b1ddcce9-e450-407f-9a2d-1fcd9eae3f4f" ChangeDateTime="11/26/2019 22:58:54">
+    <Property Name="ElementName" Value="[dbo].[UserIdentity].[Auth0]" />
+    <Property Name="ElementType" Value="SqlSimpleColumn" />
+    <Property Name="ParentElementName" Value="[dbo].[UserIdentity]" />
+    <Property Name="ParentElementType" Value="SqlTable" />
+    <Property Name="NewName" Value="Auth0Id" />
+  </Operation>
+  <Operation Name="Rename Refactor" Key="5797de48-4563-4195-9567-2130339e29ac" ChangeDateTime="11/26/2019 22:58:58">
+    <Property Name="ElementName" Value="[dbo].[UserIdentity].[Twitch]" />
+    <Property Name="ElementType" Value="SqlSimpleColumn" />
+    <Property Name="ParentElementName" Value="[dbo].[UserIdentity]" />
+    <Property Name="ParentElementType" Value="SqlTable" />
+    <Property Name="NewName" Value="TwitchId" />
+  </Operation>
+  <Operation Name="Rename Refactor" Key="863509d2-b216-4789-bdcd-acc1d3b87eb1" ChangeDateTime="11/26/2019 22:59:01">
+    <Property Name="ElementName" Value="[dbo].[UserIdentity].[Discord]" />
+    <Property Name="ElementType" Value="SqlSimpleColumn" />
+    <Property Name="ParentElementName" Value="[dbo].[UserIdentity]" />
+    <Property Name="ParentElementType" Value="SqlTable" />
+    <Property Name="NewName" Value="DiscordId" />
+  </Operation>
+  <Operation Name="Rename Refactor" Key="417fa312-3904-4d23-b75d-0ee5d1cf95ed" ChangeDateTime="11/26/2019 22:59:06">
+    <Property Name="ElementName" Value="[dbo].[UserIdentity].[Twitter]" />
+    <Property Name="ElementType" Value="SqlSimpleColumn" />
+    <Property Name="ParentElementName" Value="[dbo].[UserIdentity]" />
+    <Property Name="ParentElementType" Value="SqlTable" />
+    <Property Name="NewName" Value="TwitterId" />
+  </Operation>
+  <Operation Name="Rename Refactor" Key="af8fdd82-d174-44ef-b6d5-39d766bbce82" ChangeDateTime="11/26/2019 22:59:11">
+    <Property Name="ElementName" Value="[dbo].[UserIdentity].[Reddit]" />
+    <Property Name="ElementType" Value="SqlSimpleColumn" />
+    <Property Name="ParentElementName" Value="[dbo].[UserIdentity]" />
+    <Property Name="ParentElementType" Value="SqlTable" />
+    <Property Name="NewName" Value="RedditId" />
+  </Operation>
 </Operations>
