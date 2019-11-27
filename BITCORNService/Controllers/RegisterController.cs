@@ -1,16 +1,9 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using BITCORNService.Models;
+﻿using BITCORNService.Models;
 using BITCORNService.Utils;
 using BITCORNService.Utils.DbActions;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging;
-using Newtonsoft.Json;
-using RestSharp;
+using System;
+using System.Threading.Tasks;
 
 namespace BITCORNService.Controllers
 {
@@ -39,7 +32,7 @@ namespace BITCORNService.Controllers
                         twitchDbUser.Auth0Nickname = auth0DbUser.Auth0Nickname;
                         await dbContext.SaveAsync();
                         ////////////////////////////////////////////////////////////////
-                        // TODO: Add registrations claims
+                        // TODO: Add claims
                         return twitchDbUser;
                     }
                     else if (twitchDbUser == null && auth0DbUser != null)
