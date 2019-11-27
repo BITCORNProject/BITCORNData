@@ -35,13 +35,12 @@ namespace BITCORNService.Utils.Stats
                 var userStats = await dbContext.UserStat.FirstOrDefaultAsync(u => u.UserId == userId);
                 userStats.Tipped += 1;
                 userStats.TippedTotal += amount;
-                if (userStats.TopTiped < amount)
+                if (userStats.TopTipped < amount)
                 {
-                    userStats.TopTiped = amount;
+                    userStats.TopTipped = amount;
                 }
                 await dbContext.SaveAsync();
             }
         }
-
     }
 }

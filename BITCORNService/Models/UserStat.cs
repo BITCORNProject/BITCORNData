@@ -8,7 +8,7 @@ namespace BITCORNService.Models
         public int UserId { get; set; }
         public int? Tipped { get; set; }
         public decimal? TippedTotal { get; set; }
-        public decimal? TopTiped { get; set; }
+        public decimal? TopTipped { get; set; }
         public int? Tip { get; set; }
         public decimal? TipTotal { get; set; }
         public decimal? TopTip { get; set; }
