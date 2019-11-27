@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Newtonsoft.Json;
+using System;
 
 namespace BITCORNService.Utils.Wallet.Models
 {
@@ -8,17 +9,18 @@ namespace BITCORNService.Utils.Wallet.Models
     [Serializable]
     public struct WalletInfo
     {
-        public double walletversion { get; set; }
-
-        public double balance { get; set; }
-
-        public double txcount { get; set; }
-
-        public double keypoololdest { get; set; }
-
-        public double keypoolsize { get; set; }
-
-        public double unlocked_until { get; set; }
+        [JsonProperty("walletversion")]
+        public double WalletVersion { get; set; }
+        [JsonProperty("balance")]
+        public double Balance { get; set; }
+        [JsonProperty("txcount")]
+        public double TxCount { get; set; }
+        [JsonProperty("keypoololdest")]
+        public double KeypoolOldest { get; set; }
+        [JsonProperty("keypoolsize")]
+        public double KeypoolSize { get; set; }
+        [JsonProperty("unlocked_until")]
+        public double UnlockedUntil { get; set; }
 
     }
 }
