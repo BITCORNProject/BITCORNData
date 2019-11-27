@@ -14,5 +14,6 @@ namespace BITCORNService.Models
         {
             return $"{Platform}:{Id}";
         }
+
     }
 }
