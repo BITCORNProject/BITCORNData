@@ -42,5 +42,45 @@ namespace BITCORNService.Utils.Stats
                 await dbContext.SaveAsync();
             }
         }
+
+        public static async Task Rain(int userId, decimal amount)
+        {
+            using (var dbContext = new BitcornContext())
+            {
+                var userStats = await dbContext.UserStat.FirstOrDefaultAsync(u => u.UserId == userId);
+                userStats.Rained += 1;
+                userStats.RainTotal += amount;
+                if (userStats.TopRain < amount)
+                {
+                    userStats.TopRain = amount;
+                }
+                await dbContext.SaveAsync();
+            }
+        }
+
+        public static async Task RainedOn(int userId, decimal amount)
+        {
+            using (var dbContext = new BitcornContext())
+            {
+                var userStats = await dbContext.UserStat.FirstOrDefaultAsync(u => u.UserId == userId);
+                userStats.RainedOn += 1;
+                userStats.RainedOnTotal += amount;
+                if (userStats.TopRainedOn < amount)
+                {
+                    userStats.TopRainedOn = amount;
+                }
+                await dbContext.SaveAsync();
+            }
+        }
+
+        public static async Task EarnedIdle(int userId, decimal amount)
+        {
+            using (var dbContext = new BitcornContext())
+            {
+                var userStats = await dbContext.UserStat.FirstOrDefaultAsync(u => u.UserId == userId);
+                userStats.EarnedIdle += amount;
+                await dbContext.SaveAsync();
+            }
+        }
     }
 }
