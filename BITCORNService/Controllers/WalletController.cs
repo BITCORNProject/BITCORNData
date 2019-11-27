@@ -1,12 +1,19 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net.Http;
+using System.Net.Http.Headers;
+using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using BITCORNService.Utils.Wallet;
 using BITCORNService.Utils.Wallet.Models;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Configuration;
+using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using RestSharp;
 
 namespace BITCORNService.Controllers
 {
@@ -14,15 +21,21 @@ namespace BITCORNService.Controllers
     [ApiController]
     public class WalletController : ControllerBase
     {
+        IConfiguration _configuration;
+        private string accessToken;
 
+        public WalletController(IConfiguration configuration)
+        {
+            this._configuration = configuration;
+        }
         //API: /api/wallet/createcornaddy
         [HttpPost("CreateCornaddy")]
         public async Task<object> CreateCornaddy([FromBody] dynamic input)
         {
             //TODO: select user
             //TODO: select wallet server
-            string endpoint = GetWalletServerEndpoint();
             string accessToken = await GetWalletServerAccessToken();
+            string endpoint = GetWalletServerEndpoint();
 
             using (var client = new WalletClient(endpoint, accessToken))
             {
@@ -44,7 +57,6 @@ namespace BITCORNService.Controllers
                     }
                 }
             }
-
             throw new NotImplementedException();
         }
 
@@ -136,10 +148,26 @@ namespace BITCORNService.Controllers
             throw new NotImplementedException();
         }
 
-        //TODO: implement access token fetching
         private async Task<string> GetWalletServerAccessToken()
         {
-            throw new NotImplementedException();
+            string endpoint = _configuration["Config:WalletServerTokenEndpoint"];
+
+            var requestBody = JsonConvert.SerializeObject(new {
+                client_id = _configuration["Config:WalletServerClientId"],
+                client_secret = _configuration["Config:WalletServerClientSecret"],
+                audience = _configuration["Config:WalletServerAudience"],
+                grant_type = _configuration["Config:WalletServerGrantType"]
+            });
+
+            var client = new RestClient(endpoint);
+            var request = new RestRequest(Method.POST);
+
+            request.AddHeader("content-type", "application/json");
+            request.AddParameter("application/json", requestBody, ParameterType.RequestBody);
+         
+            var response = await client.ExecuteTaskAsync(request, new CancellationTokenSource().Token);
+
+            return JObject.Parse(response.Content)["access_token"].ToString();
         }
         //TODO: implement server fetching
         private string GetWalletServerEndpoint()
