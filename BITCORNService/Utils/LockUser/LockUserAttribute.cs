@@ -1,23 +1,22 @@
 ﻿using System;
 using System.Collections.Generic;
+<<<<<<< HEAD
 using System.Linq;
 using System.Net;
+=======
+>>>>>>> moved wallet code to utils
 using System.Threading.Tasks;
-using BITCORNService.Models;
-using BITCORNService.Utils.DbActions;
-using BITCORNService.Utils.LockUser;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
-using Microsoft.Extensions.Primitives;
 using Newtonsoft.Json;
 
-namespace BITCORNService.Utils
+namespace BITCORNService.Utils.LockUser
 {
     public class LockUserAttribute : ActionFilterAttribute
     {
         public static HashSet<int> LockedUsers = new HashSet<int>();
 
-        public override async void OnActionExecuting(ActionExecutingContext context)
+        public override async Task OnActionExecutionAsync(ActionExecutingContext context, ActionExecutionDelegate next)
         {
             var userId = await LockUserAttributeUtils.GetUserId(context);
 
@@ -32,7 +31,7 @@ namespace BITCORNService.Utils
                     StatusCode = 420,
                     Content = JsonConvert.SerializeObject(new
                     {
-                        refused = "Server refuses to serve this request: User is locked" 
+                        refused = "Server refuses to serve this request: User is locked"
                     })
                 };
                 return;
@@ -41,8 +40,23 @@ namespace BITCORNService.Utils
             {
                 LockedUsers.Add(userId);
             }
+            context.HttpContext.Items.Add(new KeyValuePair<object, object>("Id", userId));
+            await base.OnActionExecutionAsync(context, next);
+        }
 
+<<<<<<< HEAD
             base.OnActionExecuting(context);
+=======
+        public override void OnActionExecuted(ActionExecutedContext context)
+        {
+            context.HttpContext.Items.TryGetValue("Id", out object userId);
+            lock (LockedUsers)
+            {
+                LockedUsers.Remove(Convert.ToInt32(userId));
+            }
+            base.OnActionExecuted(context);
+>>>>>>> moved wallet code to utils
         }
     }
+
 }

@@ -4,7 +4,12 @@ using System.Linq;
 using System.Threading.Tasks;
 using BITCORNService.Models;
 using BITCORNService.Utils.DbActions;
+<<<<<<< HEAD
 using Microsoft.AspNetCore.Mvc;
+=======
+using BITCORNService.Utils.LockUser.Models;
+using Microsoft.AspNetCore.Mvc;
+>>>>>>> moved wallet code to utils
 using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.Extensions.Primitives;
 
