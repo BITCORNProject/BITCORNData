@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace BITCORNService.Wallet.Models
+namespace BITCORNService.Utils.Wallet.Models
 {
     /// <summary>
     /// Deserialized Transaction info response returned by the gettransaction call
@@ -10,7 +10,7 @@ namespace BITCORNService.Wallet.Models
     {
 
         public double amount { get; set; }
-
+        
         public double confirmations { get; set; }
 
         public bool generated { get; set; }

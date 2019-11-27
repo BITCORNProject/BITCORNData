@@ -1,11 +1,11 @@
-﻿using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
+﻿using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using BITCORNService.Wallet.Models;
-using System;
+using BITCORNService.Utils.Wallet.Models;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 
-namespace BITCORNService.Wallet
+namespace BITCORNService.Utils.Wallet
 {
     /// <summary>
     /// Implements high level methods for wallet server

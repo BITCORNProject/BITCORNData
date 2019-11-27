@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace BITCORNService.Wallet.Models
+namespace BITCORNService.Utils.Wallet.Models
 {
     /// <summary>
     /// Deserialized object parsed from getwalletinfo call

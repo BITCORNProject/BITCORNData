@@ -1,8 +1,8 @@
 ﻿using System;
-using System.Diagnostics;
 using System.Net;
 using Newtonsoft.Json.Linq;
-namespace BITCORNService.Wallet.Models
+
+namespace BITCORNService.Utils.Wallet.Models
 {
     /// <summary>
     /// Deserialized response from the wallet server

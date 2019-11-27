@@ -1,6 +1,6 @@
 ﻿using System.Diagnostics;
 
-namespace BITCORNService.Wallet.Models
+namespace BITCORNService.Utils.Wallet.Models
 {
     /// <summary>
     /// Deserialized error object returned by the wallet daemon

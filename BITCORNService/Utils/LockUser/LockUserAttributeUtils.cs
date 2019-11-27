@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using BITCORNService.Models;
 using BITCORNService.Utils.DbActions;
+using BITCORNService.Utils.LockUser.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.Extensions.Primitives;
