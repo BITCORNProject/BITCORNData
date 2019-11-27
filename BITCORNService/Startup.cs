@@ -33,7 +33,12 @@ namespace BITCORNService
             var connection = Configuration["Config:ConnectionString"];
 
             services.AddDbContext<BitcornContext>(options =>
-                options.UseSqlServer(connection));
+                options.UseSqlServer(connection,
+                Options=> Options.EnableRetryOnFailure(
+                        maxRetryCount: 10,
+                        maxRetryDelay: TimeSpan.FromSeconds(30),
+                        errorNumbersToAdd: null)));
+
             services.AddControllers();
         }
 
