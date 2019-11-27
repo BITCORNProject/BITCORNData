@@ -23,8 +23,7 @@ namespace BITCORNService.Controllers
     public class WalletController : ControllerBase
     {
         IConfiguration _configuration;
-        private string accessToken;
-
+        
         public WalletController(IConfiguration configuration)
         {
             this._configuration = configuration;
