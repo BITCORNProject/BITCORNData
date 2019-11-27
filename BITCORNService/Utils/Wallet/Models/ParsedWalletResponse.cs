@@ -1,4 +1,4 @@
-﻿namespace BITCORNService.Wallet.Models
+﻿namespace BITCORNService.Utils.Wallet.Models
 {
     /// <summary>
     /// Wrapper response object for all wallet calls;

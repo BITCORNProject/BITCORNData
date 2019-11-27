@@ -1,4 +1,4 @@
-﻿namespace BITCORNService.Wallet.Models
+﻿namespace BITCORNService.Utils.Wallet.Models
 {
     public enum TransactionType
     {

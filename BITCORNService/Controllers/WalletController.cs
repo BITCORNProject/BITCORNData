@@ -2,10 +2,10 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using BITCORNService.Utils.Wallet;
+using BITCORNService.Utils.Wallet.Models;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using BITCORNService.Wallet;
-using BITCORNService.Wallet.Models;
 using Newtonsoft.Json.Linq;
 
 namespace BITCORNService.Controllers
