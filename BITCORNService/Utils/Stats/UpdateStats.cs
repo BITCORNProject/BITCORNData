@@ -35,6 +35,7 @@ namespace BITCORNService.Utils.Stats
                 var userStats = await dbContext.UserStat.FirstOrDefaultAsync(u => u.UserId == userId);
                 userStats.Tipped += 1;
                 userStats.TippedTotal += amount;
+
                 if (userStats.TopTipped < amount)
                 {
                     userStats.TopTipped = amount;
