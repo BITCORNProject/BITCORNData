@@ -7,6 +7,8 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using BITCORNService.Models;
+using BITCORNService.Utils;
+using BITCORNService.Utils.DbActions;
 using BITCORNService.Utils.Wallet;
 using BITCORNService.Utils.Wallet.Models;
 using Microsoft.AspNetCore.Http;
@@ -63,10 +65,49 @@ namespace BITCORNService.Controllers
         //API: /api/wallet/deposit
         //called by the wallet servers only
         [HttpPost("Deposit")]
-        public async Task<object> Deposit([FromBody] WalletDepositRequest request)
-        { 
-            //TODO: update user balance
-            throw new NotImplementedException();
+        public async Task<ActionResult> Deposit([FromBody] WalletDepositRequest request)
+        {
+            using (var dbContext = new BitcornContext())
+            {
+                try
+                {
+                    foreach (dynamic payment in request.Payments)
+                    {
+                        decimal amount = payment.amount;
+                        string address = payment.address;
+                        string txid = payment.txid;
+
+                        bool isLogged = await dbContext.IsBlockchainTransactionLogged(txid);
+
+                        if (!isLogged)
+                        {
+                            var wallet = await dbContext.WalletByAddress(address);
+                            wallet.Balance += amount;
+
+                            var cornTx = new CornTx();
+                            cornTx.Amount = amount;
+                            cornTx.BlockchainTxId = txid;
+                            //TODO: why is this a string?
+                            cornTx.ReceiverId = wallet.UserId.ToString();
+                            //TODO: this field must not be required
+                            cornTx.SenderId = null;
+                            cornTx.Timestamp = DateTime.Now;
+                            cornTx.TxType = TransactionType.receive.ToString();
+                            cornTx.Platform = "wallet-server";
+
+                            dbContext.CornTx.Add(cornTx);
+
+                        }
+                    }
+                    await dbContext.SaveAsync();
+                }
+                catch(Exception e)
+                {
+                    await BITCORNLogger.LogError(e);
+                }
+            }
+
+            return Ok();
         }
 
         //API: /api/wallet/withdraw
