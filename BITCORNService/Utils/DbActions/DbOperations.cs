@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Data;
 using System.Linq;
 using System.Net.NetworkInformation;
 using System.Threading.Tasks;
@@ -37,16 +38,27 @@ namespace BITCORNService.Utils.DbActions
 
         public static async Task SaveAsync(this BitcornContext dbContext)
         {
-            try
-            {
-                await dbContext.SaveChangesAsync();
-            }
-            catch (Exception e)
-            {
-                //TODO dbContext.Logger.LogError(e, e.Message);
-                throw new Exception(e.Message, e.InnerException);
-            }
-        }
 
+            //create execution strategy so the request can retry if it fails to connect to the database
+            var strategy = dbContext.Database.CreateExecutionStrategy();
+            await strategy.ExecuteAsync(async () =>
+            {
+                using (var transaction = dbContext.Database.BeginTransaction(IsolationLevel.RepeatableRead))
+                {
+                    try
+                    {
+                        await dbContext.SaveChangesAsync();
+                        transaction.Commit();
+                    }
+                    catch (Exception e)
+                    {
+                        transaction.Rollback();
+                        //TODO dbContext.Logger.LogError(e, e.Message);
+                        throw new Exception(e.Message, e.InnerException);
+                    }
+                }
+            });
+
+        }
     }
 }
