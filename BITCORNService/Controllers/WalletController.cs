@@ -6,6 +6,7 @@ using System.Net.Http.Headers;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using BITCORNService.Models;
 using BITCORNService.Utils.Wallet;
 using BITCORNService.Utils.Wallet.Models;
 using Microsoft.AspNetCore.Http;
@@ -30,7 +31,7 @@ namespace BITCORNService.Controllers
         }
         //API: /api/wallet/createcornaddy
         [HttpPost("CreateCornaddy")]
-        public async Task<object> CreateCornaddy([FromBody] dynamic input)
+        public async Task<object> CreateCornaddy([FromBody] WalletCreateCornaddyRequest request)
         {
             //TODO: select user
             //TODO: select wallet server
@@ -63,59 +64,23 @@ namespace BITCORNService.Controllers
         //API: /api/wallet/deposit
         //called by the wallet servers only
         [HttpPost("Deposit")]
-        public async Task<object> Deposit([FromBody] dynamic input)
+        public async Task<object> Deposit([FromBody] WalletDepositRequest request)
         { 
-            int? index = input.index?.Value;
-            if (index == null)
-            {
-                throw new ArgumentException("index");
-            }
-            string block = input.block?.Value;
-
-            if (string.IsNullOrWhiteSpace(block))
-            {
-                throw new ArgumentException("block");
-            }
-
-            JArray payments = input?.payments;
-
-            if (payments == null)
-            {
-                throw new ArgumentException("payments");
-            }
-
             //TODO: update user balance
             throw new NotImplementedException();
         }
 
         //API: /api/wallet/withdraw
         [HttpPost("Withdraw")]
-        public async Task<object> Withdraw([FromBody] dynamic input)
+        public async Task<object> Withdraw([FromBody] WalletWithdrawalRequest request)
         {
-            decimal amount = 0;
-            if (input.amount.Value != null)
-            {
-                amount = Convert.ToDecimal(input.amount.Value);
-            }
-            else
-            {
-                throw new ArgumentException("amount");
-            }
-
-            string withdrawalAddress = input.cornaddy?.Value;
-
-            if (string.IsNullOrWhiteSpace(withdrawalAddress))
-            {
-                throw new ArgumentException("cornaddy");
-            }
-
             //TODO: select user
             string endpoint = GetWalletServerEndpoint();
             string accessToken = await GetWalletServerAccessToken();
 
             using (var client = new WalletClient(endpoint, accessToken))
             {
-                var response = await client.SendFromAsync("main", withdrawalAddress, amount, 120);
+                var response = await client.SendFromAsync("main", request.Cornaddy, request.Amount, 120);
                 if (!response.IsError)
                 {
                     //TODO: subract balance from user
