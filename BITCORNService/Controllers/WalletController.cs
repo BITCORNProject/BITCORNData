@@ -1,12 +1,22 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net.Http;
+using System.Net.Http.Headers;
+using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
+using BITCORNService.Models;
+using BITCORNService.Utils;
+using BITCORNService.Utils.DbActions;
 using BITCORNService.Utils.Wallet;
 using BITCORNService.Utils.Wallet.Models;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Configuration;
+using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using RestSharp;
 
 namespace BITCORNService.Controllers
 {
@@ -14,15 +24,20 @@ namespace BITCORNService.Controllers
     [ApiController]
     public class WalletController : ControllerBase
     {
-
+        IConfiguration _configuration;
+        
+        public WalletController(IConfiguration configuration)
+        {
+            this._configuration = configuration;
+        }
         //API: /api/wallet/createcornaddy
         [HttpPost("CreateCornaddy")]
-        public async Task<object> CreateCornaddy([FromBody] dynamic input)
+        public async Task<object> CreateCornaddy([FromBody] WalletCreateCornaddyRequest request)
         {
             //TODO: select user
             //TODO: select wallet server
-            string endpoint = GetWalletServerEndpoint();
             string accessToken = await GetWalletServerAccessToken();
+            string endpoint = GetWalletServerEndpoint();
 
             using (var client = new WalletClient(endpoint, accessToken))
             {
@@ -44,66 +59,68 @@ namespace BITCORNService.Controllers
                     }
                 }
             }
-
             throw new NotImplementedException();
         }
 
         //API: /api/wallet/deposit
         //called by the wallet servers only
         [HttpPost("Deposit")]
-        public async Task<object> Deposit([FromBody] dynamic input)
-        { 
-            int? index = input.index?.Value;
-            if (index == null)
+        public async Task<ActionResult> Deposit([FromBody] WalletDepositRequest request)
+        {
+            using (var dbContext = new BitcornContext())
             {
-                throw new ArgumentException("index");
+                try
+                {
+                    foreach (dynamic payment in request.Payments)
+                    {
+                        decimal amount = payment.amount;
+                        string address = payment.address;
+                        string txid = payment.txid;
+
+                        bool isLogged = await dbContext.IsBlockchainTransactionLogged(txid);
+
+                        if (!isLogged)
+                        {
+                            var wallet = await dbContext.WalletByAddress(address);
+                            wallet.Balance += amount;
+
+                            var cornTx = new CornTx();
+                            cornTx.Amount = amount;
+                            cornTx.BlockchainTxId = txid;
+                            //TODO: why is this a string?
+                            cornTx.ReceiverId = wallet.UserId.ToString();
+                            //TODO: this field must not be required
+                            cornTx.SenderId = null;
+                            cornTx.Timestamp = DateTime.Now;
+                            cornTx.TxType = TransactionType.receive.ToString();
+                            cornTx.Platform = "wallet-server";
+
+                            dbContext.CornTx.Add(cornTx);
+
+                        }
+                    }
+                    await dbContext.SaveAsync();
+                }
+                catch(Exception e)
+                {
+                    await BITCORNLogger.LogError(e);
+                }
             }
-            string block = input.block?.Value;
 
-            if (string.IsNullOrWhiteSpace(block))
-            {
-                throw new ArgumentException("block");
-            }
-
-            JArray payments = input?.payments;
-
-            if (payments == null)
-            {
-                throw new ArgumentException("payments");
-            }
-
-            //TODO: update user balance
-            throw new NotImplementedException();
+            return Ok();
         }
 
         //API: /api/wallet/withdraw
         [HttpPost("Withdraw")]
-        public async Task<object> Withdraw([FromBody] dynamic input)
+        public async Task<object> Withdraw([FromBody] WalletWithdrawalRequest request)
         {
-            decimal amount = 0;
-            if (input.amount.Value != null)
-            {
-                amount = Convert.ToDecimal(input.amount.Value);
-            }
-            else
-            {
-                throw new ArgumentException("amount");
-            }
-
-            string withdrawalAddress = input.cornaddy?.Value;
-
-            if (string.IsNullOrWhiteSpace(withdrawalAddress))
-            {
-                throw new ArgumentException("cornaddy");
-            }
-
             //TODO: select user
             string endpoint = GetWalletServerEndpoint();
             string accessToken = await GetWalletServerAccessToken();
 
             using (var client = new WalletClient(endpoint, accessToken))
             {
-                var response = await client.SendFromAsync("main", withdrawalAddress, amount, 120);
+                var response = await client.SendFromAsync("main", request.Cornaddy, request.Amount, 120);
                 if (!response.IsError)
                 {
                     //TODO: subract balance from user
@@ -136,10 +153,26 @@ namespace BITCORNService.Controllers
             throw new NotImplementedException();
         }
 
-        //TODO: implement access token fetching
         private async Task<string> GetWalletServerAccessToken()
         {
-            throw new NotImplementedException();
+            string endpoint = _configuration["Config:WalletServerTokenEndpoint"];
+
+            var requestBody = JsonConvert.SerializeObject(new {
+                client_id = _configuration["Config:WalletServerClientId"],
+                client_secret = _configuration["Config:WalletServerClientSecret"],
+                audience = _configuration["Config:WalletServerAudience"],
+                grant_type = _configuration["Config:WalletServerGrantType"]
+            });
+
+            var client = new RestClient(endpoint);
+            var request = new RestRequest(Method.POST);
+
+            request.AddHeader("content-type", "application/json");
+            request.AddParameter("application/json", requestBody, ParameterType.RequestBody);
+         
+            var response = await client.ExecuteTaskAsync(request, new CancellationTokenSource().Token);
+
+            return JObject.Parse(response.Content)["access_token"].ToString();
         }
         //TODO: implement server fetching
         private string GetWalletServerEndpoint()

@@ -36,6 +36,16 @@ namespace BITCORNService.Utils.DbActions
             return await dbContext.UserIdentity.FirstOrDefaultAsync(u => u.RedditId == redditId);
         }
 
+        public static async Task<UserWallet> WalletByAddress(this BitcornContext dbContext, string address)
+        {
+            return await dbContext.UserWallet.FirstOrDefaultAsync(w => w.CornAddy == address);
+        }
+
+        public static async Task<bool> IsBlockchainTransactionLogged(this BitcornContext dbContext, string txId)
+        {
+            return await dbContext.CornTx.AnyAsync(w => w.BlockchainTxId == txId);
+        }
+
         public static async Task SaveAsync(this BitcornContext dbContext)
         {
 
