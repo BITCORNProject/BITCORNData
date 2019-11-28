@@ -8,6 +8,7 @@ using BITCORNService.Utils.DbActions;
 using BITCORNService.Utils.LockUser;
 using BITCORNService.Utils.Models;
 using BITCORNService.Utils.Stats;
+using BITCORNService.Utils.Tx;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.VisualStudio.Web.CodeGeneration.Utils.Messaging;
@@ -23,46 +24,36 @@ namespace BITCORNService.Controllers
         public async Task Rain([FromBody] IEnumerable<TxUser> txUsers)
         {
             //array of {amount, id}
-            using (var dbContext = new BitcornContext())
-            {
-                foreach (var txUser in txUsers )
-                {
-                    var userIdentity = await dbContext.TwitchAsync(txUser.Id);
-                    var userWallet = dbContext.UserWallet.FirstOrDefault(w => w.UserId == userIdentity.UserId);
-                    await UpdateStats.RainedOn(userIdentity.UserId, txUser.amount);
-                    if (userWallet != null) userWallet.Balance += txUser.amount;
-
-                }
-
-                await dbContext.SaveAsync();
-            }
-
-            
+            await TxUtils.ExecuteCreditTxs(txUsers);
 
 
             //recipient response TODO
         }
 
         [HttpPost("{payout}")]
-        public void Payout([FromBody] string value)
+        public async Task Payout([FromBody] IEnumerable<TxUser> txUsers)
         {
             //array of {amount, id}
-
+            await TxUtils.ExecuteCreditTxs(txUsers);
             //senderresponses TODO
         }
 
         [HttpPost("{tipcorn}")]
-        public void Tipcorn([FromBody] string value)
+        public async Task Tipcorn([FromBody] TxUser txUser)
         {
             //sender twitchid, receiver twitchid, amount
+            await TxUtils.ExecuteCreditTx(txUser);
 
             //senderresponse TODO
         }
 
         [HttpPost("{withdraw}")]
-        public void Withdraw([FromBody] string value)
+        public async Task Withdraw([FromBody] WithdrawUser withdrawUser)
         {
             //sender twitchid, cornaddy, amount
+            await TxUtils.ExecuteDebitTx(withdrawUser);
+
+            //call to wallet to properly withdraw TODO
 
             //tx id TODO
         }
