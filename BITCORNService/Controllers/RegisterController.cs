@@ -4,6 +4,7 @@ using BITCORNService.Utils.DbActions;
 using Microsoft.AspNetCore.Mvc;
 using System;
 using System.Threading.Tasks;
+using BITCORNService.Utils.Models;
 
 namespace BITCORNService.Controllers
 {
