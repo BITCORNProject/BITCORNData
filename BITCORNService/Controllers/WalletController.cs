@@ -1,5 +1,5 @@
 
-﻿using BITCORNService.Models;
+
 using BITCORNService.Utils;
 using BITCORNService.Utils.DbActions;
 using BITCORNService.Utils.Wallet;
@@ -12,6 +12,7 @@ using RestSharp;
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using BITCORNService.Models;
 
 namespace BITCORNService.Controllers
 {
@@ -19,11 +20,11 @@ namespace BITCORNService.Controllers
     [ApiController]
     public class WalletController : ControllerBase
     {
-
         private readonly IConfiguration _configuration;
         private readonly BitcornContext _dbContext;
 
         public WalletController(IConfiguration configuration, BitcornContext dbContext)
+
         {
             this._configuration = configuration;
             this._dbContext = dbContext;
