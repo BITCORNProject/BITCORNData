@@ -12,63 +12,51 @@ namespace BITCORNService.Utils.Tx
 {
     public static class TxUtils
     {
-        public static async Task ExecuteCreditTxs(IEnumerable<TxUser> txUsers)
-        {
-            using (var dbContext = new BitcornContext())
-            {
-                foreach (var txUser in txUsers)
-                {
-                    var userIdentity = await dbContext.TwitchAsync(txUser.Id);
-                    var userWallet = dbContext.UserWallet.FirstOrDefault(w => w.UserId == userIdentity.UserId);
-                    await UpdateStats.RainedOn(userIdentity.UserId, txUser.Amount);
-                    if (userWallet != null) userWallet.Balance += txUser.Amount;
 
-                }
-                await dbContext.SaveAsync();
+        public static async Task ExecuteRainTxs(IEnumerable<TxUser> txUsers, BitcornContext dbContext)
+        {
+            foreach (var txUser in txUsers)
+            {
+                var userIdentity = await dbContext.TwitchAsync(txUser.Id);
+                var userWallet = dbContext.UserWallet.FirstOrDefault(w => w.UserId == userIdentity.UserId);
+                await UpdateStats.RainedOn(userIdentity.UserId, txUser.Amount);
+                if (userWallet != null) userWallet.Balance += txUser.Amount;
             }
+            await dbContext.SaveAsync();
         }
 
-        public static async Task ExecuteCreditTx(TxUser txUser)
+        public static async Task ExecuteTipTx(TxUser txUser, BitcornContext dbContext)
         {
-            using (var dbContext = new BitcornContext())
-            {
                 var userIdentity = await dbContext.TwitchAsync(txUser.Id);
                 var userWallet = dbContext.UserWallet.FirstOrDefault(w => w.UserId == userIdentity.UserId);
                 
                 if (userWallet != null) userWallet.Balance += txUser.Amount;
 
                 await dbContext.SaveAsync();
-                await UpdateStats.RainedOn(userIdentity.UserId, txUser.Amount);
-            }
+                await UpdateStats.Tipped(userIdentity.UserId, txUser.Amount);
         }
 
-        public static async Task ExecuteDebitTxs(IEnumerable<WithdrawUser> withdrawUsers)
+        public static async Task ExecuteDebitTxs(IEnumerable<WithdrawUser> withdrawUsers, BitcornContext dbContext)
         {
-            using (var dbContext = new BitcornContext())
+            foreach (var txUser in withdrawUsers)
             {
-                foreach (var txUser in withdrawUsers)
-                {
-                    var userIdentity = await dbContext.TwitchAsync(txUser.Id);
-                    var userWallet = dbContext.UserWallet.FirstOrDefault(w => w.UserId == userIdentity.UserId);
-                    await UpdateStats.RainedOn(userIdentity.UserId, txUser.Amount);
-                    if (userWallet != null) userWallet.Balance -= txUser.Amount;
+                var userIdentity = await dbContext.TwitchAsync(txUser.Id);
+                var userWallet = dbContext.UserWallet.FirstOrDefault(w => w.UserId == userIdentity.UserId);
+                await UpdateStats.Rain(userIdentity.UserId, txUser.Amount);
+                if (userWallet != null) userWallet.Balance -= txUser.Amount;
 
-                }
-                await dbContext.SaveAsync();
             }
+            await dbContext.SaveAsync();
         }
-        public static async Task ExecuteDebitTx(WithdrawUser withdrawUser)
+        public static async Task ExecuteDebitTx(WithdrawUser withdrawUser, BitcornContext dbContext)
         {
-            using (var dbContext = new BitcornContext())
-            {
                 var userIdentity = await dbContext.TwitchAsync(withdrawUser.Id);
                 var userWallet = dbContext.UserWallet.FirstOrDefault(w => w.UserId == userIdentity.UserId);
 
                 if (userWallet != null) userWallet.Balance -= withdrawUser.Amount;
 
                 await dbContext.SaveAsync();
-                await UpdateStats.RainedOn(userIdentity.UserId, withdrawUser.Amount);
-            }
+                //await UpdateStats.Tipped(userIdentity.UserId, withdrawUser.Amount);
         }
     }
 }
