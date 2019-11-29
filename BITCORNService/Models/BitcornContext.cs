@@ -24,7 +24,7 @@ namespace BITCORNService.Models
         public virtual DbSet<UserStat> UserStat { get; set; }
         public virtual DbSet<UserWallet> UserWallet { get; set; }
         public virtual DbSet<WalletIndex> WalletIndex { get; set; }
-
+        public virtual DbSet<WalletServer> WalletServer { get; set; }
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {
         }
@@ -265,7 +265,33 @@ namespace BITCORNService.Models
 
                 entity.Property(e => e.Index).HasDefaultValueSql("((1))");
             });
+            modelBuilder.Entity<WalletServer>(entity =>
+            {
+                entity.ToTable("WalletServer");
 
+                entity.Property(e => e.Id).HasColumnName("Id");
+
+                entity.Property(e => e.DepositAddress)
+                    .HasColumnName("DepositAddress")
+                    .HasMaxLength(50);
+
+                entity.Property(e => e.Endpoint)
+                    .IsRequired()
+                    .HasColumnName("Endpoint")
+                    .HasMaxLength(50);
+
+                entity.Property(e => e.Index).HasColumnName("index");
+
+                entity.Property(e => e.LastBalanceUpdateBlock)
+                    .HasColumnName("LastBalanceUpdateBlock")
+                    .HasMaxLength(100);
+
+                entity.Property(e => e.ServerBalance)
+                    .HasColumnName("ServerBalance")
+                    .HasColumnType("numeric(19, 8)");
+
+                entity.Property(e => e.Enabled).HasColumnName("Enabled");
+            });
             OnModelCreatingPartial(modelBuilder);
         }
 
