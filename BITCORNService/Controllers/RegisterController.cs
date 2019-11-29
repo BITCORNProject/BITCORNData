@@ -12,203 +12,200 @@ namespace BITCORNService.Controllers
     [ApiController]
     public class RegisterController : ControllerBase
     {
-        // POST: api/Register
-        [HttpPost("twitch")]
-        public async Task<UserIdentity> Twitch([FromBody] Auth0TwitchIdentity data)
+        private readonly BitcornContext _dbContext;
+
+        public RegisterController(BitcornContext dbContext)
         {
-            try
-            {
-                var twitchUser = await TwitchKraken.GetTwitchUser(data.TwitchId);
-
-                using (var dbContext = new BitcornContext())
-                {
-                    var twitchDbUser = await dbContext.TwitchAsync(data.TwitchId);
-                    var auth0DbUser = await dbContext.Auth0Async(data.Auth0Id);
-
-                    if (twitchDbUser != null && twitchDbUser.Auth0Id == null)
-                    {
-                        dbContext.UserIdentity.Remove(auth0DbUser);
-                        twitchDbUser.TwitchUsername = twitchUser.name;
-                        twitchDbUser.Auth0Id = data.Auth0Id;
-                        twitchDbUser.Auth0Nickname = auth0DbUser.Auth0Nickname;
-                        await dbContext.SaveAsync();
-                        ////////////////////////////////////////////////////////////////
-                        // TODO: Add claims
-                        return twitchDbUser;
-                    }
-                    else if (twitchDbUser == null && auth0DbUser != null)
-                    {
-                        auth0DbUser.TwitchId = data.TwitchId;
-                        auth0DbUser.TwitchUsername = twitchUser.name;
-                        await dbContext.SaveAsync();
-                        return auth0DbUser;
-                    }
-                    else if (twitchDbUser != null)
-                    {
-                        var e = new Exception($"A login id already exists for this twitch id {data.TwitchId}");
-                        await BITCORNLogger.LogError(e);
-                        throw e;
-                    }
-                    else
-                    {
-                        var e = new Exception($"Failed to register twitch {data.TwitchId} {data.Auth0Id}");
-                        await BITCORNLogger.LogError(e);
-                        throw e;
-                    }
-                }
-            }
-            catch (Exception e)
-            {
-                await BITCORNLogger.LogError(e);
-                throw e;
-            }
+            _dbContext = dbContext;
         }
-        [HttpPost("discord")]
-        public async Task<UserIdentity> Discord([FromBody] Auth0DiscordIdentity data)
-        {
+
+        [HttpPost]
+        public async Task<UserIdentity> Register([FromBody] RegistrationData registrationData)
+        { 
+            if (registrationData == null) throw new ArgumentNullException("registrationData");
+            if (registrationData.Auth0Id == null) throw new ArgumentNullException("registrationData.Auth0Id");
+            if (registrationData.PlatformId == null) throw new ArgumentNullException("registrationData.PlatformId");
+
             try
             {
-                using (var dbContext = new BitcornContext())
+                string auth0Id = registrationData.Auth0Id;
+                UserIdentity auth0DbUser = await _dbContext.Auth0Async(auth0Id);
+                var platformId = BitcornUtils.GetPlatformId(registrationData.PlatformId);
+                switch (platformId.Platform)
                 {
-                    var discordDbUser = await dbContext.DiscordAsync(data.DiscordId);
-                    var auth0DbUser = await dbContext.Auth0Async(data.Auth0Id);
+                    case "twitch":
+                        var twitchUser = await TwitchKraken.GetTwitchUser(platformId.Id);
 
-                    if (discordDbUser != null && discordDbUser.Auth0Id == null)
-                    {
-                        dbContext.UserIdentity.Remove(auth0DbUser);
-                        await dbContext.SaveAsync();
-                        discordDbUser.Auth0Id = data.Auth0Id;
-                        discordDbUser.Auth0Nickname = auth0DbUser.Auth0Nickname;
-                            await dbContext.SaveAsync();
+                        var twitchDbUser = await _dbContext.TwitchAsync(platformId.Id);
+
+                        if (twitchDbUser != null && twitchDbUser.Auth0Id == null)
+                        {
+                            _dbContext.UserIdentity.Remove(auth0DbUser);
+                            twitchDbUser.TwitchUsername = twitchUser.name;
+                            twitchDbUser.Auth0Id = auth0Id;
+                            twitchDbUser.Auth0Nickname = auth0DbUser.Auth0Nickname;
+                            await _dbContext.SaveAsync();
                             ////////////////////////////////////////////////////////////////
-                            // TODO: Add registrations claims
-                            // await Payments.ScheduledPaymentManager.TryClaim(discordDbUser, _logger, true);
-                        return discordDbUser;
-                    }
-                    else if (discordDbUser == null && auth0DbUser != null)
-                    {
-                        auth0DbUser.DiscordId = data.DiscordId;
-                        await dbContext.SaveAsync();
-                        return auth0DbUser;
-                    }
-                    else if (discordDbUser?.Auth0Id != null)
-                    {
-                        var e = new Exception($"A login id already exists for this discord id");
-                        await BITCORNLogger.LogError(e,$"Auth0Id already exists for user {data.DiscordId}");
-                        throw e;
-                    }
-                    else
-                    {
-                        var e = new Exception($"Failed to register discord");
-                        await BITCORNLogger.LogError(e,$"Failed to register discord id for user {data.DiscordId} {data.Auth0Id}");
-                        throw e;
-                    }
+                            // TODO: Add claims
+                            return twitchDbUser;
+                        }
+                        else if (twitchDbUser == null && auth0DbUser != null)
+                        {
+                            auth0DbUser.TwitchId = platformId.Id;
+                            auth0DbUser.TwitchUsername = twitchUser.name;
+                            await _dbContext.SaveAsync();
+                            return auth0DbUser;
+                        }
+                        else if (twitchDbUser != null)
+                        {
+                            var e = new Exception($"A login id already exists for this twitch id {platformId.Id}");
+                            await BITCORNLogger.LogError(e);
+                            throw e;
+                        }
+                        else
+                        {
+                            var e = new Exception(
+                                $"Failed to register twitch {platformId.Id} {auth0Id}");
+                            await BITCORNLogger.LogError(e);
+                            throw e;
+                        }
+                    case "discord":
+                        try
+                        {
+                            var discordDbUser = await _dbContext.DiscordAsync(platformId.Id);
+
+                            if (discordDbUser != null && discordDbUser.Auth0Id == null)
+                            {
+                                _dbContext.UserIdentity.Remove(auth0DbUser);
+                                await _dbContext.SaveAsync();
+                                discordDbUser.Auth0Id = auth0Id;
+                                discordDbUser.Auth0Nickname = auth0DbUser.Auth0Nickname;
+                                await _dbContext.SaveAsync();
+                                ////////////////////////////////////////////////////////////////
+                                // TODO: Add registrations claims
+                                // await Payments.ScheduledPaymentManager.TryClaim(discordDbUser, _logger, true);
+                                return discordDbUser;
+                            }
+                            else if (discordDbUser == null && auth0DbUser != null)
+                            {
+                                auth0DbUser.DiscordId = platformId.Id;
+                                await _dbContext.SaveAsync();
+                                return auth0DbUser;
+                            }
+                            else if (discordDbUser?.Auth0Id != null)
+                            {
+                                var e = new Exception($"A login id already exists for this discord id");
+                                await BITCORNLogger.LogError(e, $"Auth0Id already exists for user {platformId.Id}");
+                                throw e;
+                            }
+                            else
+                            {
+                                var e = new Exception($"Failed to register discord");
+                                await BITCORNLogger.LogError(e, $"Failed to register discord id for user {platformId.Id} {auth0Id}");
+                                await BITCORNLogger.LogError(e, $"Failed to register discord id for user {platformId.Id} {auth0Id}");
+                                throw e;
+                            }
+                        }
+                        catch (Exception e)
+                        {
+                            await BITCORNLogger.LogError(e);
+                            throw new Exception($"Failed to add user's discord");
+                        }
+
+                        throw new Exception($"HOW THE FUCK DID YOU GET HERE");
+                        break;
+                    case "twitter":
+                        try
+                        {
+                            var twitterDbUser = await _dbContext.TwitterAsync(platformId.Id);
+
+
+                            if (twitterDbUser != null && twitterDbUser.Auth0Id == null)
+                            {
+                                _dbContext.UserIdentity.Remove(auth0DbUser);
+                                twitterDbUser.Auth0Id = auth0Id;
+                                twitterDbUser.Auth0Nickname = auth0DbUser.Auth0Nickname;
+                                await _dbContext.SaveAsync();
+                                ///////////////////////////////////////
+                                //TODO claim transactions
+                                // await Payments.ScheduledPaymentManager.TryClaim(twitterDbUser, _logger, true);
+                                return twitterDbUser;
+                            }
+                            if (twitterDbUser == null && auth0DbUser != null)
+                            {
+                                auth0DbUser.TwitterId = platformId.Id;
+                                await _dbContext.SaveAsync();
+                                return auth0DbUser;
+                            }
+                            if (twitterDbUser?.Auth0Id != null)
+                            {
+                                var e = new Exception($"Auth0Id already exists for user {platformId.Id}");
+                                await BITCORNLogger.LogError(e);
+                                throw e;
+                            }
+                            var ex = new Exception($"Failed to register twitter id for user {platformId.Id} {auth0Id}");
+                            await BITCORNLogger.LogError(ex);
+                            throw ex;
+                        }
+                        catch (Exception e)
+                        {
+                            await BITCORNLogger.LogError(e);
+                            throw e;
+                        }
+                        throw new Exception($"HOW THE FUCK DID YOU GET HERE");
+                    case "reddit":
+                        try
+                        {
+                            var redditDbUser = await _dbContext.RedditAsync(platformId.Id);
+
+                            if (redditDbUser != null && redditDbUser.Auth0Id == null)
+                            {
+                                _dbContext.UserIdentity.Remove(auth0DbUser);
+                                redditDbUser.Auth0Id = auth0Id;
+                                redditDbUser.Auth0Nickname = auth0DbUser.Auth0Nickname;
+                                await _dbContext.SaveAsync();
+                                /////////////////////////////
+                                // TODO claim tx
+                                // await Payments.ScheduledPaymentManager.TryClaim(redditDbUser, _logger, true);
+                                return redditDbUser;
+                            }
+                            else if (redditDbUser == null && auth0DbUser != null)
+                            {
+                                auth0DbUser.RedditId = platformId.Id;
+                                await _dbContext.SaveAsync();
+                                return auth0DbUser;
+                            }
+                            else if (redditDbUser?.Auth0Id != null)
+                            {
+                                var e = new Exception($"Auth0Id already exists for user {platformId.Id}");
+                                await BITCORNLogger.LogError(e);
+                                throw e;
+                            }
+                            else
+                            {
+                                var e = new Exception($"Failed to register reddit id for user {platformId.Id} {platformId.Id}");
+                                await BITCORNLogger.LogError(e);
+                                throw e;
+                            }
+                        }
+                        catch (Exception e)
+                        {
+                            await BITCORNLogger.LogError(e);
+                            throw e;
+                        }
+
+                        throw new Exception($"HOW THE FUCK DID YOU GET HERE");
+                    default:
+                        break;
                 }
             }
-            catch (Exception e)
+            catch(Exception e)
             {
-                await BITCORNLogger.LogError(e);
-                throw new Exception($"Failed to add user's discord");
+                throw new Exception($"registration failed for {registrationData}");
             }
-
-            throw new Exception($"HOW THE FUCK DID YOU GET HERE");
+            throw new Exception("HOW THE FUCK DID YOU GET HERE");
         }
-        [HttpPost("twitter")]
-        public async Task<UserIdentity> Twitter([FromBody] Auth0TwitterIdentity data)
-        {
-            try
-            {
-                using (var dbContext = new BitcornContext())
-                {
-                    var twitterDbUser = await dbContext.TwitterAsync(data.TwitterId);
-                    var auth0DbUser = await dbContext.Auth0Async(data.Auth0Id);
 
-
-                    if (twitterDbUser != null && twitterDbUser.Auth0Id == null)
-                    {
-                        dbContext.UserIdentity.Remove(auth0DbUser);
-                        twitterDbUser.Auth0Id = data.Auth0Id;
-                        twitterDbUser.Auth0Nickname = auth0DbUser.Auth0Nickname;
-                        await dbContext.SaveAsync();
-                           ///////////////////////////////////////
-                           //TODO claim transactions
-                           // await Payments.ScheduledPaymentManager.TryClaim(twitterDbUser, _logger, true);
-                        return twitterDbUser;
-                    }
-                    if (twitterDbUser == null && auth0DbUser != null)
-                    {
-                        auth0DbUser.TwitterId = data.TwitterId;
-                        await dbContext.SaveAsync();
-                        return auth0DbUser;
-                    }
-                    if (twitterDbUser?.Auth0Id != null)
-                    {
-                        var e = new Exception($"Auth0Id already exists for user {data.TwitterId}");
-                        await BITCORNLogger.LogError(e);
-                        throw e;
-                    }
-                    var ex = new Exception($"Failed to register twitter id for user {data.TwitterId} {data.Auth0Id}");
-                    await BITCORNLogger.LogError(ex);
-                    throw ex;
-                }
-            }
-            catch (Exception e)
-            {
-                await BITCORNLogger.LogError(e);
-                throw e;
-            }
-
-            throw new Exception($"HOW THE FUCK DID YOU GET HERE");
-        }
-        [HttpPost("reddit")]
-        public async Task<UserIdentity> Reddit([FromBody] Auth0RedditIdentity data)
-        {
-            try
-            {
-                using (var dbContext = new BitcornContext())
-                {
-                    var redditDbUser = await dbContext.RedditAsync(data.RedditId);
-                    var auth0DbUser = await dbContext.Auth0Async(data.Auth0Id);
-
-
-                    if (redditDbUser != null && redditDbUser.Auth0Id == null)
-                    {
-                        dbContext.UserIdentity.Remove(auth0DbUser);
-                        redditDbUser.Auth0Id = data.Auth0Id;
-                        redditDbUser.Auth0Nickname = auth0DbUser.Auth0Nickname;
-                        await dbContext.SaveAsync();
-                        /////////////////////////////
-                        // TODO claim tx
-                        // await Payments.ScheduledPaymentManager.TryClaim(redditDbUser, _logger, true);
-                        return redditDbUser;
-                    }
-                    else if (redditDbUser == null && auth0DbUser != null)
-                    {
-                        auth0DbUser.RedditId = data.RedditId;
-                        await dbContext.SaveAsync();
-                        return auth0DbUser;
-                    }
-                    else if (redditDbUser?.Auth0Id != null)
-                    {
-                        var e = new Exception($"Auth0Id already exists for user {data.RedditId}");
-                        await BITCORNLogger.LogError(e);
-                        throw e;
-                    }
-                    else
-                    {
-                        var e = new Exception($"Failed to register reddit id for user {data.RedditId} {data.RedditId}");
-                        await BITCORNLogger.LogError(e);
-                        throw e;
-                    }
-                }
-            }
-            catch (Exception e)
-            {
-                await BITCORNLogger.LogError(e);
-                throw e;
-            }
-
-            throw new Exception($"HOW THE FUCK DID YOU GET HERE");
-        }
     }
-}
+
+    }

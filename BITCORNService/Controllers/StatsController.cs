@@ -3,10 +3,13 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using BITCORNService.Models;
+using BITCORNService.Utils;
 using BITCORNService.Utils.DbActions;
+using BITCORNService.Utils.Stats;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 
 namespace BITCORNService.Controllers
 {
@@ -14,16 +17,33 @@ namespace BITCORNService.Controllers
     [ApiController]
     public class StatsController : ControllerBase
     {
-        [HttpPost("{userstats}")]
-        public async Task<UserStat> UserStats([FromRoute] string auth0Id)
-        {
-            if(string.IsNullOrWhiteSpace(auth0Id)) throw new ArgumentNullException();
+        private readonly BitcornContext _dbContext;
 
-            using (var dbContext = new BitcornContext())
-            {
-                var userIdentity = await dbContext.Auth0Async(auth0Id);
-                return await dbContext.UserStat.FirstOrDefaultAsync(u => u.UserId == userIdentity.UserId);
-            }
+        public StatsController(BitcornContext dbContext)
+        {
+            _dbContext = dbContext;
         }
+
+        [HttpPost("userstats/{id}")]
+        public async Task<UserStat> UserStats([FromRoute] string routeId)
+        {
+            if(string.IsNullOrWhiteSpace(routeId)) throw new ArgumentNullException();
+
+            var platformId = Utils.BitcornUtils.GetPlatformId(routeId);
+            var userIdentity = await Utils.BitcornUtils.GetUserIdentityForPlatform(platformId, _dbContext);
+
+            return await _dbContext.UserStat.FirstOrDefaultAsync(u => u.UserId == userIdentity.UserId);
+        }
+
+        [HttpPost("ReceivedTotal")]
+        public async Task<decimal> ReceiverTotal([FromRoute] string auth0Id)
+        {
+            if (string.IsNullOrWhiteSpace(auth0Id)) throw new ArgumentNullException();
+
+                var userIdentity = await _dbContext.Auth0Async(auth0Id);
+                var userStat =  await _dbContext.UserStat.FirstOrDefaultAsync(u => u.UserId == userIdentity.UserId);
+                return Convert.ToDecimal(userStat.RainedOnTotal + userStat.TippedTotal);
+        }
+
     }
 }
