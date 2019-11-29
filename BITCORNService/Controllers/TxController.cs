@@ -1,17 +1,10 @@
-﻿using System;
+﻿using BITCORNService.Utils.LockUser;
+using BITCORNService.Utils.Models;
+using BITCORNService.Utils.Tx;
+using Microsoft.AspNetCore.Mvc;
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading.Tasks;
 using BITCORNService.Models;
-using BITCORNService.Utils;
-using BITCORNService.Utils.DbActions;
-using BITCORNService.Utils.LockUser;
-using BITCORNService.Utils.Models;
-using BITCORNService.Utils.Stats;
-using BITCORNService.Utils.Tx;
-using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.VisualStudio.Web.CodeGeneration.Utils.Messaging;
 
 namespace BITCORNService.Controllers
 {
@@ -20,38 +13,44 @@ namespace BITCORNService.Controllers
     [ApiController]
     public class TxController : ControllerBase
     {
-        [HttpPost("{rain}")]
+        private readonly BitcornContext _dbContext;
+
+        public TxController(BitcornContext dbContext)
+        {
+            _dbContext = dbContext;
+        }
+        [HttpPost("rain")]
         public async Task Rain([FromBody] IEnumerable<TxUser> txUsers)
         {
             //array of {amount, id}
-            await TxUtils.ExecuteCreditTxs(txUsers);
+            await TxUtils.ExecuteRainTxs(txUsers, _dbContext);
 
 
             //recipient response TODO
         }
 
-        [HttpPost("{payout}")]
+        [HttpPost("payout")]
         public async Task Payout([FromBody] IEnumerable<TxUser> txUsers)
         {
             //array of {amount, id}
-            await TxUtils.ExecuteCreditTxs(txUsers);
+            await TxUtils.ExecuteRainTxs(txUsers, _dbContext);
             //senderresponses TODO
         }
 
-        [HttpPost("{tipcorn}")]
+        [HttpPost("tipcorn")]
         public async Task Tipcorn([FromBody] TxUser txUser)
         {
             //sender twitchid, receiver twitchid, amount
-            await TxUtils.ExecuteCreditTx(txUser);
+            await TxUtils.ExecuteTipTx(txUser, _dbContext);
 
             //senderresponse TODO
         }
 
-        [HttpPost("{withdraw}")]
+        [HttpPost("withdraw")]
         public async Task Withdraw([FromBody] WithdrawUser withdrawUser)
         {
             //sender twitchid, cornaddy, amount
-            await TxUtils.ExecuteDebitTx(withdrawUser);
+            await TxUtils.ExecuteDebitTx(withdrawUser, _dbContext);
 
             //call to wallet to properly withdraw TODO
 
