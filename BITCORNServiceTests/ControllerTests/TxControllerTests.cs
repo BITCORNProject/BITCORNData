@@ -17,7 +17,7 @@ namespace BITCORNServiceTests
         private IConfigurationRoot _configuration;
         public TxControllerTests()
         {
-            _configuration = TestUtilities.GetConfig();
+            _configuration = TestUtils.GetConfig();
         }
         [Fact]
         public async Task TestRainSuccess()
@@ -34,7 +34,7 @@ namespace BITCORNServiceTests
             }
 
             //TODO: this test is failing because tx analytics is not using injected db context
-            using (var dbContext = TestUtilities.CreateDatabase())
+            using (var dbContext = TestUtils.CreateDatabase())
             {
                 var startUser = await dbContext.TwitchAsync(txUser.Id);
                 var startBalance = dbContext.UserWallet.FirstOrDefault(w => w.UserId == startUser.UserId).Balance;
@@ -60,7 +60,7 @@ namespace BITCORNServiceTests
                 txUserList.Add(txUser);
             }
             //TODO: this test is failing because tx analytics is not using injected db context
-            using (var dbContext = TestUtilities.CreateDatabase())
+            using (var dbContext = TestUtils.CreateDatabase())
             {
                 var startUser = await dbContext.TwitchAsync(txUser.Id);
                 var startBalance = dbContext.UserWallet.FirstOrDefault(w => w.UserId == startUser.UserId).Balance;
@@ -80,7 +80,7 @@ namespace BITCORNServiceTests
             txUser.Id = _configuration["Config:TestUserId"]; 
 
             //TODO: this test is failing because tx analytics is not using injected db context
-            using (var dbContext = TestUtilities.CreateDatabase())
+            using (var dbContext = TestUtils.CreateDatabase())
             {
                 var startUser = await dbContext.TwitchAsync(txUser.Id);
                 var startBalance = dbContext.UserWallet.FirstOrDefault(w => w.UserId == startUser.UserId).Balance;
@@ -103,7 +103,7 @@ namespace BITCORNServiceTests
                 CornAddy = _configuration["Config:TestAddress"]
             };
 
-            using (var dbContext = TestUtilities.CreateDatabase())
+            using (var dbContext = TestUtils.CreateDatabase())
             {
                 var txController = new TxController(dbContext);
 

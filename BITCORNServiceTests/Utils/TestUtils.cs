@@ -9,7 +9,7 @@ using System.Text;
 
 namespace BITCORNServiceTests.Utils
 {
-    public static class TestUtilities
+    public static class TestUtils
     {
         public static BitcornContext CreateInMemoryDatabase()
         {
