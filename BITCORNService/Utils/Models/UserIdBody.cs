@@ -1,6 +1,6 @@
 ﻿namespace BITCORNService.Utils.Models
 {
-    public class TwitchBody
+    public class UserIdBody
     {
         public string Id { get; set; }
     }
