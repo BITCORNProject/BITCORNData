@@ -1,12 +1,5 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Net.Http;
-using System.Net.Http.Headers;
-using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
-using BITCORNService.Models;
+
+﻿using BITCORNService.Models;
 using BITCORNService.Utils;
 using BITCORNService.Utils.DbActions;
 using BITCORNService.Utils.Wallet;
@@ -16,6 +9,9 @@ using Microsoft.Extensions.Configuration;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using RestSharp;
+using System;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace BITCORNService.Controllers
 {
@@ -23,6 +19,7 @@ namespace BITCORNService.Controllers
     [ApiController]
     public class WalletController : ControllerBase
     {
+
         private readonly IConfiguration _configuration;
         private readonly BitcornContext _dbContext;
 
