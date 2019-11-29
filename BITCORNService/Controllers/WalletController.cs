@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http;
@@ -11,7 +11,6 @@ using BITCORNService.Utils;
 using BITCORNService.Utils.DbActions;
 using BITCORNService.Utils.Wallet;
 using BITCORNService.Utils.Wallet.Models;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 using Newtonsoft.Json;
@@ -24,7 +23,8 @@ namespace BITCORNService.Controllers
     [ApiController]
     public class WalletController : ControllerBase
     {
-        IConfiguration _configuration;
+        readonly IConfiguration _configuration;
+
         
         public WalletController(IConfiguration configuration)
         {
