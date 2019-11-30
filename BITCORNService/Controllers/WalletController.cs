@@ -1,4 +1,3 @@
-
 using BITCORNService.Utils;
 using BITCORNService.Utils.DbActions;
 using BITCORNService.Utils.Wallet;
