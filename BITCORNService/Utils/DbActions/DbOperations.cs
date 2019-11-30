@@ -10,7 +10,7 @@ using Microsoft.Extensions.Logging;
 
 namespace BITCORNService.Utils.DbActions
 {
-    static class DbOperations
+    public static class DbOperations
     {
         public static async Task<UserIdentity> Auth0Async(this BitcornContext dbContext, string auth0Id)
         {
