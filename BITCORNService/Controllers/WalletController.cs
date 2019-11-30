@@ -22,7 +22,6 @@ namespace BITCORNService.Controllers
         private readonly BitcornContext _dbContext;
 
         public WalletController(IConfiguration configuration, BitcornContext dbContext)
-
         {
             this._configuration = configuration;
             this._dbContext = dbContext;
