@@ -1,12 +1,8 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Data;
-using System.Linq;
-using System.Net.NetworkInformation;
 using System.Threading.Tasks;
 using BITCORNService.Models;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging;
 
 namespace BITCORNService.Utils.DbActions
 {
