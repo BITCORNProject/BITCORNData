@@ -3,6 +3,7 @@ using BITCORNService.Utils;
 using BITCORNService.Utils.DbActions;
 using Microsoft.AspNetCore.Mvc;
 using System;
+using System.Linq;
 using System.Threading.Tasks;
 using BITCORNService.Utils.Models;
 
@@ -17,6 +18,44 @@ namespace BITCORNService.Controllers
         public RegisterController(BitcornContext dbContext)
         {
             _dbContext = dbContext;
+        }
+
+        [HttpPost("newuser")]
+        public async Task<FullUser> RegisterNewUser([FromBody]Auth0User auth0User)
+        {
+            if(auth0User == null) throw new ArgumentNullException();
+
+            var existingUserIdentity = await _dbContext.Auth0Async(auth0User.Auth0Id);
+            
+            if (existingUserIdentity?.Auth0Id == auth0User.Auth0Id)
+            {
+                var user = _dbContext.User.FirstOrDefault(u => u.UserId == existingUserIdentity.UserId);
+                var userWallet = _dbContext.UserWallet.FirstOrDefault(u => u.UserId == existingUserIdentity.UserId);
+                var userStat = _dbContext.UserStat.FirstOrDefault(u => u.UserId == existingUserIdentity.UserId);
+                return BitcornUtils.GetFullUser(user, existingUserIdentity, userWallet, userStat);
+            }
+
+            try
+            {
+                var user = new User
+                {
+                    UserIdentity = new UserIdentity
+                    {
+                        Auth0Id = auth0User.Auth0Id, Auth0Nickname = auth0User.Auth0Nickname
+                    },
+                    UserWallet = new UserWallet(),
+                    UserStat = new UserStat()
+                };
+                _dbContext.User.Add(user);
+                await _dbContext.SaveAsync();
+
+                return BitcornUtils.GetFullUser(user, user.UserIdentity, user.UserWallet, user.UserStat);
+            }
+            catch(Exception e)
+            {
+                Console.WriteLine(e);
+                throw;
+            }
         }
 
         [HttpPost]

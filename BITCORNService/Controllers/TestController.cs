@@ -36,7 +36,7 @@ namespace BITCORNService.Controllers
         }
 
         [HttpGet]
-        public async Task<HttpStatusCode> Get([FromBody] dynamic data)
+        public async Task<HttpStatusCode> Get()
         {
             try
             {
