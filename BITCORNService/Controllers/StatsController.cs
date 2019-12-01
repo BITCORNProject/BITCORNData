@@ -25,11 +25,11 @@ namespace BITCORNService.Controllers
         }
 
         [HttpPost("userstats/{id}")]
-        public async Task<UserStat> UserStats([FromRoute] string routeId)
+        public async Task<UserStat> UserStats([FromRoute] string id)
         {
-            if(string.IsNullOrWhiteSpace(routeId)) throw new ArgumentNullException();
+            if(string.IsNullOrWhiteSpace(id)) throw new ArgumentNullException();
 
-            var platformId = Utils.BitcornUtils.GetPlatformId(routeId);
+            var platformId = Utils.BitcornUtils.GetPlatformId(id);
             var userIdentity = await Utils.BitcornUtils.GetUserIdentityForPlatform(platformId, _dbContext);
 
             return await _dbContext.UserStat.FirstOrDefaultAsync(u => u.UserId == userIdentity.UserId);

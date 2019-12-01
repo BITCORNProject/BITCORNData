@@ -22,12 +22,12 @@ namespace BITCORNService.Controllers
         {
             _dbContext = dbContext;
         }
-        [HttpPost]
-        public async Task<UserWallet> Wallet([FromBody] UserIdBody userIdBody)
+        [HttpPost("{id}")]
+        public async Task<UserWallet> Wallet([FromRoute] string id)
         {
-            var platformId = BitcornUtils.GetPlatformId(userIdBody.Id);
-            var userIdentity = BitcornUtils.GetUserIdentityForPlatform(platformId, _dbContext);
-            var userWallet = await _dbContext.UserWallet.FirstOrDefaultAsync(w => w.UserId == userIdentity.Id);
+            var platformId = BitcornUtils.GetPlatformId(id);
+            var userIdentity = await BitcornUtils.GetUserIdentityForPlatform(platformId, _dbContext);
+            var userWallet = await _dbContext.UserWallet.FirstOrDefaultAsync(w => w.UserId == userIdentity.UserId);
             return userWallet;
         }
     }

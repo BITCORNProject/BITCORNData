@@ -22,14 +22,11 @@ namespace BITCORNService.Controllers
             _dbContext = dbContext;
         }
 
-        [HttpPost("useridentity/{id}")]
+        [HttpPost("{id}")]
         public async Task<UserIdentity> Auth0([FromRoute] string id)
         {
             var platformId =  BitcornUtils.GetPlatformId(id);
             return await BitcornUtils.GetUserIdentityForPlatform(platformId, _dbContext);
         }
-
-
-
     }
 }
