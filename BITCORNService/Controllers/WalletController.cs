@@ -1,17 +1,10 @@
-using BITCORNService.Utils;
-using BITCORNService.Utils.DbActions;
-using BITCORNService.Utils.Wallet;
-using BITCORNService.Utils.Wallet.Models;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Configuration;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
-using RestSharp;
 using System;
-using System.Threading;
 using System.Threading.Tasks;
 using BITCORNService.Models;
 using BITCORNService.Utils.Models;
+using BITCORNService.Utils.Wallet;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Configuration;
 
 namespace BITCORNService.Controllers
 {

@@ -1,13 +1,7 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
+﻿using System.Threading.Tasks;
 using BITCORNService.Models;
 using BITCORNService.Utils;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using BITCORNService.Utils.DbActions;
-using Microsoft.Extensions.Logging;
 
 namespace BITCORNService.Controllers
 {

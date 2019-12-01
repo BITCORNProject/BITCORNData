@@ -1,15 +1,9 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Threading.Tasks;
 using BITCORNService.Models;
-using BITCORNService.Utils;
 using BITCORNService.Utils.DbActions;
-using BITCORNService.Utils.Stats;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
 
 namespace BITCORNService.Controllers
 {

@@ -1,8 +1,5 @@
-﻿using System;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Metadata;
-using Microsoft.Extensions.Logging;
-
+﻿using Microsoft.EntityFrameworkCore;
+ 
 namespace BITCORNService.Models
 {
     public partial class BitcornContext : DbContext

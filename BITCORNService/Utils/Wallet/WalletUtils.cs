@@ -1,4 +1,8 @@
-﻿using BITCORNService.Models;
+﻿using System;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
+using BITCORNService.Models;
 using BITCORNService.Utils.DbActions;
 using BITCORNService.Utils.Wallet.Models;
 using Microsoft.EntityFrameworkCore;
@@ -6,11 +10,6 @@ using Microsoft.Extensions.Configuration;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using RestSharp;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
 
 namespace BITCORNService.Utils.Wallet
 {
