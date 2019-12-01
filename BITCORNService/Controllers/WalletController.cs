@@ -11,6 +11,7 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using BITCORNService.Models;
+using BITCORNService.Utils.Models;
 
 namespace BITCORNService.Controllers
 {

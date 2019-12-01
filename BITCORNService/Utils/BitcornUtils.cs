@@ -24,20 +24,20 @@ namespace BITCORNService.Utils
             return platformId;
         }
 
-        public static async Task<UserIdentity> GetUserIdentityForPlatform(PlatformId platformId, BitcornContext dbcontext)
+        public static async Task<UserIdentity> GetUserIdentityForPlatform(PlatformId platformId, BitcornContext dbContext)
         {
             switch (platformId.Platform)
             {
                 case "auth0":
-                    return await dbcontext.Auth0Async(platformId.Id);
+                    return await dbContext.Auth0Async(platformId.Id);
                 case "twitch":
-                    return await dbcontext.TwitchAsync(platformId.Id);
+                    return await dbContext.TwitchAsync(platformId.Id);
                 case "discord":
-                    return await dbcontext.DiscordAsync(platformId.Id);
+                    return await dbContext.DiscordAsync(platformId.Id);
                 case "twitter":
-                    return await dbcontext.TwitterAsync(platformId.Id);
+                    return await dbContext.TwitterAsync(platformId.Id);
                 case "reddit":
-                    return await dbcontext.RedditAsync(platformId.Id);
+                    return await dbContext.RedditAsync(platformId.Id);
                 default:
                     throw new Exception($"User {platformId.Platform}|{platformId.Id} could not be found");
             }

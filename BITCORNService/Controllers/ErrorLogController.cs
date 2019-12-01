@@ -2,6 +2,8 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using BITCORNService.Models;
+using BITCORNService.Utils.DbActions;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
@@ -11,11 +13,18 @@ namespace BITCORNService.Controllers
     [ApiController]
     public class ErrorLogController : ControllerBase
     {
+        private readonly BitcornContext _dbContext;
+
+        public ErrorLogController(BitcornContext dbContext)
+        {
+            _dbContext = dbContext;
+        }
         // POST: api/ErrorLog
         [HttpPost]
-        public void Post([FromBody] string value)
+        public async Task Post([FromBody] ErrorLogs errorLogs)
         {
-
+            _dbContext.ErrorLogs.Add(errorLogs);
+            await _dbContext.SaveAsync();
         }
     }
 }
