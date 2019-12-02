@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using System.Net;
 using System.Threading.Tasks;
 using BITCORNService.Models;
@@ -22,17 +23,19 @@ namespace BITCORNService.Controllers
             this._configuration = configuration;
             this._dbContext = dbContext;
         }
-        //API: /api/wallet/createcornaddy
+        //API: /api/wallet/createcornaddy/{id}
         [HttpPost("CreateCornaddy")]
-        public async Task<ActionResult<UserWallet>> CreateCornaddy([FromBody] string id)
+        public async Task<ActionResult<UserWallet>> CreateCornaddy([FromRoute] string id)
         {
             if (string.IsNullOrWhiteSpace(id)) throw new ArgumentNullException("id");
+            
             var platformId = BitcornUtils.GetPlatformId(id);
 
             var userIdentity = await BitcornUtils.GetUserIdentityForPlatform(platformId, _dbContext);
             if (userIdentity == null) throw new ArgumentNullException("userIdentity");
 
-            var response = await WalletUtils.CreateCornaddy(_dbContext, userIdentity, _configuration);
+            var userWallet = _dbContext.UserWallet.FirstOrDefault(w => w.UserId == userIdentity.UserId);
+            var response = await WalletUtils.CreateCornaddy(_dbContext, userWallet, _configuration);
 
             if (response.HttpCode == HttpStatusCode.OK)
             {
