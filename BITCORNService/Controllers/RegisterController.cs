@@ -152,7 +152,6 @@ namespace BITCORNService.Controllers
                         }
 
                         throw new Exception($"HOW THE FUCK DID YOU GET HERE");
-                        break;
                     case "twitter":
                         try
                         {
@@ -235,7 +234,7 @@ namespace BITCORNService.Controllers
 
                         throw new Exception($"HOW THE FUCK DID YOU GET HERE");
                     default:
-                        break;
+                        throw new Exception("Invalid platform provided in the Id");
                 }
             }
             catch(Exception e)
