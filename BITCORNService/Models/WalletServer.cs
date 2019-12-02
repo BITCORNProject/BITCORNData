@@ -9,6 +9,6 @@
         public string DepositAddress { get; set; }
         public decimal? ServerBalance { get; set; }
         public bool Enabled { get; set; }
-        public object WithdrawEnabled { get; internal set; }
+        public bool WithdrawEnabled { get; internal set; }
     }
 }
