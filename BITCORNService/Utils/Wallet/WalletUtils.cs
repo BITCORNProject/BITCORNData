@@ -189,8 +189,8 @@ namespace BITCORNService.Utils.Wallet
             }
             catch (Exception e)
             {
-                cornResponse.HttpCode = HttpStatusCode.InternalServerError;
                 await HandleException(cornResponse, e);
+                throw e;
             }
             return cornResponse;
         }
@@ -198,7 +198,7 @@ namespace BITCORNService.Utils.Wallet
         {
             return !string.IsNullOrEmpty(accessToken);
         }
-        //TODO: check if there is better way to access config
+        
         public static async Task<BitcornResponse> Withdraw(BitcornContext dbContext, IConfiguration configuration, WithdrawUser withdrawUser)
         {
             var cornResponse = new BitcornResponse();
@@ -280,8 +280,8 @@ namespace BITCORNService.Utils.Wallet
             }
             catch(Exception e)
             {
-                cornResponse.HttpCode = HttpStatusCode.InternalServerError;
                 await HandleException(cornResponse,e);
+                throw e;
             }
 
             return cornResponse;
