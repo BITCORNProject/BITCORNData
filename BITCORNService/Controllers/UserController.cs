@@ -41,7 +41,7 @@ namespace BITCORNService.Controllers
             
             if (userStats == null) throw new ArgumentNullException("userStats");
 
-            return BitcornUtils.GetFullUser(user, userIdentity, userWallet, userStats);
+             return BitcornUtils.GetFullUser(user, userIdentity, userWallet, userStats);
         }
 
     }

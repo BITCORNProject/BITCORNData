@@ -58,6 +58,7 @@ namespace BITCORNService.Utils
             fullUser.RedditId = userIdentity.RedditId;
             fullUser.WalletServer = userWallet.WalletServer;
             fullUser.CornAddy = userWallet.CornAddy;
+            fullUser.Balance = userWallet.Balance;
             fullUser.EarnedIdle = userStats.EarnedIdle;
             fullUser.Tipped = userStats.Tipped;
             fullUser.TippedTotal = userStats.TippedTotal;
