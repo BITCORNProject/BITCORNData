@@ -1,6 +1,8 @@
 using System;
+using System.Net;
 using System.Threading.Tasks;
 using BITCORNService.Models;
+using BITCORNService.Utils;
 using BITCORNService.Utils.Models;
 using BITCORNService.Utils.Wallet;
 using Microsoft.AspNetCore.Mvc;
@@ -22,11 +24,26 @@ namespace BITCORNService.Controllers
         }
         //API: /api/wallet/createcornaddy
         [HttpPost("CreateCornaddy")]
-        public async Task<object> CreateCornaddy([FromBody] WalletCreateCornaddyRequest request)
+        public async Task<ActionResult<UserWallet>> CreateCornaddy([FromBody] string id)
         {
-            //TODO: this needs user fetching
+            if (string.IsNullOrWhiteSpace(id)) throw new ArgumentNullException("id");
+            var platformId = BitcornUtils.GetPlatformId(id);
+
+            var userIdentity = await BitcornUtils.GetUserIdentityForPlatform(platformId, _dbContext);
+            if (userIdentity == null) throw new ArgumentNullException("userIdentity");
+
+            var response = await WalletUtils.CreateCornaddy(_dbContext, userIdentity, _configuration);
+
+            if (response.HttpCode == HttpStatusCode.OK)
+            {
+                return await _dbContext.GetUserWallet(userIdentity);
+            }
+            else
+            {
+                return StatusCode((int)response.HttpCode);
+            }
             //WalletUtils.CreateCornaddy(_dbContext,request);
-            throw new NotImplementedException();
+
         }
 
         //API: /api/wallet/deposit
