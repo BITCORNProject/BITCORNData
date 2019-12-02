@@ -212,7 +212,7 @@ namespace BITCORNService.Utils.Wallet
                 }
 
                 var server = await dbContext.GetWalletServer(userWallet);
-                if (!server.Enabled)
+                if (!server.Enabled || !server.WithdrawEnabled)
                 {
                     OnWalletServerNotAvailable(cornResponse);
                     return cornResponse;
