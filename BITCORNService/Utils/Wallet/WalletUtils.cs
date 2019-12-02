@@ -154,7 +154,7 @@ namespace BITCORNService.Utils.Wallet
             }
         }
 
-        public static async Task<BitcornResponse> CreateCornaddy(BitcornContext dbContext, UserIdentity userIdentity, IConfiguration configuration)
+        public static async Task<BitcornResponse> CreateCornaddy(BitcornContext dbContext, UserWallet userWallet, IConfiguration configuration)
         {
             var cornResponse = new BitcornResponse();
             try
@@ -175,7 +175,6 @@ namespace BITCORNService.Utils.Wallet
                     }
                 }
 
-                var userWallet = await dbContext.GetUserWallet(userIdentity);
                 string accessToken = await GetWalletServerAccessToken(configuration);
                 //failed to fetch access token
                 if (!CheckAccessTokenExists(accessToken))
