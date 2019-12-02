@@ -6,7 +6,7 @@ namespace BITCORNService.Utils
 {
     public static class BITCORNLogger 
     {
-        public static async Task LogError(Exception e, string code = null)
+        public static async Task<ErrorLogs> LogError(Exception e, string code = null)
         {
             using (var dbContext = new BitcornContext())
             {
@@ -18,6 +18,8 @@ namespace BITCORNService.Utils
                 logEntry.Timestamp = DateTime.Now;
                 dbContext.ErrorLogs.Add(logEntry);
                 await dbContext.SaveChangesAsync();
+                
+                return logEntry;
             }
         }
     }
