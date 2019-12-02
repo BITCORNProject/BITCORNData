@@ -288,6 +288,7 @@ namespace BITCORNService.Models
                     .HasColumnType("numeric(19, 8)");
 
                 entity.Property(e => e.Enabled).HasColumnName("Enabled");
+                entity.Property(e => e.WithdrawEnabled).HasColumnName("WithdrawEnabled");
             });
             OnModelCreatingPartial(modelBuilder);
         }
