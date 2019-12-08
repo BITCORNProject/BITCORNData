@@ -10,7 +10,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace BITCORNService.Controllers
 {
-    [LockUser]
+    [ServiceFilter(typeof(LockUserAttribute))]
     [Route("api/[controller]")]
     [ApiController]
     public class TxController : ControllerBase
@@ -22,11 +22,20 @@ namespace BITCORNService.Controllers
             _dbContext = dbContext;
         }
         [HttpPost("rain")]
-        public async Task Rain([FromBody] IEnumerable<TxUser> txUsers)
+        public async Task Rain([FromBody] RainBody rainBody)
         {
-            if(txUsers == null || !txUsers.Any()) throw new ArgumentNullException();
-            //array of {amount, id}
-            await TxUtils.ExecuteRainTxs(txUsers, _dbContext);
+            try
+            {
+                var txUsers = rainBody.TxUsers;
+                if (txUsers == null || !txUsers.Any()) throw new ArgumentNullException();
+                //array of {amount, id}
+                await TxUtils.ExecuteRainTxs(txUsers, _dbContext);
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e);
+                throw;
+            }
 
 
             //recipient response TODO

@@ -1,5 +1,6 @@
 using System;
 using BITCORNService.Models;
+using BITCORNService.Utils.LockUser;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.EntityFrameworkCore;
@@ -25,15 +26,15 @@ namespace BITCORNService
         public void ConfigureServices(IServiceCollection services)
         {
             var connection = Configuration["Config:ConnectionString"];
-           
+            services.AddScoped<LockUserAttribute>();
             services.AddSingleton(Configuration);
+            
             services.AddDbContext<BitcornContext>(options =>
                 options.UseSqlServer(connection,
                 Options=> Options.EnableRetryOnFailure(
                         maxRetryCount: 10,
                         maxRetryDelay: TimeSpan.FromSeconds(30),
                         errorNumbersToAdd: null)));
-
             services.AddControllers();
         }
 

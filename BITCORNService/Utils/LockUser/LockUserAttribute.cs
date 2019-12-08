@@ -1,24 +1,41 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using BITCORNService.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Newtonsoft.Json;
 
 namespace BITCORNService.Utils.LockUser
 {
-    public class LockUserAttribute : ActionFilterAttribute
+    public class LockUserAttribute : IAsyncActionFilter
     {
         public static HashSet<int> LockedUsers = new HashSet<int>();
+        private readonly BitcornContext _dbContext;
 
-        public override async Task OnActionExecutionAsync(ActionExecutingContext context, ActionExecutionDelegate next)
+        public LockUserAttribute(BitcornContext dbContext)
         {
-            var userId = await LockUserAttributeUtils.GetUserId(context);
+            _dbContext = dbContext;
+        }
 
+        public async Task OnActionExecutionAsync(ActionExecutingContext context, ActionExecutionDelegate next)
+        {
+            int userId = 0;
+            try
+            {
+                userId = await LockUserAttributeUtils.GetUserId(context, _dbContext);
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e);
+                throw;
+            }
+            
             if (userId == 0) throw new Exception("User not found");
-
+            
             var userLocked = LockedUsers.Contains(userId);
-
+            
             if (userLocked)
             {
                 context.Result = new ContentResult()
@@ -36,17 +53,6 @@ namespace BITCORNService.Utils.LockUser
                 LockedUsers.Add(userId);
             }
             context.HttpContext.Items.Add(new KeyValuePair<object, object>("Id", userId));
-            await base.OnActionExecutionAsync(context, next);
-        }
-
-        public override void OnActionExecuted(ActionExecutedContext context)
-        {
-            context.HttpContext.Items.TryGetValue("Id", out object userId);
-            lock (LockedUsers)
-            {
-                LockedUsers.Remove(Convert.ToInt32(userId));
-            }
-            base.OnActionExecuted(context);
         }
     }
 
