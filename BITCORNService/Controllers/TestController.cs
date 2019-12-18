@@ -22,7 +22,7 @@ namespace BITCORNService.Controllers
                 }
                 else
                 {
-                    throw new Exception("Request body for this enpoint should contain {\"test\":\"test\"}");
+                    throw new Exception("Request body for this endpoint should contain {\"test\":\"test\"}");
                 }
             }
             catch (Exception e)

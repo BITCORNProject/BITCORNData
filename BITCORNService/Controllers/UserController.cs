@@ -4,9 +4,11 @@ using System.Linq;
 using System.Threading.Tasks;
 using BITCORNService.Models;
 using BITCORNService.Utils;
+using BITCORNService.Utils.DbActions;
 using BITCORNService.Utils.Models;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace BITCORNService.Controllers
 {
@@ -42,6 +44,27 @@ namespace BITCORNService.Controllers
             if (userStats == null) throw new ArgumentNullException("userStats");
 
              return BitcornUtils.GetFullUser(user, userIdentity, userWallet, userStats);
+        }
+
+        [HttpGet("{name}/[action]")]
+        public bool Check(string name)
+        {
+            return _dbContext.User.Any(u => u.Username == name);
+        }
+
+        [HttpPut("[action]")]
+        public async Task<bool> Update([FromBody] Auth0IdUsername auth0IdUsername)
+        {
+            if (_dbContext.User.Any(u => u.Username == auth0IdUsername.Username))
+            {
+                return false;
+            }
+            
+            var userIdentity = await _dbContext.Auth0Async(auth0IdUsername.Auth0Id);
+            var user = await _dbContext.User.FirstOrDefaultAsync(u => u.UserId == userIdentity.UserId);
+            user.Username = auth0IdUsername.Username;
+            await _dbContext.SaveAsync();
+            return true;
         }
 
     }
