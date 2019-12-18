@@ -3,6 +3,7 @@ using System.Data;
 using System.Threading.Tasks;
 using BITCORNService.Models;
 using Microsoft.EntityFrameworkCore;
+using Serilog;
 
 namespace BITCORNService.Utils.DbActions
 {
@@ -59,7 +60,7 @@ namespace BITCORNService.Utils.DbActions
                     catch (Exception e)
                     {
                         transaction.Rollback();
-                        //TODO dbContext.Logger.LogError(e, e.Message);
+                        Log.Logger.Error(e.Message,e);
                         throw new Exception(e.Message, e.InnerException);
                     }
                 }
