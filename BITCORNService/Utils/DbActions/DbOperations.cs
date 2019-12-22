@@ -1,5 +1,7 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Data;
+using System.Linq;
 using System.Threading.Tasks;
 using BITCORNService.Models;
 using Microsoft.EntityFrameworkCore;
@@ -10,6 +12,30 @@ namespace BITCORNService.Utils.DbActions
 {
     public static class DbOperations
     {
+        public static async Task<UserIdentity[]> Auth0ManyAsync(this BitcornContext dbContext, HashSet<string> ids)
+        {
+            return await dbContext.UserIdentity.Where(u => ids.Contains(u.Auth0Id)).ToArrayAsync();
+        }
+
+        public static async Task<UserIdentity[]> TwitchManyAsync(this BitcornContext dbContext, HashSet<string> ids)
+        {
+            return await dbContext.UserIdentity.Where(u => ids.Contains(u.TwitchId)).ToArrayAsync();
+        }
+
+        public static async Task<UserIdentity[]> DiscordManyAsync(this BitcornContext dbContext, HashSet<string> ids)
+        {
+            return await dbContext.UserIdentity.Where(u => ids.Contains(u.DiscordId)).ToArrayAsync();
+        }
+
+        public static async Task<UserIdentity[]> TwitterManyAsync(this BitcornContext dbContext, HashSet<string> ids)
+        {
+            return await dbContext.UserIdentity.Where(u => ids.Contains(u.TwitterId)).ToArrayAsync();
+        }
+
+        public static async Task<UserIdentity[]> RedditManyAsync(this BitcornContext dbContext, HashSet<string> ids)
+        {
+            return await dbContext.UserIdentity.Where(u => ids.Contains(u.RedditId)).ToArrayAsync();
+        }
         public static async Task<UserIdentity> Auth0Async(this BitcornContext dbContext, string auth0Id)
         {
             return await dbContext.UserIdentity.FirstOrDefaultAsync(u => u.Auth0Id == auth0Id);
@@ -43,7 +69,6 @@ namespace BITCORNService.Utils.DbActions
         {
             return await dbContext.CornTx.AnyAsync(w => w.BlockchainTxId == txId);
         }
-
         public static async Task SaveAsync(this BitcornContext dbContext, IDbContextTransaction transaction = null)
         {
 
