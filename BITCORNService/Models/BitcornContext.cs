@@ -42,13 +42,9 @@ namespace BITCORNService.Models
                     .HasMaxLength(50)
                     .IsUnicode(false);
 
-                entity.Property(e => e.ReceiverId)
-                    .HasMaxLength(100)
-                    .IsUnicode(false);
+                entity.Property(e => e.ReceiverId);
 
-                entity.Property(e => e.SenderId)
-                    .HasMaxLength(100)
-                    .IsUnicode(false);
+                entity.Property(e => e.SenderId);
 
                 entity.Property(e => e.Timestamp).HasColumnType("datetime");
 
