@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using BITCORNService.Models;
 using BITCORNService.Utils.DbActions;
@@ -40,7 +42,25 @@ namespace BITCORNService.Utils
                     throw new Exception($"User {platformId.Platform}|{platformId.Id} could not be found");
             }
         }
-
+        public static async Task<UserIdentity[]> GetUserIdentitiesForPlatform(PlatformId[] platformId, BitcornContext dbContext)
+        {
+            HashSet<string> ids = platformId.Select(p=>p.Id).ToHashSet();
+            switch (platformId[0].Platform)
+            {
+                case "auth0":
+                    return await dbContext.Auth0ManyAsync(ids);
+                case "twitch":
+                    return await dbContext.TwitchManyAsync(ids);
+                case "discord":
+                    return await dbContext.DiscordManyAsync(ids);
+                case "twitter":
+                    return await dbContext.TwitterManyAsync(ids);
+                case "reddit":
+                    return await dbContext.RedditManyAsync(ids);
+                default:
+                    throw new Exception($"Platform {platformId[0].Platform} could not be found");
+            }
+        }
         public static FullUser GetFullUser(User user, UserIdentity userIdentity, UserWallet userWallet, UserStat userStats)
         {
             var fullUser = new FullUser();
