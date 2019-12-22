@@ -44,7 +44,7 @@ namespace BITCORNService.Utils.DbActions
             return await dbContext.CornTx.AnyAsync(w => w.BlockchainTxId == txId);
         }
 
-        public static async Task SaveAsync(this BitcornContext dbContext, IDbContextTransaction transaction)
+        public static async Task SaveAsync(this BitcornContext dbContext, IDbContextTransaction transaction = null)
         {
 
             //create execution strategy so the request can retry if it fails to connect to the database
