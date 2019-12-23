@@ -10,6 +10,7 @@ namespace BITCORNService.Utils.Models
         public decimal Amount { get; set; }
         public string Platform { get; set; }
         public string[] Columns { get; set; }
+        string ITxRequest.TxType => "$tipcorn";
         IEnumerable<string> ITxRequest.To
         {
             get

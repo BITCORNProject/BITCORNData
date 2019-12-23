@@ -7,6 +7,7 @@ namespace BITCORNService.Utils.Models
         string From { get; }
         decimal Amount { get; }
         string Platform { get; }
+        string TxType { get; }
         IEnumerable<string> To { get; }
     }
 }

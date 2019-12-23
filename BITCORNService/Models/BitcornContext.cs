@@ -30,7 +30,7 @@ namespace BITCORNService.Models
         {
             modelBuilder.Entity<CornTx>(entity =>
             {
-                entity.Property(e => e.CornTxId).ValueGeneratedNever();
+                entity.Property(e => e.CornTxId);
 
                 entity.Property(e => e.Amount)
                     .HasColumnType("numeric(19, 8)")
