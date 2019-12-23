@@ -1,16 +1,20 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Data;
 using System.Linq;
 using System.Threading.Tasks;
 using BITCORNService.Models;
+using BITCORNService.Reflection;
+using BITCORNService.Utils.DbActions;
 using BITCORNService.Utils.LockUser;
 using BITCORNService.Utils.Models;
 using BITCORNService.Utils.Tx;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace BITCORNService.Controllers
 {
-    [ServiceFilter(typeof(LockUserAttribute))]
+    //[ServiceFilter(typeof(LockUserAttribute))]
     [Route("api/[controller]")]
     [ApiController]
     public class TxController : ControllerBase
@@ -51,17 +55,33 @@ namespace BITCORNService.Controllers
         }
 
         [HttpPost("tipcorn")]
-        public async Task Tipcorn([FromBody] TxUser txUser)
+        public async Task<Dictionary<string, object>[]> Tipcorn([FromBody] TipRequest tipRequest)
         {
-            if (txUser == null) throw new ArgumentNullException();
-            if (txUser.Id == null) throw new ArgumentNullException();
-            if (txUser.Amount == 0) throw new ArgumentNullException();
+            if (tipRequest == null) throw new ArgumentNullException();
+            if (tipRequest.From == null) throw new ArgumentNullException();
+            if (tipRequest.To == null) throw new ArgumentNullException();
+            if (tipRequest.Amount == 0) throw new ArgumentNullException();
 
             //sender twitchid, receiver twitchid, amount
-            await TxUtils.ExecuteTipTx(txUser, _dbContext);
 
-            //senderresponse TODO
+
+            var transactions = await TxUtils.ProcessRequest(tipRequest, _dbContext);
+            await _dbContext.SaveAsync(IsolationLevel.RepeatableRead);
+            if (transactions != null && transactions.Length > 0)
+            {
+                int[] participants = new int[transactions.Length + 1];
+                participants[0] = transactions[0].From.UserId;
+                for (int i = 0; i < transactions.Length; i++)
+                {
+                    participants[i + 1] = transactions[i].To.UserId;
+                }
+
+                return await UserReflection.GetColumns(_dbContext, tipRequest.Columns, participants);
+            }
+            else return null;
         }
+
+        
 
         [HttpPost("withdraw")]
         public async Task Withdraw([FromBody] WithdrawUser withdrawUser)
