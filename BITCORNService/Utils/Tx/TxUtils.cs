@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using BITCORNService.Models;
+using BITCORNService.Reflection;
 using BITCORNService.Utils.DbActions;
 using BITCORNService.Utils.Models;
 using BITCORNService.Utils.Stats;
@@ -12,7 +13,31 @@ namespace BITCORNService.Utils.Tx
 {
     public static class TxUtils
     {
-
+        public static async Task AppendTxs(TxReceipt[] transactions, BitcornContext dbContext, string[] appendColumns)
+        {
+            if (appendColumns.Length > 0)
+            {
+                int[] participants = new int[transactions.Length + 1];
+                participants[0] = transactions[0].From.UserId;
+                for (int i = 0; i < transactions.Length; i++)
+                {
+                    participants[i + 1] = transactions[i].To.UserId;
+                }
+                var columns = await UserReflection.GetColumns(dbContext, appendColumns, participants);
+                var fromColumns = columns[participants[0]];
+                foreach (var tx in transactions)
+                {
+                    foreach (var from in fromColumns)
+                    {
+                        tx.From.Add(from.Key, from.Value);
+                    }
+                    foreach (var to in columns[tx.To.UserId])
+                    {
+                        tx.To.Add(to.Key, to.Value);
+                    }
+                }
+            }
+        }
         public static async Task ExecuteRainTxs(IEnumerable<TxUser> txUsers, BitcornContext dbContext)
         {
             foreach (var txUser in txUsers)
@@ -30,17 +55,21 @@ namespace BITCORNService.Utils.Tx
             HashSet<PlatformId> platformIds = new HashSet<PlatformId>();
 
             var fromPlatformId = BitcornUtils.GetPlatformId(req.From);
-            if (!platformIds.Contains(fromPlatformId))
-            {
-                platformIds.Add(fromPlatformId);
-            }
+         
             var fromIdentity = await BitcornUtils.GetUserIdentityForPlatform(fromPlatformId,dbContext);
             if (fromIdentity == null)
                 return null;
 
             var fromUser = await dbContext.User.FirstOrDefaultAsync(u=>u.UserId==fromIdentity.UserId);
-      
-            foreach (var to in req.To)
+            var fromUserWallet = await dbContext.UserWallet.FirstOrDefaultAsync(w=>w.UserId==fromIdentity.UserId);
+            
+            var toArray = req.To.ToArray();
+         
+            decimal totalAmountRequired = toArray.Length * req.Amount;
+            if (fromUserWallet.Balance < totalAmountRequired)
+                return null;
+            
+            foreach (var to in toArray)
             {
                 var toPlatformId = BitcornUtils.GetPlatformId(to);
                 if (!platformIds.Contains(toPlatformId))
@@ -51,20 +80,25 @@ namespace BITCORNService.Utils.Tx
             
             var identities = await BitcornUtils.GetUserIdentitiesForPlatform(platformIds.ToArray(),dbContext);
             var idKeys = identities.Select(u=>u.UserId).ToHashSet();
-            var users = await dbContext.User.Where(u=>idKeys.Contains(u.UserId)).ToArrayAsync();
-            var output = new TxReceipt[identities.Length];
-            for (int i = 0; i < users.Length; i++)
+            var wallets = await dbContext.UserWallet.Where(w=>idKeys.Contains(w.UserId)).ToArrayAsync();
+       
+            var output = new List<TxReceipt>();
+         
+            foreach (var wallet in wallets)
             {
                 var receipt = new TxReceipt();
-                receipt.From = fromUser;
-                receipt.To = users[i];
-                if (fromUser != null && users[i] != null)
+                receipt.From = new SelectableUser(fromUser.UserId);
+                receipt.To = new SelectableUser(wallet.UserId);
+                receipt.Tx = MoveCorn(fromUserWallet, wallet, req.Amount, req.Platform,req.TxType);
+            
+                if (receipt.Tx != null)
                 {
-                    receipt.Tx = MoveCorn(fromUser.UserWallet, users[i].UserWallet, req.Amount, req.Platform);
+                    dbContext.CornTx.Add(receipt.Tx);
                 }
-                output[i] = receipt;
+                output.Add(receipt);
             }
-            return output;
+           
+            return output.ToArray();
         }
         
         public static async Task ExecuteTipTx(TxUser txUser, BitcornContext dbContext)
@@ -90,7 +124,7 @@ namespace BITCORNService.Utils.Tx
             }
             await dbContext.SaveAsync();
         }
-        public static CornTx MoveCorn(UserWallet from, UserWallet to, decimal amount,string platform)
+        public static CornTx MoveCorn(UserWallet from, UserWallet to, decimal amount,string platform,string txType)
         {
             if (from.Balance >= amount)
             {
@@ -98,6 +132,7 @@ namespace BITCORNService.Utils.Tx
                 to.Balance += amount;
 
                 var tx = new CornTx();
+                tx.TxType = txType;
                 tx.Amount = amount;
                 tx.ReceiverId = to.UserId;
                 tx.SenderId = from.UserId;
