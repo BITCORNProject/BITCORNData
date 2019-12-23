@@ -8,6 +8,7 @@ using BITCORNService.Reflection;
 using BITCORNService.Utils.DbActions;
 using BITCORNService.Utils.LockUser;
 using BITCORNService.Utils.Models;
+using BITCORNService.Utils.Stats;
 using BITCORNService.Utils.Tx;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -55,30 +56,38 @@ namespace BITCORNService.Controllers
         }
 
         [HttpPost("tipcorn")]
-        public async Task<Dictionary<string, object>[]> Tipcorn([FromBody] TipRequest tipRequest)
+        public async Task<object> Tipcorn([FromBody] TipRequest tipRequest)
         {
             if (tipRequest == null) throw new ArgumentNullException();
             if (tipRequest.From == null) throw new ArgumentNullException();
             if (tipRequest.To == null) throw new ArgumentNullException();
             if (tipRequest.Amount == 0) throw new ArgumentNullException();
-
-            //sender twitchid, receiver twitchid, amount
-
-
-            var transactions = await TxUtils.ProcessRequest(tipRequest, _dbContext);
-            await _dbContext.SaveAsync(IsolationLevel.RepeatableRead);
-            if (transactions != null && transactions.Length > 0)
+            
+            try
             {
-                int[] participants = new int[transactions.Length + 1];
-                participants[0] = transactions[0].From.UserId;
-                for (int i = 0; i < transactions.Length; i++)
-                {
-                    participants[i + 1] = transactions[i].To.UserId;
-                }
+                var transactions = await TxUtils.ProcessRequest(tipRequest, _dbContext);
 
-                return await UserReflection.GetColumns(_dbContext, tipRequest.Columns, participants);
+
+
+                if (transactions != null && transactions.Length > 0)
+                {
+                    var tx = transactions[0];
+                    var to = await _dbContext.UserStat.FirstOrDefaultAsync(u => u.UserId == tx.To.UserId);
+
+                    var from = await _dbContext.UserStat.FirstOrDefaultAsync(u => u.UserId == tx.From.UserId);
+                    UpdateStats.Tip(from, tipRequest.Amount);
+                    UpdateStats.Tipped(to, tipRequest.Amount);
+                    await _dbContext.SaveAsync(IsolationLevel.RepeatableRead);
+                    await TxUtils.AppendTxs(transactions, _dbContext, tipRequest.Columns);
+                    
+                }
+                return transactions;
             }
-            else return null;
+            catch(Exception e)
+            {
+                throw e;
+            }
+     
         }
 
         

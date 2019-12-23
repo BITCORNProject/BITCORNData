@@ -52,16 +52,25 @@ namespace BITCORNService.Reflection
                 }
             }
         }
-        public static async Task<Dictionary<string, object>[]> GetColumns(BitcornContext dbContext, string[] columns, int[] primaryKeys)
+        public static async Task<Dictionary<int,Dictionary<string, object>>> GetColumns(BitcornContext dbContext, string[] columns, int[] primaryKeys)
         {
 
             CacheReflection();
             string[] validColumns;
             if (columns.Length == 1 && columns[0] == "*")
+            {
                 validColumns = TableColumns.SelectMany(u => u.Value).ToArray();
+            }
             else
-                validColumns = columns.Where(c => ColumnToTable.ContainsKey(c)).Distinct().ToArray();
-
+            {
+                var list = columns.Where(c => ColumnToTable.ContainsKey(c)).Distinct().ToList();
+                string userIdKey = nameof(User.UserId).ToLower();
+                if (!list.Contains(userIdKey))
+                {
+                    list.Add(userIdKey);
+                }
+                validColumns = list.ToArray();
+            }
             if (validColumns.Length > 0)
             {
                 string sql = GenerateSql(validColumns, primaryKeys);
@@ -136,7 +145,7 @@ namespace BITCORNService.Reflection
             }
             return sql.ToString();
         }
-        public static async Task<Dictionary<string, object>[]> RawSqlQuery(BitcornContext dbContext, string query)
+        public static async Task<Dictionary<int,Dictionary<string, object>>> RawSqlQuery(BitcornContext dbContext, string query)
         {
             using (var command = dbContext.Database.GetDbConnection().CreateCommand())
             {
@@ -144,7 +153,7 @@ namespace BITCORNService.Reflection
                 command.CommandType = CommandType.Text;
 
                 dbContext.Database.OpenConnection();
-                List<Dictionary<string, object>> output = new List<Dictionary<string, object>>();
+               Dictionary<int,Dictionary<string, object>> output = new Dictionary<int,Dictionary<string, object>>();
                 using (var result = await command.ExecuteReaderAsync())
                 {
 
@@ -157,11 +166,12 @@ namespace BITCORNService.Reflection
                             var value = result.GetValue(i);
                             table.Add(name, value);
                         }
-                        output.Add(table);
+                    
+                        output.Add((int)table[nameof(User.UserId).ToLower()], table);
                     }
                 }
                 dbContext.Database.CloseConnection();
-                return output.ToArray();
+                return output;
             }
 
         }
