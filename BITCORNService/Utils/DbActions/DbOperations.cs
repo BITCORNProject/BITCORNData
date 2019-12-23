@@ -69,23 +69,26 @@ namespace BITCORNService.Utils.DbActions
         {
             return await dbContext.CornTx.AnyAsync(w => w.BlockchainTxId == txId);
         }
-        public static async Task SaveAsync(this BitcornContext dbContext, IDbContextTransaction transaction = null)
+        public static async Task SaveAsync(this BitcornContext dbContext, IsolationLevel isolationLevel = IsolationLevel.RepeatableRead)
         {
 
             //create execution strategy so the request can retry if it fails to connect to the database
             var strategy = dbContext.Database.CreateExecutionStrategy();
             await strategy.ExecuteAsync(async () =>
             {
-                try
+                using (var transaction = dbContext.Database.BeginTransaction(isolationLevel))
                 {
-                    await dbContext.SaveChangesAsync();
-                    transaction?.Commit();
-                }
-                catch (Exception e)
-                {
-                    transaction?.Rollback();
-                    Log.Logger.Error(e.Message, e);
-                    throw new Exception(e.Message, e.InnerException);
+                    try
+                    {
+                        await dbContext.SaveChangesAsync();
+                        transaction?.Commit();
+                    }
+                    catch (Exception e)
+                    {
+                        transaction?.Rollback();
+                        Log.Logger.Error(e.Message, e);
+                        throw new Exception(e.Message, e.InnerException);
+                    }
                 }
 
             });
