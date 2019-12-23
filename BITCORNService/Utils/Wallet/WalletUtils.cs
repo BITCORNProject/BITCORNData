@@ -309,8 +309,7 @@ namespace BITCORNService.Utils.Wallet
                         var cornTx = new CornTx();
                         cornTx.Amount = amount;
                         cornTx.BlockchainTxId = txid;
-                        //TODO: why is this a string?
-                        cornTx.ReceiverId = wallet.UserId.ToString();
+                        cornTx.ReceiverId = wallet.UserId;
                         //TODO: this field must not be required
                         cornTx.SenderId = null;
                         cornTx.Timestamp = DateTime.Now;
