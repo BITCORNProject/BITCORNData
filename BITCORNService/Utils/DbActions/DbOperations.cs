@@ -85,9 +85,9 @@ namespace BITCORNService.Utils.DbActions
             return await dbContext.UserWallet.FirstOrDefaultAsync(w => w.CornAddy == address);
         }
 
-        public static async Task<bool> IsBlockchainTransactionLogged(this BitcornContext dbContext, string txId)
+        public static async Task<bool> IsDepositRegistered(this BitcornContext dbContext, string txId)
         {
-            return await dbContext.CornTx.AnyAsync(w => w.BlockchainTxId == txId);
+            return await dbContext.CornDeposit.AnyAsync(w => w.TxId == txId);
         }
         public static async Task<int> SaveAsync(this BitcornContext dbContext, IsolationLevel isolationLevel = IsolationLevel.RepeatableRead)
         {
