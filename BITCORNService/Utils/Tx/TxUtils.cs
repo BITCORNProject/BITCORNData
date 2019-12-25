@@ -38,17 +38,7 @@ namespace BITCORNService.Utils.Tx
                 }
             }
         }
-        public static async Task ExecuteRainTxs(IEnumerable<TxUser> txUsers, BitcornContext dbContext)
-        {
-            foreach (var txUser in txUsers)
-            {
-                var userIdentity = await dbContext.TwitchAsync(txUser.Id);
-                var userWallet = dbContext.UserWallet.FirstOrDefault(w => w.UserId == userIdentity.UserId);
-               // await UpdateStats.RainedOn(userIdentity.UserId, txUser.Amount);
-                if (userWallet != null) userWallet.Balance += txUser.Amount;
-            }
-            await dbContext.SaveAsync();
-        }
+     
         public static async Task<TxReceipt[]> ProcessRequest(ITxRequest req, BitcornContext dbContext)
         {
            // Dictionary<string, User> loadedUsers = new Dictionary<string, User>();
@@ -56,17 +46,16 @@ namespace BITCORNService.Utils.Tx
 
             var fromPlatformId = BitcornUtils.GetPlatformId(req.From);
          
-            var fromIdentity = await BitcornUtils.GetUserIdentityForPlatform(fromPlatformId,dbContext);
-            if (fromIdentity == null)
+            var fromUser = await BitcornUtils.GetUserForPlatform(fromPlatformId,dbContext).FirstOrDefaultAsync();
+            if (fromUser == null)
                 return null;
-
-            var fromUser = await dbContext.User.FirstOrDefaultAsync(u=>u.UserId==fromIdentity.UserId);
-            var fromUserWallet = await dbContext.UserWallet.FirstOrDefaultAsync(w=>w.UserId==fromIdentity.UserId);
+            if (fromUser.IsBanned)
+                return null;
             
             var toArray = req.To.ToArray();
          
             decimal totalAmountRequired = toArray.Length * req.Amount;
-            if (fromUserWallet.Balance < totalAmountRequired)
+            if (fromUser.UserWallet.Balance < totalAmountRequired)
                 return null;
             
             foreach (var to in toArray)
@@ -78,18 +67,16 @@ namespace BITCORNService.Utils.Tx
                 }
             }
             
-            var identities = await BitcornUtils.GetUserIdentitiesForPlatform(platformIds.ToArray(),dbContext);
-            var idKeys = identities.Select(u=>u.UserId).ToHashSet();
-            var wallets = await dbContext.UserWallet.Where(w=>idKeys.Contains(w.UserId)).ToArrayAsync();
-       
+            var users = await BitcornUtils.GetUsersForPlatform(platformIds.ToArray(),dbContext).ToArrayAsync();
+           
             var output = new List<TxReceipt>();
          
-            foreach (var wallet in wallets)
+            foreach (var user in users)
             {
                 var receipt = new TxReceipt();
                 receipt.From = new SelectableUser(fromUser.UserId);
-                receipt.To = new SelectableUser(wallet.UserId);
-                receipt.Tx = MoveCorn(fromUserWallet, wallet, req.Amount, req.Platform,req.TxType);
+                receipt.To = new SelectableUser(user.UserId);
+                receipt.Tx = MoveCorn(fromUser, user, req.Amount, req.Platform,req.TxType);
             
                 if (receipt.Tx != null)
                 {
@@ -100,36 +87,15 @@ namespace BITCORNService.Utils.Tx
            
             return output.ToArray();
         }
-        
-        public static async Task ExecuteTipTx(TxUser txUser, BitcornContext dbContext)
+       
+        public static CornTx MoveCorn(User from, User to, decimal amount,string platform,string txType)
         {
-                var userIdentity = await dbContext.TwitchAsync(txUser.Id);
-                var userWallet = dbContext.UserWallet.FirstOrDefault(w => w.UserId == userIdentity.UserId);
-                
-                if (userWallet != null) userWallet.Balance += txUser.Amount;
-
-                await dbContext.SaveAsync();
-                //await UpdateStats.Tipped(userIdentity.UserId, txUser.Amount);
-        }
-
-        public static async Task ExecuteDebitTxs(IEnumerable<WithdrawUser> withdrawUsers, BitcornContext dbContext)
-        {
-            foreach (var txUser in withdrawUsers)
+            if (from.IsBanned || to.IsBanned)
+                return null;
+            if (from.UserWallet.Balance >= amount)
             {
-                var userIdentity = await dbContext.TwitchAsync(txUser.Id);
-                var userWallet = dbContext.UserWallet.FirstOrDefault(w => w.UserId == userIdentity.UserId);
-               // await UpdateStats.Rain(userIdentity.UserId, txUser.Amount);
-                if (userWallet != null) userWallet.Balance -= txUser.Amount;
-
-            }
-            await dbContext.SaveAsync();
-        }
-        public static CornTx MoveCorn(UserWallet from, UserWallet to, decimal amount,string platform,string txType)
-        {
-            if (from.Balance >= amount)
-            {
-                from.Balance -= amount;
-                to.Balance += amount;
+                from.UserWallet.Balance -= amount;
+                to.UserWallet.Balance += amount;
 
                 var tx = new CornTx();
                 tx.TxType = txType;
@@ -143,16 +109,5 @@ namespace BITCORNService.Utils.Tx
             return null;
         }
       
-        
-        public static async Task ExecuteDebitTx(WithdrawUser withdrawUser, BitcornContext dbContext)
-        {
-                var userIdentity = await dbContext.TwitchAsync(withdrawUser.Id);
-                var userWallet = dbContext.UserWallet.FirstOrDefault(w => w.UserId == userIdentity.UserId);
-
-                if (userWallet != null) userWallet.Balance -= withdrawUser.Amount;
-
-                await dbContext.SaveAsync();
-                //await UpdateStats.Tipped(userIdentity.UserId, withdrawUser.Amount);
-        }
     }
 }

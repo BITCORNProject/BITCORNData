@@ -142,7 +142,7 @@ namespace BITCORNService.Controllers
         public async Task Withdraw([FromBody] WithdrawUser withdrawUser)
         {
             //sender twitchid, cornaddy, amount
-            await TxUtils.ExecuteDebitTx(withdrawUser, _dbContext);
+          
 
             //call to wallet to properly withdraw TODO
 
