@@ -22,6 +22,7 @@ namespace BITCORNService.Models
         public virtual DbSet<UserWallet> UserWallet { get; set; }
         public virtual DbSet<WalletIndex> WalletIndex { get; set; }
         public virtual DbSet<WalletServer> WalletServer { get; set; }
+        public virtual DbSet<CornDeposit> CornDeposit { get; set; }
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {
         }
@@ -269,6 +270,13 @@ namespace BITCORNService.Models
                 entity.Property(e => e.Id).ValueGeneratedNever();
 
                 entity.Property(e => e.Index).HasDefaultValueSql("((1))");
+            });
+            modelBuilder.Entity<CornDeposit>(entity => {
+                entity.ToTable("CornDeposit");
+
+                entity.Property(e => e.TxId).HasColumnName("TxId");
+
+                entity.Property(e=>e.UserId).HasColumnName("UserId");
             });
             modelBuilder.Entity<WalletServer>(entity =>
             {
