@@ -38,9 +38,54 @@ namespace BITCORNService.Utils.Tx
                 }
             }
         }
-     
-        public static async Task<TxReceipt[]> ProcessRequest(ITxRequest req, BitcornContext dbContext)
+      
+        public static async Task RefundUnclaimed(BitcornContext dbContext)
         {
+            var now = DateTime.Now;
+            var txs = await dbContext.UnclaimedTx.Where(t => t.Expiration.AddHours(1) < now && !t.Claimed && !t.Refunded)
+                .Join(dbContext.UserWallet,tx=>tx.SenderUserId,user=>user.UserId,(tx,wallet)=> new { Tx = tx, Wallet = wallet})
+                .ToArrayAsync();
+
+            foreach (var item in txs)
+            {
+                item.Tx.Refunded = true;
+                item.Wallet.Balance += item.Tx.Amount;
+            }
+
+            await dbContext.SaveAsync();
+        }
+        public static async Task TryClaimTx(PlatformId platformId, User user, BitcornContext dbContext)
+        {
+            var now = DateTime.Now;
+            var txs = await dbContext.UnclaimedTx.Where(u => u.Platform == platformId.Platform
+                && u.ReceiverPlatformId == platformId.Id
+                && !u.Claimed && !u.Refunded
+                && u.Expiration > now).ToArrayAsync();
+         
+            foreach (var tx in txs)
+            {
+                tx.Claimed = true;
+
+                var log = new CornTx();
+                log.Amount = tx.Amount;
+                log.Platform = tx.Platform;
+                log.ReceiverId = user.UserId;
+                log.SenderId = tx.SenderUserId;
+                log.Timestamp = tx.Timestamp;
+                log.TxGroupId = Guid.NewGuid().ToString();
+                log.TxType = tx.TxType;
+                log.UnclaimedTx.Add(tx);
+                dbContext.CornTx.Add(log);
+
+                user.UserWallet.Balance += tx.Amount;
+            }
+
+            await dbContext.SaveAsync();
+
+        }
+        public static async Task<TxProcessInfo> ProcessRequest(ITxRequest req, BitcornContext dbContext)
+        {
+            var info = new TxProcessInfo();
            // Dictionary<string, User> loadedUsers = new Dictionary<string, User>();
             HashSet<PlatformId> platformIds = new HashSet<PlatformId>();
 
@@ -48,9 +93,11 @@ namespace BITCORNService.Utils.Tx
          
             var fromUser = await BitcornUtils.GetUserForPlatform(fromPlatformId,dbContext).FirstOrDefaultAsync();
             if (fromUser == null)
-                return null;
+                return info;
+
+            info.From = fromUser;
             if (fromUser.IsBanned)
-                return null;
+                return info;
             
             var toArray = req.To.ToArray();
          
@@ -70,13 +117,13 @@ namespace BITCORNService.Utils.Tx
             var users = await BitcornUtils.GetUsersForPlatform(platformIds.ToArray(),dbContext).ToArrayAsync();
            
             var output = new List<TxReceipt>();
-         
+            string txid = Guid.NewGuid().ToString();
             foreach (var user in users)
             {
                 var receipt = new TxReceipt();
-                receipt.From = new SelectableUser(fromUser.UserId);
-                receipt.To = new SelectableUser(user.UserId);
-                receipt.Tx = MoveCorn(fromUser, user, req.Amount, req.Platform,req.TxType);
+                receipt.From = new SelectableUser(fromUser);
+                receipt.To = new SelectableUser(user);
+                receipt.Tx = MoveCorn(fromUser, user, req.Amount, req.Platform,req.TxType,txid);
             
                 if (receipt.Tx != null)
                 {
@@ -85,10 +132,11 @@ namespace BITCORNService.Utils.Tx
                 output.Add(receipt);
             }
            
-            return output.ToArray();
+            info.Transactions = output.ToArray();
+            return info;
         }
        
-        public static CornTx MoveCorn(User from, User to, decimal amount,string platform,string txType)
+        public static CornTx MoveCorn(User from, User to, decimal amount,string platform,string txType,string txId)
         {
             if (from.IsBanned || to.IsBanned)
                 return null;
@@ -99,6 +147,7 @@ namespace BITCORNService.Utils.Tx
 
                 var tx = new CornTx();
                 tx.TxType = txType;
+                tx.TxGroupId = txId;
                 tx.Amount = amount;
                 tx.ReceiverId = to.UserId;
                 tx.SenderId = from.UserId;
