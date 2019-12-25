@@ -1,10 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Data;
+using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
 using BITCORNService.Models;
 using BITCORNService.Reflection;
+using BITCORNService.Utils;
 using BITCORNService.Utils.DbActions;
 using BITCORNService.Utils.LockUser;
 using BITCORNService.Utils.Models;
@@ -30,24 +32,23 @@ namespace BITCORNService.Controllers
         [HttpPost("rain")]
         public async Task<object> Rain([FromBody] RainRequest rainRequest)
         {
+            Stopwatch sw = new Stopwatch();
+            sw.Start();
             if (rainRequest == null) throw new ArgumentNullException();
             if (rainRequest.From == null) throw new ArgumentNullException();
             if (rainRequest.To == null) throw new ArgumentNullException();
-            var transactions = await TxUtils.ProcessRequest(rainRequest, _dbContext);
+            var processInfo = await TxUtils.ProcessRequest(rainRequest, _dbContext);
+            var transactions = processInfo.Transactions;
             if (transactions != null && transactions.Length > 0)
             {
-                var from = await _dbContext.UserStat.FirstOrDefaultAsync(u => u.UserId == transactions[0].From.UserId);
-
-                var toHaystack = transactions.Where(t=>t.Tx!=null).Select(t=>t.To.UserId).ToHashSet();
-               //poll all users involved in this tx
-                await _dbContext.UserStat.Where(u=>toHaystack.Contains(u.UserId)).ToArrayAsync();
+                var from = transactions[0].From.User.UserStat;
                 decimal rainAmount = 0;
                 for (int i = 0; i < transactions.Length; i++)
                 {
                     //find users from cache
                     if (transactions[i].Tx != null)
                     {
-                        var stat = _dbContext.UserStat.Find(transactions[i].To.UserId);
+                        var stat = transactions[i].To.User.UserStat;
                         var amount = transactions[i].Tx.Amount.Value;
                         UpdateStats.RainedOn(stat, amount);
                         rainAmount += amount;
@@ -59,24 +60,20 @@ namespace BITCORNService.Controllers
                 await TxUtils.AppendTxs(transactions, _dbContext, rainRequest.Columns);
 
             }
-            return transactions;
+            sw.Stop();
+            System.Diagnostics.Debug.WriteLine(sw.ElapsedMilliseconds);
+            return processInfo.Transactions;
         }
 
         [HttpPost("payout")]
         public async Task<int> Payout([FromBody] HashSet<string> chatters)
         {
-            var userIdentities = await _dbContext.UserIdentity.Where(u=>chatters.Contains(u.TwitchId)).Select(u=>u.UserId).ToArrayAsync();
-            var wallets = await _dbContext.UserWallet.Where(u => userIdentities.Contains(u.UserId)).ToArrayAsync();
-            var stats = await _dbContext.UserStat.Where(u => userIdentities.Contains(u.UserId)).ToArrayAsync();
-            var users = await _dbContext.User.Where(u=>userIdentities.Contains(u.UserId)).ToArrayAsync();
+            var users = await _dbContext.JoinUserModels().Where(u => chatters.Contains(u.UserIdentity.TwitchId)).ToArrayAsync();
             decimal total = 0;
-            foreach (var userId in userIdentities)
+            foreach (var user in users)
             {
                 decimal payout = 0;
-                var user = _dbContext.User.Find(userId);
-                if (user.IsBanned) continue;
-                var wallet = _dbContext.UserWallet.Find(userId);
-                var stat = _dbContext.UserStat.Find(userId);
+              
                
                 if(user.Level == "1000")
                 {
@@ -111,21 +108,48 @@ namespace BITCORNService.Controllers
             
             try
             {
-                var transactions = await TxUtils.ProcessRequest(tipRequest, _dbContext);
+                var processInfo =  await TxUtils.ProcessRequest(tipRequest, _dbContext);
+
+                var transactions = processInfo.Transactions;
                 if (transactions != null && transactions.Length > 0)
                 {
                     var receipt = transactions[0];
                     if (receipt.Tx != null)
                     {
-                        var to = await _dbContext.UserStat.FirstOrDefaultAsync(u => u.UserId == receipt.To.UserId);
+                        var to = receipt.To.User.UserStat;
 
-                        var from = await _dbContext.UserStat.FirstOrDefaultAsync(u => u.UserId == receipt.From.UserId);
+                        var from = receipt.From.User.UserStat;
                         UpdateStats.Tip(from, tipRequest.Amount);
                         UpdateStats.Tipped(to, tipRequest.Amount);
                         await _dbContext.SaveAsync(IsolationLevel.RepeatableRead);
                     }
                     await TxUtils.AppendTxs(transactions, _dbContext, tipRequest.Columns);
 
+                }
+                else
+                {
+                    if (processInfo.From != null && !processInfo.From.IsBanned)
+                    {
+                        if (processInfo.From.UserWallet.Balance >= tipRequest.Amount)
+                        {
+                            var unclaimed = new UnclaimedTx();
+                            unclaimed.TxType = ((ITxRequest)tipRequest).TxType;
+                            unclaimed.Platform = tipRequest.Platform;
+                            unclaimed.ReceiverPlatformId = BitcornUtils.GetPlatformId(tipRequest.To).Id;
+                            unclaimed.Amount = tipRequest.Amount;
+                            unclaimed.Timestamp = DateTime.Now;
+                            unclaimed.SenderUserId = processInfo.From.UserId;
+                            unclaimed.Expiration = DateTime.Now.AddHours(24);
+                            unclaimed.Claimed = false;
+                            unclaimed.Refunded = false;
+
+                            _dbContext.UnclaimedTx.Add(unclaimed);
+
+                            processInfo.From.UserWallet.Balance -= tipRequest.Amount;
+                            await _dbContext.SaveAsync();
+                        }
+                        //    unclaimed.SenderUser
+                    }
                 }
                 return transactions;
             }
