@@ -27,23 +27,12 @@ namespace BITCORNService.Controllers
         [HttpPost("{id}")]
         public async Task<FullUser> Post([FromRoute] string id)
         {
-            if(string.IsNullOrWhiteSpace(id)) throw new ArgumentNullException("id");
+            if (string.IsNullOrWhiteSpace(id)) throw new ArgumentNullException("id");
 
             var platformId = BitcornUtils.GetPlatformId(id);
-            var userIdentity = await BitcornUtils.GetUserIdentityForPlatform(platformId, _dbContext);
-            if (userIdentity == null) throw new ArgumentNullException("userIdentity");
-
-            var user = _dbContext.User.FirstOrDefault(u => u.UserId == userIdentity.UserId);
-            if (user == null) throw new ArgumentNullException("user");
-
-            var userWallet = _dbContext.UserWallet.FirstOrDefault(u => u.UserId == userIdentity.UserId);
-            if (userWallet == null) throw new ArgumentNullException("userWallet");
-
-            var userStats = _dbContext.UserStat.FirstOrDefault(u => u.UserId == userIdentity.UserId);
+            var user = await BitcornUtils.GetUserForPlatform(platformId, _dbContext).FirstOrDefaultAsync();
             
-            if (userStats == null) throw new ArgumentNullException("userStats");
-
-             return BitcornUtils.GetFullUser(user, userIdentity, userWallet, userStats);
+            return BitcornUtils.GetFullUser(user, user.UserIdentity, user.UserWallet, user.UserStat);
         }
 
         [HttpGet("{name}/[action]")]
@@ -59,9 +48,10 @@ namespace BITCORNService.Controllers
             {
                 return false;
             }
-            
-            var userIdentity = await _dbContext.Auth0Async(auth0IdUsername.Auth0Id);
-            var user = await _dbContext.User.FirstOrDefaultAsync(u => u.UserId == userIdentity.UserId);
+            //join identity with user table to select in 1 query
+            var user = await _dbContext.Auth0Async(auth0IdUsername.Auth0Id)
+                .Join(_dbContext.User,identity=>identity.UserId,user=>user.UserId,(id,u)=> u).FirstOrDefaultAsync();
+          
             user.Username = auth0IdUsername.Username;
             await _dbContext.SaveAsync();
             return true;

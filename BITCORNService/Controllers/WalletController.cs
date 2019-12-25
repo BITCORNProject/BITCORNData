@@ -7,6 +7,7 @@ using BITCORNService.Utils;
 using BITCORNService.Utils.Models;
 using BITCORNService.Utils.Wallet;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 
 namespace BITCORNService.Controllers
@@ -31,15 +32,13 @@ namespace BITCORNService.Controllers
             
             var platformId = BitcornUtils.GetPlatformId(id);
 
-            var userIdentity = await BitcornUtils.GetUserIdentityForPlatform(platformId, _dbContext);
-            if (userIdentity == null) throw new ArgumentNullException("userIdentity");
-
-            var userWallet = _dbContext.UserWallet.FirstOrDefault(w => w.UserId == userIdentity.UserId);
-            var response = await WalletUtils.CreateCornaddy(_dbContext, userWallet, _configuration);
+            var user = await BitcornUtils.GetUserForPlatform(platformId, _dbContext).FirstOrDefaultAsync();
+            
+            var response = await WalletUtils.CreateCornaddy(_dbContext, user.UserWallet, _configuration);
 
             if (response.HttpCode == HttpStatusCode.OK)
             {
-                return await _dbContext.GetUserWallet(userIdentity);
+                return user.UserWallet;
             }
             else
             {

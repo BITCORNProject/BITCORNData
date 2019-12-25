@@ -1,7 +1,9 @@
-﻿using System.Threading.Tasks;
+﻿using System.Linq;
+using System.Threading.Tasks;
 using BITCORNService.Models;
 using BITCORNService.Utils;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace BITCORNService.Controllers
 {
@@ -20,7 +22,7 @@ namespace BITCORNService.Controllers
         public async Task<UserIdentity> Auth0([FromRoute] string id)
         {
             var platformId =  BitcornUtils.GetPlatformId(id);
-            return await BitcornUtils.GetUserIdentityForPlatform(platformId, _dbContext);
+            return await BitcornUtils.GetUserForPlatform(platformId, _dbContext).Select(u => u.UserIdentity).FirstOrDefaultAsync();
         }
     }
 }

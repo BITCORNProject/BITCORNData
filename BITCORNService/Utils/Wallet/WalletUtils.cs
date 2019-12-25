@@ -43,8 +43,8 @@ namespace BITCORNService.Utils.Wallet
         private static async Task<UserWallet> GetUserWallet(this BitcornContext dbContext, WithdrawUser withdrawUser)
         {
             var platformId = BitcornUtils.GetPlatformId(withdrawUser.Id);
-            var identity = await BitcornUtils.GetUserIdentityForPlatform(platformId,dbContext);
-            return await dbContext.GetUserWallet(identity);
+            return await BitcornUtils.GetUserForPlatform(platformId,dbContext).Select(u=>u.UserWallet).FirstOrDefaultAsync();
+           
         }
         public static async Task<UserWallet> GetUserWallet(this BitcornContext dbContext, UserIdentity identity)
         {
@@ -236,7 +236,7 @@ namespace BITCORNService.Utils.Wallet
                         {
                             string txId = response.GetParsedContent();
                             //TODO: log txid
-                            await TxUtils.ExecuteDebitTx(withdrawUser, dbContext);
+                   //         await TxUtils.ExecuteDebitTx(withdrawUser, dbContext);
                             cornResponse.HttpCode = HttpStatusCode.OK;
                             cornResponse.Message = txId;
                         }
