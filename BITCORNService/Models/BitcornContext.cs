@@ -127,6 +127,8 @@ namespace BITCORNService.Models
                 entity.Property(e => e.Username)
                     .HasMaxLength(50)
                     .IsUnicode(false);
+
+                entity.Property(e=>e.IsBanned);
             });
 
             modelBuilder.Entity<UserIdentity>(entity =>
