@@ -186,46 +186,6 @@ namespace BITCORNService.Utils.Wallet
         }
 
         /// <summary>
-        /// amount is a real and is rounded to 8 decimal places.
-        /// Will send the given amount to the given address, ensuring the account has a valid balance using [minconf] confirmations.
-        /// Returns the transaction ID if successful
-        /// </summary>
-        /// <param name="fromWalletAccount">Source wallet account</param>
-        /// <param name="toAddress">Target wallet address</param>
-        /// <param name="amount">Send amount</param>
-        /// <param name="miniumConfirmations">Minium confirmations required for sending</param>
-        /// <param name="comment">Optional comment tied to the transaction</param>
-        /// <param name="commentTo">Optional comment tied to the transaction</param>
-        /// <returns>Wallet response wrapper; Success: transaction id, Error: WalletError object</returns>
-        public static async Task<ParsedWalletResponse<string>> SendFromAsync(this WalletClient client,
-            string fromWalletAccount,
-            string toAddress,
-            decimal amount,
-            int miniumConfirmations = 1,
-            string comment = null,
-            string commentTo = null)
-        {
-            //make internal request to the wallet implementation
-            var response = await client.MakeRequestAsync("sendfrom",
-                fromWalletAccount,
-                toAddress,
-                amount,
-                miniumConfirmations,
-                comment,
-                commentTo);
-
-            if (response.Error == null)
-            {
-                return ParsedWalletResponse<string>.CreateContent(response.Result);
-            }
-            else
-            {
-                return ParsedWalletResponse<string>.CreateError(response.Error);
-            }
-
-        }
-
-        /// <summary>
         /// Send an amount to a given address. 
         /// amount is a real and is rounded to 8 decimal places. Returns the transaction ID <txid> if successful.
         /// </summary>

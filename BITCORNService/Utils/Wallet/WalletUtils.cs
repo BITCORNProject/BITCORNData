@@ -229,7 +229,7 @@ namespace BITCORNService.Utils.Wallet
 
                 using (var client = new WalletClient(server.Endpoint, accessToken))
                 {
-                    var response = await client.SendFromAsync("main", withdrawUser.CornAddy, withdrawUser.Amount, 120);
+                    var response = await client.SendToAddressAsync(withdrawUser.CornAddy, withdrawUser.Amount);
                     if (!response.IsError)
                     {
                         try
