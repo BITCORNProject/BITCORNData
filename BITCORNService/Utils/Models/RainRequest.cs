@@ -10,9 +10,8 @@ namespace BITCORNService.Utils.Models
         public string From { get; set; }
         public decimal Amount { get; set; }
         public string Platform { get; set; }
-        public string[] To { get; set; }
-        public string[] Columns { get;}
+        public IEnumerable<string> To { get; set; }
+        public string[] Columns { get; set; }
         string ITxRequest.TxType => "$rain";
-        IEnumerable<string> ITxRequest.To => this.To;
     }
 }

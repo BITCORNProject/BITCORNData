@@ -51,6 +51,10 @@ namespace BITCORNService.Models
                 entity.Property(e => e.TxType)
                     .HasMaxLength(50)
                     .IsUnicode(false);
+
+                entity.Property(e=>e.TxGroupId)
+                    .HasMaxLength(50)
+                    .IsUnicode(false);
             });
 
             modelBuilder.Entity<ErrorLogs>(entity =>
@@ -78,7 +82,7 @@ namespace BITCORNService.Models
 
             modelBuilder.Entity<UnclaimedTx>(entity =>
             {
-                entity.Property(e => e.Id).ValueGeneratedNever();
+                entity.Property(e => e.Id);
 
                 entity.Property(e => e.Amount)
                     .HasColumnType("numeric(19, 8)")
@@ -91,7 +95,7 @@ namespace BITCORNService.Models
                     .IsFixedLength();
 
                 entity.Property(e => e.Refunded).HasDefaultValueSql("((0))");
-
+                entity.Property(e => e.Claimed).HasDefaultValueSql("((0))"); ;
                 entity.Property(e => e.Timestamp).HasColumnType("datetime");
 
                 entity.Property(e => e.TxType)
@@ -112,6 +116,12 @@ namespace BITCORNService.Models
                     .WithMany(p => p.UnclaimedTxSenderUser)
                     .HasForeignKey(d => d.SenderUserId)
                     .HasConstraintName("FK_UnclaimedTx_SendUser");
+
+                entity.Property(e=>e.ReceiverPlatformId)
+                    .HasMaxLength(50)
+                    .IsUnicode(false);
+
+               
             });
 
             modelBuilder.Entity<User>(entity =>

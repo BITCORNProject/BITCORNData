@@ -18,6 +18,7 @@ namespace BITCORNService.Models
         public int ReceiverId { get; set; }
         public DateTime? Timestamp { get; set; }
         public string BlockchainTxId { get; set; }
+        public string TxGroupId { get; set; }
 
         public virtual ICollection<UnclaimedTx> UnclaimedTx { get; set; }
     }
