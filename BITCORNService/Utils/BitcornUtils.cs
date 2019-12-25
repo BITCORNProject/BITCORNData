@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using BITCORNService.Models;
 using BITCORNService.Utils.DbActions;
 using BITCORNService.Utils.Models;
+using Microsoft.EntityFrameworkCore;
 
 namespace BITCORNService.Utils
 {
@@ -24,39 +25,40 @@ namespace BITCORNService.Utils
             return platformId;
         }
 
-        public static async Task<UserIdentity> GetUserIdentityForPlatform(PlatformId platformId, BitcornContext dbContext)
+        public static IQueryable<User> GetUserForPlatform(PlatformId platformId, BitcornContext dbContext)
         {
             switch (platformId.Platform)
             {
                 case "auth0":
-                    return await dbContext.Auth0Async(platformId.Id);
+                    return dbContext.Auth0Async(platformId.Id);
                 case "twitch":
-                    return await dbContext.TwitchAsync(platformId.Id);
+                    return dbContext.TwitchAsync(platformId.Id);
                 case "discord":
-                    return await dbContext.DiscordAsync(platformId.Id);
+                    return dbContext.DiscordAsync(platformId.Id);
                 case "twitter":
-                    return await dbContext.TwitterAsync(platformId.Id);
+                    return dbContext.TwitterAsync(platformId.Id);
                 case "reddit":
-                    return await dbContext.RedditAsync(platformId.Id);
+                    return dbContext.RedditAsync(platformId.Id);
                 default:
                     throw new Exception($"User {platformId.Platform}|{platformId.Id} could not be found");
             }
         }
-        public static async Task<UserIdentity[]> GetUserIdentitiesForPlatform(PlatformId[] platformId, BitcornContext dbContext)
+        public static IQueryable<User> GetUsersForPlatform(PlatformId[] platformId, BitcornContext dbContext)
         {
             HashSet<string> ids = platformId.Select(p=>p.Id).ToHashSet();
+            
             switch (platformId[0].Platform)
             {
                 case "auth0":
-                    return await dbContext.Auth0ManyAsync(ids);
+                    return dbContext.Auth0ManyAsync(ids);
                 case "twitch":
-                    return await dbContext.TwitchManyAsync(ids);
+                    return dbContext.TwitchManyAsync(ids);
                 case "discord":
-                    return await dbContext.DiscordManyAsync(ids);
+                    return dbContext.DiscordManyAsync(ids);
                 case "twitter":
-                    return await dbContext.TwitterManyAsync(ids);
+                    return dbContext.TwitterManyAsync(ids);
                 case "reddit":
-                    return await dbContext.RedditManyAsync(ids);
+                    return dbContext.RedditManyAsync(ids);
                 default:
                     throw new Exception($"Platform {platformId[0].Platform} could not be found");
             }
