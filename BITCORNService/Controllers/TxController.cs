@@ -20,6 +20,7 @@ namespace BITCORNService.Controllers
     [ApiController]
     public class TxController : ControllerBase
     {
+        const int BitcornHubPK = 196;
         private readonly BitcornContext _dbContext;
 
         public TxController(BitcornContext dbContext)
@@ -27,32 +28,77 @@ namespace BITCORNService.Controllers
             _dbContext = dbContext;
         }
         [HttpPost("rain")]
-        public async Task Rain([FromBody] RainBody rainBody)
+        public async Task<object> Rain([FromBody] RainRequest rainRequest)
         {
-            try
+            if (rainRequest == null) throw new ArgumentNullException();
+            if (rainRequest.From == null) throw new ArgumentNullException();
+            if (rainRequest.To == null) throw new ArgumentNullException();
+            var transactions = await TxUtils.ProcessRequest(rainRequest, _dbContext);
+            if (transactions != null && transactions.Length > 0)
             {
-                var txUsers = rainBody.TxUsers;
-                if (txUsers == null || !txUsers.Any()) throw new ArgumentNullException();
-                //array of {amount, id}
-                await TxUtils.ExecuteRainTxs(txUsers, _dbContext);
-            }
-            catch (Exception e)
-            {
-                Console.WriteLine(e);
-                throw;
-            }
+                var from = await _dbContext.UserStat.FirstOrDefaultAsync(u => u.UserId == transactions[0].From.UserId);
 
+                var toHaystack = transactions.Where(t=>t.Tx!=null).Select(t=>t.To.UserId).ToHashSet();
+               //poll all users involved in this tx
+                await _dbContext.UserStat.Where(u=>toHaystack.Contains(u.UserId)).ToArrayAsync();
+                decimal rainAmount = 0;
+                for (int i = 0; i < transactions.Length; i++)
+                {
+                    //find users from cache
+                    if (transactions[i].Tx != null)
+                    {
+                        var stat = _dbContext.UserStat.Find(transactions[i].To.UserId);
+                        var amount = transactions[i].Tx.Amount.Value;
+                        UpdateStats.RainedOn(stat, amount);
+                        rainAmount += amount;
+                    }
+                }
+                UpdateStats.Rain(from,rainAmount);
+             
+                await _dbContext.SaveAsync(IsolationLevel.RepeatableRead);
+                await TxUtils.AppendTxs(transactions, _dbContext, rainRequest.Columns);
 
-            //recipient response TODO
+            }
+            return transactions;
         }
 
         [HttpPost("payout")]
-        public async Task Payout([FromBody] IEnumerable<TxUser> txUsers)
+        public async Task<int> Payout([FromBody] HashSet<string> chatters)
         {
-            if (txUsers == null) throw new ArgumentNullException();
-            //array of {amount, id}
-            await TxUtils.ExecuteRainTxs(txUsers, _dbContext);
-            //senderresponses TODO
+            var userIdentities = await _dbContext.UserIdentity.Where(u=>chatters.Contains(u.TwitchId)).Select(u=>u.UserId).ToArrayAsync();
+            var wallets = await _dbContext.UserWallet.Where(u => userIdentities.Contains(u.UserId)).ToArrayAsync();
+            var stats = await _dbContext.UserStat.Where(u => userIdentities.Contains(u.UserId)).ToArrayAsync();
+            var users = await _dbContext.User.Where(u=>userIdentities.Contains(u.UserId)).ToArrayAsync();
+            decimal total = 0;
+            foreach (var userId in userIdentities)
+            {
+                decimal payout = 0;
+                var user = _dbContext.User.Find(userId);
+                if (user.IsBanned) continue;
+                var wallet = _dbContext.UserWallet.Find(userId);
+                var stat = _dbContext.UserStat.Find(userId);
+               
+                if(user.Level == "1000")
+                {
+                    payout = 0.25m;
+                }
+                else if(user.Level == "2000")
+                {
+                    payout = .5m;
+                }
+                else if (user.Level == "3000")
+                {
+                    payout = 1;
+                }
+                total += payout;
+                user.UserWallet.Balance += payout;
+                user.UserStat.EarnedIdle += payout;
+
+            }
+            var bitcornhub = await _dbContext.UserWallet.FirstOrDefaultAsync(u=>u.UserId==BitcornHubPK);
+            bitcornhub.Balance -= total;
+
+            return await _dbContext.SaveAsync();
         }
 
         [HttpPost("tipcorn")]
@@ -66,20 +112,20 @@ namespace BITCORNService.Controllers
             try
             {
                 var transactions = await TxUtils.ProcessRequest(tipRequest, _dbContext);
-
-
-
                 if (transactions != null && transactions.Length > 0)
                 {
-                    var tx = transactions[0];
-                    var to = await _dbContext.UserStat.FirstOrDefaultAsync(u => u.UserId == tx.To.UserId);
+                    var receipt = transactions[0];
+                    if (receipt.Tx != null)
+                    {
+                        var to = await _dbContext.UserStat.FirstOrDefaultAsync(u => u.UserId == receipt.To.UserId);
 
-                    var from = await _dbContext.UserStat.FirstOrDefaultAsync(u => u.UserId == tx.From.UserId);
-                    UpdateStats.Tip(from, tipRequest.Amount);
-                    UpdateStats.Tipped(to, tipRequest.Amount);
-                    await _dbContext.SaveAsync(IsolationLevel.RepeatableRead);
+                        var from = await _dbContext.UserStat.FirstOrDefaultAsync(u => u.UserId == receipt.From.UserId);
+                        UpdateStats.Tip(from, tipRequest.Amount);
+                        UpdateStats.Tipped(to, tipRequest.Amount);
+                        await _dbContext.SaveAsync(IsolationLevel.RepeatableRead);
+                    }
                     await TxUtils.AppendTxs(transactions, _dbContext, tipRequest.Columns);
-                    
+
                 }
                 return transactions;
             }
