@@ -54,8 +54,8 @@ namespace BITCORNService.Controllers
                         rainAmount += amount;
                     }
                 }
-                UpdateStats.Rain(from,rainAmount);
-             
+                UpdateStats.Rain(from, rainAmount);
+
                 await _dbContext.SaveAsync(IsolationLevel.RepeatableRead);
                 await TxUtils.AppendTxs(transactions, _dbContext, rainRequest.Columns);
 
@@ -73,13 +73,13 @@ namespace BITCORNService.Controllers
             foreach (var user in users)
             {
                 decimal payout = 0;
-              
-               
-                if(user.Level == "1000")
+
+
+                if (user.Level == "1000")
                 {
                     payout = 0.25m;
                 }
-                else if(user.Level == "2000")
+                else if (user.Level == "2000")
                 {
                     payout = .5m;
                 }
@@ -92,7 +92,7 @@ namespace BITCORNService.Controllers
                 user.UserStat.EarnedIdle += payout;
 
             }
-            var bitcornhub = await _dbContext.UserWallet.FirstOrDefaultAsync(u=>u.UserId==BitcornHubPK);
+            var bitcornhub = await _dbContext.UserWallet.FirstOrDefaultAsync(u => u.UserId == BitcornHubPK);
             bitcornhub.Balance -= total;
 
             return await _dbContext.SaveAsync();
@@ -105,10 +105,10 @@ namespace BITCORNService.Controllers
             if (tipRequest.From == null) throw new ArgumentNullException();
             if (tipRequest.To == null) throw new ArgumentNullException();
             if (tipRequest.Amount == 0) throw new ArgumentNullException();
-            
+
             try
             {
-                var processInfo =  await TxUtils.ProcessRequest(tipRequest, _dbContext);
+                var processInfo = await TxUtils.ProcessRequest(tipRequest, _dbContext);
 
                 var transactions = processInfo.Transactions;
                 if (transactions != null && transactions.Length > 0)
@@ -153,27 +153,11 @@ namespace BITCORNService.Controllers
                 }
                 return transactions;
             }
-            catch(Exception e)
+            catch (Exception e)
             {
                 throw e;
             }
-     
+
         }
-
-        
-
-        [HttpPost("withdraw")]
-        public async Task Withdraw([FromBody] WithdrawUser withdrawUser)
-        {
-            //sender twitchid, cornaddy, amount
-          
-
-            //call to wallet to properly withdraw TODO
-
-            //tx id TODO
-        }
-
-
-
     }
 }
