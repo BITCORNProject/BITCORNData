@@ -164,6 +164,10 @@ namespace BITCORNService.Reflection
                         {
                             var name = result.GetName(i);
                             var value = result.GetValue(i);
+                            if(value is DBNull)
+                            {
+                                value = null;
+                            }
                             table.Add(name, value);
                         }
                     
