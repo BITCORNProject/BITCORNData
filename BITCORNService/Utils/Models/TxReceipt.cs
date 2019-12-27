@@ -9,7 +9,7 @@ namespace BITCORNService.Utils.Models
         public SelectableUser To { get; set; }
         [JsonIgnore]
         public CornTx Tx { get; set; }
-        public int TxId
+        public int? TxId
         {
             get
             {
@@ -17,7 +17,7 @@ namespace BITCORNService.Utils.Models
                 {
                     return Tx.CornTxId;
                 }
-                else return -1;
+                else return null;
             }
         }
     }

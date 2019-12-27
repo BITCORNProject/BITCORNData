@@ -8,7 +8,20 @@ namespace BITCORNService.Utils.Models
     {
         [JsonIgnore]
         public User User { get; set; }
-        public int UserId => User.UserId;
+        public int UserId
+        {
+            get
+            {
+                if (User != null)
+                {
+                    return User.UserId;
+                }
+                else
+                {
+                    return -1;
+                }
+            }
+        }
         public SelectableUser(User user)
         {
             this.User = user;
