@@ -114,7 +114,7 @@ namespace BITCORNService.Utils.Tx
          
             decimal totalAmountRequired = toArray.Length * req.Amount;
             bool canExecuteAll = false;
-            if (fromUser != null && fromUser.UserWallet.Balance < totalAmountRequired)
+            if (fromUser != null && fromUser.UserWallet.Balance >= totalAmountRequired)
                 canExecuteAll = true;
             
             foreach (var to in toArray)
