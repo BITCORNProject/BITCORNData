@@ -43,6 +43,25 @@ namespace BITCORNService.Utils
                     throw new Exception($"User {platformId.Platform}|{platformId.Id} could not be found");
             }
         }
+        public static async Task<Dictionary<string,User>> ToPlatformDictionary(PlatformId[] platformId,BitcornContext dbContext)
+        {
+            var query = GetUsersForPlatform(platformId,dbContext);
+            switch (platformId[0].Platform)
+            {
+                case "auth0":
+                    return await query.ToDictionaryAsync(u=>u.UserIdentity.Auth0Id,u=>u);
+                case "twitch":
+                    return await query.ToDictionaryAsync(u => u.UserIdentity.TwitchId, u => u);
+                case "discord":
+                    return await query.ToDictionaryAsync(u => u.UserIdentity.DiscordId, u => u);
+                case "twitter":
+                    return await query.ToDictionaryAsync(u => u.UserIdentity.TwitterId, u => u);
+                case "reddit":
+                    return await query.ToDictionaryAsync(u => u.UserIdentity.RedditId, u => u);
+                default:
+                    throw new Exception($"Platform {platformId[0].Platform} could not be found");
+            }
+        }
         public static IQueryable<User> GetUsersForPlatform(PlatformId[] platformId, BitcornContext dbContext)
         {
             HashSet<string> ids = platformId.Select(p=>p.Id).ToHashSet();

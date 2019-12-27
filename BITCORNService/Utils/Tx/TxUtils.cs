@@ -17,23 +17,36 @@ namespace BITCORNService.Utils.Tx
         {
             if (appendColumns.Length > 0)
             {
-                int[] participants = new int[transactions.Length + 1];
-                participants[0] = transactions[0].From.UserId;
+                List<int> participants = new List<int>(transactions.Length + 1);
+                if (transactions[0].From != null)
+                {
+                    participants.Add(transactions[0].From.UserId);
+                }
                 for (int i = 0; i < transactions.Length; i++)
                 {
-                    participants[i + 1] = transactions[i].To.UserId;
+                    if (transactions[i].To != null)
+                    {
+                        participants.Add(transactions[i].To.UserId);
+                    }
                 }
-                var columns = await UserReflection.GetColumns(dbContext, appendColumns, participants);
-                var fromColumns = columns[participants[0]];
+                var columns = await UserReflection.GetColumns(dbContext, appendColumns, participants.ToArray());
+              
                 foreach (var tx in transactions)
                 {
-                    foreach (var from in fromColumns)
+                    if (tx.From != null)
                     {
-                        tx.From.Add(from.Key, from.Value);
+                        var fromColumns = columns[participants[0]];
+                        foreach (var from in fromColumns)
+                        {
+                            tx.From.Add(from.Key, from.Value);
+                        }
                     }
-                    foreach (var to in columns[tx.To.UserId])
+                    if (tx.To != null)
                     {
-                        tx.To.Add(to.Key, to.Value);
+                        foreach (var to in columns[tx.To.UserId])
+                        {
+                            tx.To.Add(to.Key, to.Value);
+                        }
                     }
                 }
             }
@@ -92,18 +105,17 @@ namespace BITCORNService.Utils.Tx
             var fromPlatformId = BitcornUtils.GetPlatformId(req.From);
          
             var fromUser = await BitcornUtils.GetUserForPlatform(fromPlatformId,dbContext).FirstOrDefaultAsync();
-            if (fromUser == null)
-                return info;
+            //if (fromUser == null)
+              //  return info;
 
             info.From = fromUser;
-            if (fromUser.IsBanned)
-                return info;
             
             var toArray = req.To.ToArray();
          
             decimal totalAmountRequired = toArray.Length * req.Amount;
-            if (fromUser.UserWallet.Balance < totalAmountRequired)
-                return null;
+            bool canExecuteAll = false;
+            if (fromUser != null && fromUser.UserWallet.Balance < totalAmountRequired)
+                canExecuteAll = true;
             
             foreach (var to in toArray)
             {
@@ -113,21 +125,30 @@ namespace BITCORNService.Utils.Tx
                     platformIds.Add(toPlatformId);
                 }
             }
-            
-            var users = await BitcornUtils.GetUsersForPlatform(platformIds.ToArray(),dbContext).ToArrayAsync();
+            var platformIdArray = platformIds.ToArray();
+            var users = await BitcornUtils.ToPlatformDictionary(platformIdArray,dbContext);
            
             var output = new List<TxReceipt>();
             string txid = Guid.NewGuid().ToString();
-            foreach (var user in users)
+            foreach (var to in platformIdArray)
             {
                 var receipt = new TxReceipt();
-                receipt.From = new SelectableUser(fromUser);
-                receipt.To = new SelectableUser(user);
-                receipt.Tx = MoveCorn(fromUser, user, req.Amount, req.Platform,req.TxType,txid);
-            
-                if (receipt.Tx != null)
+                if (fromUser != null)
                 {
-                    dbContext.CornTx.Add(receipt.Tx);
+                    receipt.From = new SelectableUser(fromUser);
+                }
+                
+                if (users.TryGetValue(to.Id, out User user))
+                {
+                    receipt.To = new SelectableUser(user);
+                    if (canExecuteAll)
+                    {
+                        receipt.Tx = MoveCorn(fromUser, user, req.Amount, req.Platform, req.TxType, txid);
+                    }
+                    if (receipt.Tx != null)
+                    {
+                        dbContext.CornTx.Add(receipt.Tx);
+                    }
                 }
                 output.Add(receipt);
             }
@@ -138,6 +159,8 @@ namespace BITCORNService.Utils.Tx
        
         public static CornTx MoveCorn(User from, User to, decimal amount,string platform,string txType,string txId)
         {
+            if (from == null || to == null)
+                return null;
             if (from.IsBanned || to.IsBanned)
                 return null;
             if (from.UserWallet.Balance >= amount)
