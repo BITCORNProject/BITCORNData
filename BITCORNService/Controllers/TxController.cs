@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Data;
 using System.Diagnostics;
 using System.Linq;
+using System.Net;
 using System.Threading.Tasks;
 using BITCORNService.Models;
 using BITCORNService.Reflection;
@@ -30,18 +31,21 @@ namespace BITCORNService.Controllers
             _dbContext = dbContext;
         }
         [HttpPost("rain")]
-        public async Task<object> Rain([FromBody] RainRequest rainRequest)
+        public async Task<ActionResult<object>> Rain([FromBody] RainRequest rainRequest)
         {
             Stopwatch sw = new Stopwatch();
             sw.Start();
             if (rainRequest == null) throw new ArgumentNullException();
             if (rainRequest.From == null) throw new ArgumentNullException();
             if (rainRequest.To == null) throw new ArgumentNullException();
+            if (rainRequest.Amount <= 0) return StatusCode((int)HttpStatusCode.BadRequest);
+
             var processInfo = await TxUtils.ProcessRequest(rainRequest, _dbContext);
             var transactions = processInfo.Transactions;
             if (transactions != null && transactions.Length > 0)
             {
-                var from = transactions[0].From.User.UserStat;
+
+               
                 decimal rainAmount = 0;
                 for (int i = 0; i < transactions.Length; i++)
                 {
@@ -54,8 +58,10 @@ namespace BITCORNService.Controllers
                         rainAmount += amount;
                     }
                 }
-                UpdateStats.Rain(from, rainAmount);
-
+                if (transactions[0].From != null)
+                {
+                    UpdateStats.Rain(transactions[0].From.User.UserStat, rainAmount);
+                }
                 await _dbContext.SaveAsync(IsolationLevel.RepeatableRead);
                 await TxUtils.AppendTxs(transactions, _dbContext, rainRequest.Columns);
 
@@ -99,12 +105,12 @@ namespace BITCORNService.Controllers
         }
 
         [HttpPost("tipcorn")]
-        public async Task<object> Tipcorn([FromBody] TipRequest tipRequest)
+        public async Task<ActionResult<object>> Tipcorn([FromBody] TipRequest tipRequest)
         {
             if (tipRequest == null) throw new ArgumentNullException();
             if (tipRequest.From == null) throw new ArgumentNullException();
             if (tipRequest.To == null) throw new ArgumentNullException();
-            if (tipRequest.Amount == 0) throw new ArgumentNullException();
+            if (tipRequest.Amount <= 0) return StatusCode((int)HttpStatusCode.BadRequest);
 
             try
             {

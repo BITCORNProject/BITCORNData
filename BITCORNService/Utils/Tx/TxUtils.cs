@@ -98,6 +98,11 @@ namespace BITCORNService.Utils.Tx
         }
         public static async Task<TxProcessInfo> ProcessRequest(ITxRequest req, BitcornContext dbContext)
         {
+            if (req.Amount >= 0)
+            {
+                throw new ArgumentException("Amount");
+            }
+
             var info = new TxProcessInfo();
            // Dictionary<string, User> loadedUsers = new Dictionary<string, User>();
             HashSet<PlatformId> platformIds = new HashSet<PlatformId>();
