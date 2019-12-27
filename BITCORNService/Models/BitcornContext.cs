@@ -274,7 +274,7 @@ namespace BITCORNService.Models
             modelBuilder.Entity<CornDeposit>(entity => {
                 entity.ToTable("CornDeposit");
 
-                entity.Property(e => e.TxId).HasColumnName("TxId");
+                entity.Property(e => e.TxId);
 
                 entity.Property(e=>e.UserId).HasColumnName("UserId");
             });
