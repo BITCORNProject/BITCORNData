@@ -43,6 +43,7 @@ namespace BITCORNService.Utils
                     throw new Exception($"User {platformId.Platform}|{platformId.Id} could not be found");
             }
         }
+
         public static async Task<Dictionary<string,User>> ToPlatformDictionary(PlatformId[] platformId,BitcornContext dbContext)
         {
             var query = GetUsersForPlatform(platformId,dbContext);
@@ -82,6 +83,40 @@ namespace BITCORNService.Utils
                     throw new Exception($"Platform {platformId[0].Platform} could not be found");
             }
         }
+
+
+        public static async Task<UserIdentity> DeleteIdForPlatform(UserIdentity userIdentity, PlatformId platformId, BitcornContext dbContext)
+        {
+            switch (platformId.Platform.ToLower())
+            {
+                case "auth0":
+                    userIdentity.Auth0Id = null;
+                    await dbContext.SaveAsync();
+                    break;
+                case "twitch":
+                    userIdentity.TwitchId = null;
+                    await dbContext.SaveAsync();
+                    break;
+                case "discord":
+                    userIdentity.DiscordId = null;
+                    await dbContext.SaveAsync();
+                    break;
+                case "twitter":
+                    userIdentity.TwitterId = null;
+                    await dbContext.SaveAsync();
+                    break;
+                case "reddit":
+                    userIdentity.RedditId = null;
+                    await dbContext.SaveAsync();
+                    break;
+                default:
+                    throw new Exception($"User {platformId.Platform}|{platformId.Id} could not be found");
+            }
+
+            return userIdentity;
+        }
+
+
         public static FullUser GetFullUser(User user, UserIdentity userIdentity, UserWallet userWallet, UserStat userStats)
         {
             var fullUser = new FullUser();
