@@ -96,7 +96,7 @@ namespace BITCORNServiceTests
         public async Task TestWithdrawSuccess()
         {
             
-            var withdrawUser = new WithdrawUser()
+            var withdrawUser = new WithdrawRequest()
             {
                 Id = _configuration["Config:TestUserId"],
                 Amount = 1,

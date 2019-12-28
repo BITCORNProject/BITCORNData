@@ -1,8 +1,10 @@
-﻿using System.Threading.Tasks;
+﻿using System.Linq;
+using System.Threading.Tasks;
 using BITCORNService.Models;
 using BITCORNService.Utils.DbActions;
 using BITCORNService.Utils.LockUser.Models;
 using Microsoft.AspNetCore.Mvc.Filters;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Primitives;
 
 namespace BITCORNService.Utils.LockUser
@@ -20,24 +22,19 @@ namespace BITCORNService.Utils.LockUser
         {
             var platformHeaders = LockUserAttributeUtils.GetPlatformHeaders(context);
 
-            UserIdentity user;
             switch (platformHeaders.Platform)
             {
                 case "auth0":
-                    user = await dbContext.Auth0Async(platformHeaders.Id);
-                    return user.UserId;
+                    return await dbContext.Auth0Async(platformHeaders.Id).Select(u=>u.UserId).FirstOrDefaultAsync();
+                  
                 case "twitch":
-                    user = await dbContext.TwitchAsync(platformHeaders.Id);
-                    return user.UserId;
+                    return await dbContext.TwitchAsync(platformHeaders.Id).Select(u => u.UserId).FirstOrDefaultAsync();
                 case "discord":
-                    user = await dbContext.DiscordAsync(platformHeaders.Id);
-                    return user.UserId;
+                    return await dbContext.DiscordAsync(platformHeaders.Id).Select(u => u.UserId).FirstOrDefaultAsync();
                 case "twitter":
-                    user = await dbContext.TwitterAsync(platformHeaders.Id);
-                    return user.UserId;
+                    return await dbContext.TwitterAsync(platformHeaders.Id).Select(u => u.UserId).FirstOrDefaultAsync();
                 case "reddit":
-                    user = await dbContext.RedditAsync(platformHeaders.Id);
-                    return user.UserId;
+                    return await dbContext.RedditAsync(platformHeaders.Id).Select(u => u.UserId).FirstOrDefaultAsync();
                 default:
                     return 0;
             }

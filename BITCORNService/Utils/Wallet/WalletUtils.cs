@@ -40,21 +40,7 @@ namespace BITCORNService.Utils.Wallet
             return 1;
 
         }
-        private static async Task<UserWallet> GetUserWallet(this BitcornContext dbContext, WithdrawUser withdrawUser)
-        {
-            var platformId = BitcornUtils.GetPlatformId(withdrawUser.Id);
-            var identity = await BitcornUtils.GetUserIdentityForPlatform(platformId,dbContext);
-            return await dbContext.GetUserWallet(identity);
-        }
-        public static async Task<UserWallet> GetUserWallet(this BitcornContext dbContext, UserIdentity identity)
-        {
-            return await dbContext.UserWallet.FirstOrDefaultAsync(w => w.UserId == identity.UserId);
-        }
-        static async Task HandleException(BitcornResponse response,Exception e)
-        {
-            var errorLog = await BITCORNLogger.LogError(e);
-            response.Message = $"Something went wrong; error id: {errorLog.Id}";
-        }
+        
         public static async Task<string> GetWalletServerAccessToken(IConfiguration configuration)
         {
 
@@ -95,21 +81,7 @@ namespace BITCORNService.Utils.Wallet
         {
             return await dbContext.WalletServer.FirstOrDefaultAsync(w => w.Index == index);
         }
-        static void OnWalletServerNotAvailable(BitcornResponse cornResponse)
-        {
-            cornResponse.HttpCode = HttpStatusCode.ServiceUnavailable;
-            cornResponse.Message = "No wallet available to process this request.";
-        }
-        /// <summary>
-        /// wallet was marked as enabled, but it was not reached, this is never intended
-        /// </summary>
-        static async Task OnWalletNotReached(string method,BitcornResponse cornResponse, WalletError error)
-        {
-            cornResponse.HttpCode = HttpStatusCode.ServiceUnavailable;
-            var e = new WebException($"({method}) Failed to reach wallet server: ({error.Code.ToString()}), {error.Message}");
-
-            await HandleException(cornResponse, e);
-        }
+      
         static async Task CreateCornaddyInternal(BitcornResponse cornResponse, BitcornContext dbContext, WalletServer walletServer, UserWallet userWallet, string accessToken)
         {
 
@@ -121,35 +93,16 @@ namespace BITCORNService.Utils.Wallet
                     var address = response.GetParsedContent();
                     userWallet.CornAddy = address;
                     userWallet.WalletServer = walletServer.Index;
-                    try
-                    {
-                        await dbContext.SaveAsync();
-                        cornResponse.HttpCode = HttpStatusCode.OK;
-                    }
-                    catch
-                    {
-                        cornResponse.HttpCode = HttpStatusCode.InternalServerError;
-                        cornResponse.Message = "Failed to save changes to the database.";
-                    }
+                    cornResponse.WalletObject = address;
+                    await dbContext.SaveAsync();
+                    
                 }
                 //we got an error, fetch the internal wallet error code and figure out what to do
                 else
                 {
                     //get wallet error response
-                    var error = response.GetError();
-                    cornResponse.Message = error.Message;
-                    if (error.Code == WalletErrorCodes.HTTP_ERROR)
-                    {
-                        await OnWalletNotReached("CreateCornaddy",cornResponse, error);
-                    }
-                    else
-                    {
-                        //this should not be happening
-                        cornResponse.HttpCode = HttpStatusCode.InternalServerError;
-                        var e = new Exception($"(CreateCornaddy) Unhandled wallet response: ({error.Code.ToString()}), {error.Message}");
-
-                        await HandleException(cornResponse, e);
-                    }
+                    //var error = response.GetError();
+                    cornResponse.WalletAvailable = false;
                 }
             }
         }
@@ -157,6 +110,7 @@ namespace BITCORNService.Utils.Wallet
         public static async Task<BitcornResponse> CreateCornaddy(BitcornContext dbContext, UserWallet userWallet, IConfiguration configuration)
         {
             var cornResponse = new BitcornResponse();
+            cornResponse.WalletAvailable = true;
             try
             {
                 var index = await GetWalletIndexAsync(dbContext);
@@ -170,7 +124,7 @@ namespace BITCORNService.Utils.Wallet
                     //server is still null, return
                     if (server == null)
                     {
-                        OnWalletServerNotAvailable(cornResponse);
+                        cornResponse.WalletAvailable = false;
                         return cornResponse;
                     }
                 }
@@ -179,16 +133,12 @@ namespace BITCORNService.Utils.Wallet
                 //failed to fetch access token
                 if (!CheckAccessTokenExists(accessToken))
                 {
-                    cornResponse.HttpCode = HttpStatusCode.Unauthorized;
-                    var e = new UnauthorizedAccessException("Failed to fetch wallet server access token");
-                    await HandleException(cornResponse, e);
-                    return cornResponse;
+                    throw new UnauthorizedAccessException("Failed to fetch wallet server access token");
                 }
                 await CreateCornaddyInternal(cornResponse, dbContext, server, userWallet, accessToken);
             }
             catch (Exception e)
             {
-                await HandleException(cornResponse, e);
                 throw e;
             }
             return cornResponse;
@@ -197,23 +147,26 @@ namespace BITCORNService.Utils.Wallet
         {
             return !string.IsNullOrEmpty(accessToken);
         }
-        
-        public static async Task<BitcornResponse> Withdraw(BitcornContext dbContext, IConfiguration configuration, WithdrawUser withdrawUser)
+        public static async Task<BitcornResponse> Withdraw(BitcornContext dbContext, IConfiguration configuration,User user,string cornAddy,decimal amount,string platform)
         {
             var cornResponse = new BitcornResponse();
+            cornResponse.WalletAvailable = true;
             try
             {
-                var userWallet = await GetUserWallet(dbContext, withdrawUser);
-                if (userWallet.Balance < withdrawUser.Amount)
+             
+                if (user.IsBanned)
                 {
-                    cornResponse.HttpCode = HttpStatusCode.PaymentRequired;
+                    return cornResponse;
+                }
+                if (user.UserWallet.Balance < amount)
+                {
                     return cornResponse;
                 }
 
-                var server = await dbContext.GetWalletServer(userWallet);
+                var server = await dbContext.GetWalletServer(user.UserWallet);
                 if (!server.Enabled || !server.WithdrawEnabled)
                 {
-                    OnWalletServerNotAvailable(cornResponse);
+                    cornResponse.WalletAvailable = false;
                     return cornResponse;
                 }
 
@@ -221,31 +174,29 @@ namespace BITCORNService.Utils.Wallet
                 //failed to fetch access token
                 if (!CheckAccessTokenExists(accessToken))
                 {
-                    cornResponse.HttpCode = HttpStatusCode.Unauthorized;
-                    var e = new UnauthorizedAccessException("Failed to fetch wallet server access token");
-                    await HandleException(cornResponse, e);
-                    return cornResponse;
+                    throw new UnauthorizedAccessException("Failed to fetch wallet server access token");
                 }
 
                 using (var client = new WalletClient(server.Endpoint, accessToken))
                 {
-                    var response = await client.SendFromAsync("main", withdrawUser.CornAddy, withdrawUser.Amount, 120);
+                    var response = await client.SendToAddressAsync(cornAddy, amount);
                     if (!response.IsError)
                     {
-                        try
-                        {
-                            string txId = response.GetParsedContent();
-                            //TODO: log txid
-                            await TxUtils.ExecuteDebitTx(withdrawUser, dbContext);
-                            cornResponse.HttpCode = HttpStatusCode.OK;
-                            cornResponse.Message = txId;
-                        }
-                        catch
-                        {
-                            cornResponse.HttpCode = HttpStatusCode.InternalServerError;
-                            cornResponse.Message = "Failed to save changes to the database.";
-                        }
-                        //TODO: subract balance from user
+                        string txId = response.GetParsedContent();
+                        user.UserWallet.Balance -= amount;
+                        server.ServerBalance -= amount;
+                        var log = new CornTx();
+                        log.BlockchainTxId = txId;
+                        log.Amount = amount;
+                        log.Timestamp = DateTime.Now;
+                        log.TxType = "$withdraw";
+                        log.TxGroupId = Guid.NewGuid().ToString();
+                        log.Platform = platform;
+                        log.ReceiverId = user.UserId;
+                        dbContext.CornTx.Add(log);
+                        await dbContext.SaveAsync();
+                        cornResponse.WalletObject = txId;
+
                     }
                     //we got an error, fetch the internal wallet error code and figure out what to do
                     else
@@ -256,30 +207,23 @@ namespace BITCORNService.Utils.Wallet
                         //invalid withdrawal address
                         if (error.Code == WalletErrorCodes.RPC_INVALID_ADDRESS_OR_KEY)
                         {
-                            cornResponse.HttpCode = HttpStatusCode.BadRequest;
-                            var e = new Exception($"Invalid Corn address {withdrawUser.CornAddy} Wallet error: ({error.Code.ToString()}), {error.Message}");
-
-                            await HandleException(cornResponse, e);
+                            cornResponse.UserError = true;
                         }
                         //too much immature corn to complete this transaction at this time
                         else if (error.Code == WalletErrorCodes.RPC_WALLET_INSUFFICIENT_FUNDS)
                         {
-                            cornResponse.HttpCode = HttpStatusCode.PreconditionFailed;
-                            var e = new Exception($"Not enough mature corn to complete this withdrawal, Wallet error: ({error.Code.ToString()}), {error.Message}");
-
-                            await HandleException(cornResponse, e);
+                            cornResponse.WalletAvailable = false;
                         }
                         //wallet server was not reached
                         else if (error.Code == WalletErrorCodes.HTTP_ERROR)
                         {
-                            await OnWalletNotReached("Withdraw", cornResponse, error);
+                            cornResponse.WalletAvailable = false;
                         }
                     }
                 }
             }
             catch(Exception e)
             {
-                await HandleException(cornResponse,e);
                 throw e;
             }
 
@@ -298,7 +242,7 @@ namespace BITCORNService.Utils.Wallet
                     string address = payment.address;
                     string txid = payment.txid;
 
-                    bool isLogged = await dbContext.IsBlockchainTransactionLogged(txid);
+                    bool isLogged = await dbContext.IsDepositRegistered(txid);
 
                     if (!isLogged)
                     {
@@ -309,16 +253,19 @@ namespace BITCORNService.Utils.Wallet
                         var cornTx = new CornTx();
                         cornTx.Amount = amount;
                         cornTx.BlockchainTxId = txid;
-                        //TODO: why is this a string?
-                        cornTx.ReceiverId = wallet.UserId.ToString();
-                        //TODO: this field must not be required
+                        cornTx.ReceiverId = wallet.UserId;
                         cornTx.SenderId = null;
                         cornTx.Timestamp = DateTime.Now;
                         cornTx.TxType = TransactionType.receive.ToString();
                         cornTx.Platform = "wallet-server";
 
-                        dbContext.CornTx.Add(cornTx);
+                        var deposit = new CornDeposit();
+                        deposit.TxId = txid;
+                        deposit.UserId = wallet.UserId;
 
+                        server.ServerBalance += amount;
+                        dbContext.CornTx.Add(cornTx);
+                        dbContext.CornDeposit.Add(deposit);
                     }
                 }
 

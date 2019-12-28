@@ -22,6 +22,7 @@ namespace BITCORNService.Models
         public virtual DbSet<UserWallet> UserWallet { get; set; }
         public virtual DbSet<WalletIndex> WalletIndex { get; set; }
         public virtual DbSet<WalletServer> WalletServer { get; set; }
+        public virtual DbSet<CornDeposit> CornDeposit { get; set; }
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {
         }
@@ -30,7 +31,7 @@ namespace BITCORNService.Models
         {
             modelBuilder.Entity<CornTx>(entity =>
             {
-                entity.Property(e => e.CornTxId).ValueGeneratedNever();
+                entity.Property(e => e.CornTxId);
 
                 entity.Property(e => e.Amount)
                     .HasColumnType("numeric(19, 8)")
@@ -42,17 +43,17 @@ namespace BITCORNService.Models
                     .HasMaxLength(50)
                     .IsUnicode(false);
 
-                entity.Property(e => e.ReceiverId)
-                    .HasMaxLength(100)
-                    .IsUnicode(false);
+                entity.Property(e => e.ReceiverId);
 
-                entity.Property(e => e.SenderId)
-                    .HasMaxLength(100)
-                    .IsUnicode(false);
+                entity.Property(e => e.SenderId);
 
                 entity.Property(e => e.Timestamp).HasColumnType("datetime");
 
                 entity.Property(e => e.TxType)
+                    .HasMaxLength(50)
+                    .IsUnicode(false);
+
+                entity.Property(e=>e.TxGroupId)
                     .HasMaxLength(50)
                     .IsUnicode(false);
             });
@@ -82,7 +83,7 @@ namespace BITCORNService.Models
 
             modelBuilder.Entity<UnclaimedTx>(entity =>
             {
-                entity.Property(e => e.Id).ValueGeneratedNever();
+                entity.Property(e => e.Id);
 
                 entity.Property(e => e.Amount)
                     .HasColumnType("numeric(19, 8)")
@@ -95,7 +96,7 @@ namespace BITCORNService.Models
                     .IsFixedLength();
 
                 entity.Property(e => e.Refunded).HasDefaultValueSql("((0))");
-
+                entity.Property(e => e.Claimed).HasDefaultValueSql("((0))"); ;
                 entity.Property(e => e.Timestamp).HasColumnType("datetime");
 
                 entity.Property(e => e.TxType)
@@ -116,6 +117,12 @@ namespace BITCORNService.Models
                     .WithMany(p => p.UnclaimedTxSenderUser)
                     .HasForeignKey(d => d.SenderUserId)
                     .HasConstraintName("FK_UnclaimedTx_SendUser");
+
+                entity.Property(e=>e.ReceiverPlatformId)
+                    .HasMaxLength(50)
+                    .IsUnicode(false);
+
+               
             });
 
             modelBuilder.Entity<User>(entity =>
@@ -131,6 +138,8 @@ namespace BITCORNService.Models
                 entity.Property(e => e.Username)
                     .HasMaxLength(50)
                     .IsUnicode(false);
+
+                entity.Property(e=>e.IsBanned);
             });
 
             modelBuilder.Entity<UserIdentity>(entity =>
@@ -261,6 +270,13 @@ namespace BITCORNService.Models
                 entity.Property(e => e.Id).ValueGeneratedNever();
 
                 entity.Property(e => e.Index).HasDefaultValueSql("((1))");
+            });
+            modelBuilder.Entity<CornDeposit>(entity => {
+                entity.ToTable("CornDeposit");
+
+                entity.Property(e => e.TxId);
+
+                entity.Property(e=>e.UserId).HasColumnName("UserId");
             });
             modelBuilder.Entity<WalletServer>(entity =>
             {

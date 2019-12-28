@@ -1,4 +1,5 @@
-﻿using System.Threading.Tasks;
+﻿using System.Linq;
+using System.Threading.Tasks;
 using BITCORNService.Models;
 using BITCORNService.Utils;
 using Microsoft.AspNetCore.Mvc;
@@ -20,9 +21,7 @@ namespace BITCORNService.Controllers
         public async Task<UserWallet> Wallet([FromRoute] string id)
         {
             var platformId = BitcornUtils.GetPlatformId(id);
-            var userIdentity = await BitcornUtils.GetUserIdentityForPlatform(platformId, _dbContext);
-            var userWallet = await _dbContext.UserWallet.FirstOrDefaultAsync(w => w.UserId == userIdentity.UserId);
-            return userWallet;
+            return await BitcornUtils.GetUserForPlatform(platformId, _dbContext).Select(u => u.UserWallet).FirstOrDefaultAsync();
         }
     }
 }

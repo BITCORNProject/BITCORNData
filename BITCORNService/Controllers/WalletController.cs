@@ -1,12 +1,15 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 using System.Threading.Tasks;
 using BITCORNService.Models;
+using BITCORNService.Reflection;
 using BITCORNService.Utils;
 using BITCORNService.Utils.Models;
 using BITCORNService.Utils.Wallet;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 
 namespace BITCORNService.Controllers
@@ -25,40 +28,73 @@ namespace BITCORNService.Controllers
         }
         //API: /api/wallet/createcornaddy/{id}
         [HttpPost("CreateCornaddy")]
-        public async Task<ActionResult<UserWallet>> CreateCornaddy([FromRoute] string id)
+        public async Task<object> CreateCornaddy([FromBody] CreateCornaddyRequest request)
         {
-            if (string.IsNullOrWhiteSpace(id)) throw new ArgumentNullException("id");
+            if (string.IsNullOrWhiteSpace(request.Id)) throw new ArgumentNullException("id");
             
-            var platformId = BitcornUtils.GetPlatformId(id);
+            var platformId = BitcornUtils.GetPlatformId(request.Id);
 
-            var userIdentity = await BitcornUtils.GetUserIdentityForPlatform(platformId, _dbContext);
-            if (userIdentity == null) throw new ArgumentNullException("userIdentity");
-
-            var userWallet = _dbContext.UserWallet.FirstOrDefault(w => w.UserId == userIdentity.UserId);
-            var response = await WalletUtils.CreateCornaddy(_dbContext, userWallet, _configuration);
-
-            if (response.HttpCode == HttpStatusCode.OK)
+            var user = await BitcornUtils.GetUserForPlatform(platformId, _dbContext).FirstOrDefaultAsync();
+            var response = new Dictionary<string, object>();
+            if (user != null)
             {
-                return await _dbContext.GetUserWallet(userIdentity);
+                var walletResponse = await WalletUtils.CreateCornaddy(_dbContext, user.UserWallet, _configuration);
+                response.Add("UserError", walletResponse.UserError);
+                response.Add("WalletAvailable",walletResponse.WalletAvailable);
+                response.Add("CornAddy",walletResponse.WalletObject);
+                if (request.Columns.Length > 0)
+                {
+                    var columns = await UserReflection.GetColumns(_dbContext, request.Columns, new int[] { user.UserId });
+                    if (columns.Count > 0)
+                    {
+                        foreach (var item in columns.First().Value)
+                        {
+                            response.Add(item.Key, item.Value);
+                        }
+                    }
+                }
             }
-            else
-            {
-                return StatusCode((int)response.HttpCode);
-            }
-            //WalletUtils.CreateCornaddy(_dbContext,request);
+            return response;
 
         }
 
         //API: /api/wallet/deposit
         //called by the wallet servers only
-        [HttpPost("Deposit")]
+        [HttpPost("deposit")]
         public async Task<ActionResult> Deposit([FromBody] WalletDepositRequest request)
         {
             await WalletUtils.Deposit(_dbContext, request);
 
             return Ok();
         }
-        
 
+        //API: /api/wallet/withdraw
+        [HttpPost("withdraw")]
+        public async Task<object> Withdraw([FromBody] WithdrawRequest request)
+        {
+            var platformId = BitcornUtils.GetPlatformId(request.Id);
+            var user = await BitcornUtils.GetUserForPlatform(platformId, _dbContext).FirstOrDefaultAsync();
+            var response = new Dictionary<string, object>();
+            if (user != null)
+            {
+                var withdrawResult = await WalletUtils.Withdraw(_dbContext, _configuration,user,request.CornAddy,request.Amount, platformId.Platform);
+                response.Add("UserError",withdrawResult.UserError);
+                response.Add("WalletAvailable",withdrawResult.WalletAvailable);
+                response.Add("TxId",withdrawResult.WalletObject);
+                if (request.Columns.Length > 0)
+                {
+                    var columns = await UserReflection.GetColumns(_dbContext, request.Columns, new int[] { user.UserId });
+                    if (columns.Count > 0)
+                    {
+                        foreach (var item in columns.First().Value)
+                        {
+                            response.Add(item.Key, item.Value);
+                        }
+                    }
+                }
+            }
+            return response;
+        
+        }
     }
 }

@@ -4,7 +4,8 @@ namespace BITCORNService.Utils.Models
 {
     public class BitcornResponse
     {
-        public string Message { get; set; }
-        public HttpStatusCode HttpCode { get; set; }
+        public bool WalletAvailable { get; set; }
+        public string WalletObject { get; set; }
+        public bool UserError { get; set; }
     }
 }

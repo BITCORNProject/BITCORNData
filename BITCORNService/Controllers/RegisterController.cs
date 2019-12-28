@@ -6,6 +6,7 @@ using BITCORNService.Utils;
 using BITCORNService.Utils.DbActions;
 using BITCORNService.Utils.Models;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace BITCORNService.Controllers
 {
@@ -25,7 +26,7 @@ namespace BITCORNService.Controllers
         {
             if(auth0User == null) throw new ArgumentNullException();
 
-            var existingUserIdentity = await _dbContext.Auth0Async(auth0User.Auth0Id);
+            var existingUserIdentity = await _dbContext.Auth0Async(auth0User.Auth0Id).Select(u=>u.UserIdentity).FirstOrDefaultAsync();
             
             if (existingUserIdentity?.Auth0Id == auth0User.Auth0Id)
             {
@@ -68,14 +69,14 @@ namespace BITCORNService.Controllers
             try
             {
                 string auth0Id = registrationData.Auth0Id;
-                UserIdentity auth0DbUser = await _dbContext.Auth0Async(auth0Id);
+                UserIdentity auth0DbUser = await _dbContext.Auth0Async(auth0Id).Select(u => u.UserIdentity).FirstOrDefaultAsync();
                 var platformId = BitcornUtils.GetPlatformId(registrationData.PlatformId);
                 switch (platformId.Platform)
                 {
                     case "twitch":
                         var twitchUser = await TwitchKraken.GetTwitchUser(platformId.Id);
 
-                        var twitchDbUser = await _dbContext.TwitchAsync(platformId.Id);
+                        var twitchDbUser = await _dbContext.TwitchAsync(platformId.Id).Select(u => u.UserIdentity).FirstOrDefaultAsync();
 
                         if (twitchDbUser != null && twitchDbUser.Auth0Id == null)
                         {
@@ -111,7 +112,7 @@ namespace BITCORNService.Controllers
                     case "discord":
                         try
                         {
-                            var discordDbUser = await _dbContext.DiscordAsync(platformId.Id);
+                            var discordDbUser = await _dbContext.DiscordAsync(platformId.Id).Select(u => u.UserIdentity).FirstOrDefaultAsync();
 
                             if (discordDbUser != null && discordDbUser.Auth0Id == null)
                             {
@@ -155,7 +156,7 @@ namespace BITCORNService.Controllers
                     case "twitter":
                         try
                         {
-                            var twitterDbUser = await _dbContext.TwitterAsync(platformId.Id);
+                            var twitterDbUser = await _dbContext.TwitterAsync(platformId.Id).Select(u => u.UserIdentity).FirstOrDefaultAsync();
 
 
                             if (twitterDbUser != null && twitterDbUser.Auth0Id == null)
@@ -194,7 +195,7 @@ namespace BITCORNService.Controllers
                     case "reddit":
                         try
                         {
-                            var redditDbUser = await _dbContext.RedditAsync(platformId.Id);
+                            var redditDbUser = await _dbContext.RedditAsync(platformId.Id).Select(u => u.UserIdentity).FirstOrDefaultAsync();
 
                             if (redditDbUser != null && redditDbUser.Auth0Id == null)
                             {
