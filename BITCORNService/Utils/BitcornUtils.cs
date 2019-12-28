@@ -24,7 +24,10 @@ namespace BITCORNService.Utils
 
             return platformId;
         }
-
+        public static async Task<UserIdentity> GetUserIdentityForPlatform(PlatformId platformId, BitcornContext dbContext)
+        {
+            return await GetUserForPlatform(platformId,dbContext).Select(u=>u.UserIdentity).FirstOrDefaultAsync();
+        }
         public static IQueryable<User> GetUserForPlatform(PlatformId platformId, BitcornContext dbContext)
         {
             switch (platformId.Platform)
