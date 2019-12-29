@@ -50,10 +50,14 @@ namespace BITCORNService.Utils
         public static async Task<Dictionary<string,User>> ToPlatformDictionary(PlatformId[] platformId,BitcornContext dbContext)
         {
             var query = GetUsersForPlatform(platformId,dbContext);
+            return await ToPlatformDictionary(platformId,query,dbContext);
+        }
+        public static async Task<Dictionary<string, User>> ToPlatformDictionary(PlatformId[] platformId, IQueryable<User> query, BitcornContext dbContext)
+        {
             switch (platformId[0].Platform)
             {
                 case "auth0":
-                    return await query.ToDictionaryAsync(u=>u.UserIdentity.Auth0Id,u=>u);
+                    return await query.ToDictionaryAsync(u => u.UserIdentity.Auth0Id, u => u);
                 case "twitch":
                     return await query.ToDictionaryAsync(u => u.UserIdentity.TwitchId, u => u);
                 case "discord":
