@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 using System.Threading.Tasks;
 using BITCORNService.Models;
 using BITCORNService.Reflection;
@@ -98,26 +99,23 @@ namespace BITCORNService.Utils.Tx
         }
         public static async Task<TxProcessInfo> ProcessRequest(ITxRequest req, BitcornContext dbContext)
         {
-            if (req.Amount >= 0)
+            if (req.Amount <= 0)
             {
                 throw new ArgumentException("Amount");
             }
 
             var info = new TxProcessInfo();
-           // Dictionary<string, User> loadedUsers = new Dictionary<string, User>();
-            HashSet<PlatformId> platformIds = new HashSet<PlatformId>();
+            var platformIds = new HashSet<PlatformId>();
 
             var fromPlatformId = BitcornUtils.GetPlatformId(req.From);
          
-            var fromUser = await BitcornUtils.GetUserForPlatform(fromPlatformId,dbContext).FirstOrDefaultAsync();
-            //if (fromUser == null)
-              //  return info;
+            var fromUser = await BitcornUtils.GetUserForPlatform(fromPlatformId,dbContext).AsNoTracking().FirstOrDefaultAsync();
 
             info.From = fromUser;
             
             var toArray = req.To.ToArray();
          
-            decimal totalAmountRequired = toArray.Length * req.Amount;
+            var totalAmountRequired = toArray.Length * req.Amount;
             bool canExecuteAll = false;
             if (fromUser != null && fromUser.UserWallet.Balance >= totalAmountRequired)
                 canExecuteAll = true;
@@ -131,10 +129,12 @@ namespace BITCORNService.Utils.Tx
                 }
             }
             var platformIdArray = platformIds.ToArray();
-            var users = await BitcornUtils.ToPlatformDictionary(platformIdArray,dbContext);
+            var userQuery = BitcornUtils.GetUsersForPlatform(platformIdArray,dbContext).AsNoTracking();
+            var users = await BitcornUtils.ToPlatformDictionary(platformIdArray,userQuery,dbContext);
            
             var output = new List<TxReceipt>();
-            string txid = Guid.NewGuid().ToString();
+            var txid = Guid.NewGuid().ToString();
+            var sql = new StringBuilder();
             foreach (var to in platformIdArray)
             {
                 var receipt = new TxReceipt();
@@ -148,7 +148,7 @@ namespace BITCORNService.Utils.Tx
                     receipt.To = new SelectableUser(user);
                     if (canExecuteAll)
                     {
-                        receipt.Tx = MoveCorn(fromUser, user, req.Amount, req.Platform, req.TxType, txid);
+                        receipt.Tx = CheckTxValidity(fromUser, user, req.Amount, req.Platform, req.TxType, txid);
                     }
                     if (receipt.Tx != null)
                     {
@@ -157,12 +157,73 @@ namespace BITCORNService.Utils.Tx
                 }
                 output.Add(receipt);
             }
-           
+            
             info.Transactions = output.ToArray();
             return info;
         }
-       
-        public static CornTx MoveCorn(User from, User to, decimal amount,string platform,string txType,string txId)
+        public static string UpdateNumberIfTop(string table, string column, decimal value, string primaryKeyName, params int[] primaryKeyValues)
+        {
+            StringBuilder sql = new StringBuilder();
+            sql.Append($" UPDATE [{table}] SET {column} = {value} where {value} > {column} and [{table}].{primaryKeyName} ");
+            if (primaryKeyValues.Length == 1)
+            {
+                sql.Append('=');
+                sql.Append(primaryKeyValues[0]);
+            }
+            else
+            {
+                sql.Append("in");
+                sql.Append('(');
+                sql.Append(string.Join(',', primaryKeyValues));
+                sql.Append(')');
+            }
+            sql.Append(' ');
+            return sql.ToString();
+        }
+        public static string ModifyNumber(string table, string column, decimal value, char operation, string primaryKeyName, params int[] primaryKeyValues)
+        {
+            var list = new List<ColumnValuePair>() { new ColumnValuePair(column, value) };
+            return ModifyNumbers(table, list, operation, primaryKeyName, primaryKeyValues);
+        }
+        
+        public static string ModifyNumbers(string table, List<ColumnValuePair> setters, char operation, string primaryKeyName, params int[] primaryKeyValues)
+        {
+            StringBuilder sql = new StringBuilder();
+           
+            if (!char.Equals('+', operation) && !char.Equals('-', operation))
+                throw new ArgumentException("invalid operation:" + operation);
+
+            sql.Append($" UPDATE [{table}] SET ");
+            for (int i = 0; i < setters.Count; i++)
+            {
+                var item = setters[i];
+                if (i != 0)
+                {
+                    sql.Append(',');
+                }
+                sql.Append($" {item.Column} = {item.Column} {operation} {item.Value} ");
+            
+            }
+
+            sql.Append($" where [{table}].{primaryKeyName}  ");
+            if (primaryKeyValues.Length == 1)
+            {
+                sql.Append('=');
+                sql.Append(primaryKeyValues[0]);
+            }
+            else
+            {
+                sql.Append("in");
+                sql.Append('(');
+                sql.Append(string.Join(',', primaryKeyValues));
+                sql.Append(')');
+            }
+
+            sql.Append(' ');
+            return sql.ToString();
+        }
+
+        public static CornTx CheckTxValidity(User from, User to, decimal amount,string platform,string txType,string txId)
         {
             if (from == null || to == null)
                 return null;
@@ -170,9 +231,6 @@ namespace BITCORNService.Utils.Tx
                 return null;
             if (from.UserWallet.Balance >= amount)
             {
-                from.UserWallet.Balance -= amount;
-                to.UserWallet.Balance += amount;
-
                 var tx = new CornTx();
                 tx.TxType = txType;
                 tx.TxGroupId = txId;
