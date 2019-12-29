@@ -32,10 +32,8 @@ namespace BITCORNService.Controllers
             _dbContext = dbContext;
         }
         [HttpPost("rain")]
-        public async Task<ActionResult<object>> Rain([FromBody] RainRequest rainRequest)
+        public async Task<ActionResult<TxReceipt[]>> Rain([FromBody] RainRequest rainRequest)
         {
-            Stopwatch sw = new Stopwatch();
-            sw.Start();
             if (rainRequest == null) throw new ArgumentNullException();
             if (rainRequest.From == null) throw new ArgumentNullException();
             if (rainRequest.To == null) throw new ArgumentNullException();
@@ -73,42 +71,50 @@ namespace BITCORNService.Controllers
                 await TxUtils.AppendTxs(transactions, _dbContext, rainRequest.Columns);
 
             }
-            sw.Stop();
-            System.Diagnostics.Debug.WriteLine(sw.ElapsedMilliseconds);
             return processInfo.Transactions;
         }
 
         [HttpPost("payout")]
         public async Task<int> Payout([FromBody] HashSet<string> chatters)
         {
-            var users = await _dbContext.JoinUserModels().Where(u => chatters.Contains(u.UserIdentity.TwitchId)).ToArrayAsync();
+            var grouping = (await _dbContext.JoinUserModels().Where(u => chatters.Contains(u.UserIdentity.TwitchId))
+                .AsNoTracking()
+                .ToArrayAsync()).GroupBy(u=>u.Level).ToArray();
+
             decimal total = 0;
-            foreach (var user in users)
+            int changedRows = 0;
+            StringBuilder sql = new StringBuilder();
+
+            var pk = nameof(UserWallet.UserId);
+            foreach (var group in grouping)
             {
                 decimal payout = 0;
-
-
-                if (user.Level == "1000")
+                var level = group.Key;
+                var ids = group.Select(u => u.UserId).ToArray();
+                if (level == "1000")
                 {
                     payout = 0.25m;
                 }
-                else if (user.Level == "2000")
+                else if (level == "2000")
                 {
                     payout = .5m;
                 }
-                else if (user.Level == "3000")
+                else 
                 {
                     payout = 1;
                 }
-                total += payout;
-                user.UserWallet.Balance += payout;
-                user.UserStat.EarnedIdle += payout;
+                sql.Append(TxUtils.ModifyNumber(nameof(UserWallet), nameof(UserWallet.Balance), payout, '+', pk, ids));
+                sql.Append(TxUtils.ModifyNumber(nameof(UserStat), nameof(UserStat.EarnedIdle), payout, '+', pk, ids));
 
+                int count = await _dbContext.Database.ExecuteSqlRawAsync(sql.ToString());
+                total += payout * count;
+                changedRows += count;
             }
-            var bitcornhub = await _dbContext.UserWallet.FirstOrDefaultAsync(u => u.UserId == BitcornHubPK);
-            bitcornhub.Balance -= total;
-
-            return await _dbContext.SaveAsync();
+            if (changedRows > 0)
+            {
+                await _dbContext.Database.ExecuteSqlRawAsync(TxUtils.ModifyNumber(nameof(UserWallet), nameof(UserWallet.Balance), total, '-', pk, BitcornHubPK));
+            }
+            return changedRows;
         }
 
         [HttpPost("tipcorn")]
@@ -179,8 +185,7 @@ namespace BITCORNService.Controllers
                             unclaimed.Refunded = false;
 
                             _dbContext.UnclaimedTx.Add(unclaimed);
-
-                            processInfo.From.UserWallet.Balance -= tipRequest.Amount;
+                            await _dbContext.Database.ExecuteSqlRawAsync(TxUtils.ModifyNumber(nameof(UserWallet), nameof(UserWallet.Balance), tipRequest.Amount, '-', nameof(UserWallet.UserId), processInfo.From.UserId));
                             await _dbContext.SaveAsync();
                         }
                         //    unclaimed.SenderUser
