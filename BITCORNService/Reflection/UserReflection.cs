@@ -63,7 +63,7 @@ namespace BITCORNService.Reflection
             }
             else
             {
-                var list = columns.Where(c => ColumnToTable.ContainsKey(c)).Distinct().ToList();
+                var list = columns.Select(c=>c.ToLower()).Where(c => ColumnToTable.ContainsKey(c)).Distinct().ToList();
                 string userIdKey = nameof(User.UserId).ToLower();
                 if (!list.Contains(userIdKey))
                 {
