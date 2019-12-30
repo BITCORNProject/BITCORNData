@@ -219,7 +219,16 @@ namespace BITCORNService.Utils.Tx
             {
               
                 var item = setters[i];
-                var value = ((decimal)item.Value).ToString(CultureInfo.InvariantCulture);
+                object value = null;
+                if (item.Value is decimal)
+                {
+                    value = ((decimal)item.Value).ToString(CultureInfo.InvariantCulture);
+                }
+                else
+                {
+                    value = item.Value.ToString();
+                }
+
                 if (i != 0)
                 {
                     sql.Append(',');
