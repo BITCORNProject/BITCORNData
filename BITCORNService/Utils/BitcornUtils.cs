@@ -33,15 +33,15 @@ namespace BITCORNService.Utils
             switch (platformId.Platform)
             {
                 case "auth0":
-                    return dbContext.Auth0Async(platformId.Id);
+                    return dbContext.Auth0Query(platformId.Id);
                 case "twitch":
-                    return dbContext.TwitchAsync(platformId.Id);
+                    return dbContext.TwitchQuery(platformId.Id);
                 case "discord":
-                    return dbContext.DiscordAsync(platformId.Id);
+                    return dbContext.DiscordQuery(platformId.Id);
                 case "twitter":
-                    return dbContext.TwitterAsync(platformId.Id);
+                    return dbContext.TwitterQuery(platformId.Id);
                 case "reddit":
-                    return dbContext.RedditAsync(platformId.Id);
+                    return dbContext.RedditQuery(platformId.Id);
                 default:
                     throw new Exception($"User {platformId.Platform}|{platformId.Id} could not be found");
             }
@@ -50,10 +50,14 @@ namespace BITCORNService.Utils
         public static async Task<Dictionary<string,User>> ToPlatformDictionary(PlatformId[] platformId,BitcornContext dbContext)
         {
             var query = GetUsersForPlatform(platformId,dbContext);
+            return await ToPlatformDictionary(platformId,query,dbContext);
+        }
+        public static async Task<Dictionary<string, User>> ToPlatformDictionary(PlatformId[] platformId, IQueryable<User> query, BitcornContext dbContext)
+        {
             switch (platformId[0].Platform)
             {
                 case "auth0":
-                    return await query.ToDictionaryAsync(u=>u.UserIdentity.Auth0Id,u=>u);
+                    return await query.ToDictionaryAsync(u => u.UserIdentity.Auth0Id, u => u);
                 case "twitch":
                     return await query.ToDictionaryAsync(u => u.UserIdentity.TwitchId, u => u);
                 case "discord":
@@ -73,15 +77,15 @@ namespace BITCORNService.Utils
             switch (platformId[0].Platform)
             {
                 case "auth0":
-                    return dbContext.Auth0ManyAsync(ids);
+                    return dbContext.Auth0ManyQuery(ids);
                 case "twitch":
-                    return dbContext.TwitchManyAsync(ids);
+                    return dbContext.TwitchManyQuery(ids);
                 case "discord":
-                    return dbContext.DiscordManyAsync(ids);
+                    return dbContext.DiscordManyQuery(ids);
                 case "twitter":
-                    return dbContext.TwitterManyAsync(ids);
+                    return dbContext.TwitterManyQuery(ids);
                 case "reddit":
-                    return dbContext.RedditManyAsync(ids);
+                    return dbContext.RedditManyQuery(ids);
                 default:
                     throw new Exception($"Platform {platformId[0].Platform} could not be found");
             }

@@ -49,7 +49,7 @@ namespace BITCORNService.Controllers
                 return false;
             }
             //join identity with user table to select in 1 query
-            var user = await _dbContext.Auth0Async(auth0IdUsername.Auth0Id)
+            var user = await _dbContext.Auth0Query(auth0IdUsername.Auth0Id)
                 .Join(_dbContext.User,identity=>identity.UserId,user=>user.UserId,(id,u)=> u).FirstOrDefaultAsync();
           
             user.Username = auth0IdUsername.Username;

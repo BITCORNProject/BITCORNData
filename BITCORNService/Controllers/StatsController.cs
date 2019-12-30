@@ -33,7 +33,7 @@ namespace BITCORNService.Controllers
         {
             if (string.IsNullOrWhiteSpace(auth0Id)) throw new ArgumentNullException();
 
-            var user = await _dbContext.Auth0Async(auth0Id).FirstOrDefaultAsync();
+            var user = await _dbContext.Auth0Query(auth0Id).FirstOrDefaultAsync();
             return Convert.ToDecimal(user.UserStat.RainedOnTotal + user.UserStat.TippedTotal);
         }
 

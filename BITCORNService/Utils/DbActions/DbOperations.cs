@@ -32,52 +32,76 @@ namespace BITCORNService.Utils.DbActions
                     });
         }
 
-        public static IQueryable<User> Auth0ManyAsync(this BitcornContext dbContext, HashSet<string> ids)
+        public static IQueryable<User> Auth0ManyQuery(this BitcornContext dbContext, HashSet<string> ids)
         {
             return JoinUserModels(dbContext).Where(u => ids.Contains(u.UserIdentity.Auth0Id));
         }
 
-        public static IQueryable<User> TwitchManyAsync(this BitcornContext dbContext, HashSet<string> ids)
+        public static IQueryable<User> TwitchManyQuery(this BitcornContext dbContext, HashSet<string> ids)
         {
             return JoinUserModels(dbContext).Where(u => ids.Contains(u.UserIdentity.TwitchId));
         }
 
-        public static IQueryable<User> DiscordManyAsync(this BitcornContext dbContext, HashSet<string> ids)
+        public static IQueryable<User> DiscordManyQuery(this BitcornContext dbContext, HashSet<string> ids)
         {
             return JoinUserModels(dbContext).Where(u => ids.Contains(u.UserIdentity.DiscordId));
         }
 
-        public static IQueryable<User> TwitterManyAsync(this BitcornContext dbContext, HashSet<string> ids)
+        public static IQueryable<User> TwitterManyQuery(this BitcornContext dbContext, HashSet<string> ids)
         {
             return JoinUserModels(dbContext).Where(u => ids.Contains(u.UserIdentity.TwitterId));
         }
 
-        public static IQueryable<User> RedditManyAsync(this BitcornContext dbContext, HashSet<string> ids)
+        public static IQueryable<User> RedditManyQuery(this BitcornContext dbContext, HashSet<string> ids)
         {
             return JoinUserModels(dbContext).Where(u => ids.Contains(u.UserIdentity.RedditId));
         }
-        public static IQueryable<User> Auth0Async(this BitcornContext dbContext, string auth0Id)
+        public static IQueryable<User> Auth0Query(this BitcornContext dbContext, string auth0Id)
         {
             return JoinUserModels(dbContext).Where(u => u.UserIdentity.Auth0Id == auth0Id);
         }
 
-        public static IQueryable<User> TwitchAsync(this BitcornContext dbContext, string twitchId)
+        public static IQueryable<User> TwitchQuery(this BitcornContext dbContext, string twitchId)
         {
             return JoinUserModels(dbContext).Where(u => u.UserIdentity.TwitchId == twitchId);
         }
-        public static IQueryable<User> TwitterAsync(this BitcornContext dbContext, string twitterId)
+        public static IQueryable<User> TwitterQuery(this BitcornContext dbContext, string twitterId)
         {
             return JoinUserModels(dbContext).Where(u => u.UserIdentity.TwitterId == twitterId);
         }
 
-        public static IQueryable<User> DiscordAsync(this BitcornContext dbContext, string discordId)
+        public static IQueryable<User> DiscordQuery(this BitcornContext dbContext, string discordId)
         {
             return JoinUserModels(dbContext).Where(u => u.UserIdentity.DiscordId == discordId);
         }
 
-        public static IQueryable<User> RedditAsync(this BitcornContext dbContext, string redditId)
+        public static IQueryable<User> RedditQuery(this BitcornContext dbContext, string redditId)
         {
             return JoinUserModels(dbContext).Where(u => u.UserIdentity.RedditId == redditId);
+        }
+        public static async Task<User> Auth0Async(this BitcornContext dbContext, string auth0Id)
+        {
+            return await Auth0Query(dbContext, auth0Id).FirstOrDefaultAsync();
+        }
+
+        public static async Task<User> TwitchAsync(this BitcornContext dbContext, string twitchId)
+        {
+            return await TwitchQuery(dbContext,twitchId).FirstOrDefaultAsync();
+        }
+        public static async Task<User> TwitterAsync(this BitcornContext dbContext, string twitterId)
+        {
+            return await TwitterQuery(dbContext, twitterId).FirstOrDefaultAsync();
+        }
+
+        public static async Task<User> DiscordAsync(this BitcornContext dbContext, string discordId)
+        {
+            return await DiscordQuery(dbContext,discordId).FirstOrDefaultAsync();
+        }
+
+        public static async Task<User> RedditAsync(this BitcornContext dbContext, string redditId)
+        {
+            return await RedditQuery(dbContext, redditId).FirstOrDefaultAsync();
+
         }
 
         public static async Task<UserWallet> WalletByAddress(this BitcornContext dbContext, string address)

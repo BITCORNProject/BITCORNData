@@ -25,16 +25,16 @@ namespace BITCORNService.Utils.LockUser
             switch (platformHeaders.Platform)
             {
                 case "auth0":
-                    return await dbContext.Auth0Async(platformHeaders.Id).Select(u=>u.UserId).FirstOrDefaultAsync();
+                    return await dbContext.Auth0Query(platformHeaders.Id).Select(u=>u.UserId).FirstOrDefaultAsync();
                   
                 case "twitch":
-                    return await dbContext.TwitchAsync(platformHeaders.Id).Select(u => u.UserId).FirstOrDefaultAsync();
+                    return await dbContext.TwitchQuery(platformHeaders.Id).Select(u => u.UserId).FirstOrDefaultAsync();
                 case "discord":
-                    return await dbContext.DiscordAsync(platformHeaders.Id).Select(u => u.UserId).FirstOrDefaultAsync();
+                    return await dbContext.DiscordQuery(platformHeaders.Id).Select(u => u.UserId).FirstOrDefaultAsync();
                 case "twitter":
-                    return await dbContext.TwitterAsync(platformHeaders.Id).Select(u => u.UserId).FirstOrDefaultAsync();
+                    return await dbContext.TwitterQuery(platformHeaders.Id).Select(u => u.UserId).FirstOrDefaultAsync();
                 case "reddit":
-                    return await dbContext.RedditAsync(platformHeaders.Id).Select(u => u.UserId).FirstOrDefaultAsync();
+                    return await dbContext.RedditQuery(platformHeaders.Id).Select(u => u.UserId).FirstOrDefaultAsync();
                 default:
                     return 0;
             }
