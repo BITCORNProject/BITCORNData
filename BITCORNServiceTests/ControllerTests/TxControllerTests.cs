@@ -23,23 +23,72 @@ namespace BITCORNServiceTests
             _configuration = TestUtils.GetConfig();
         }
         [Fact]
-        public async Task TestRainSuccess()
+        public async Task TestRainAnalytics()
         {
             var dbContext = TestUtils.CreateDatabase();
             try
             {
                 var startFromUser = dbContext.TwitchQuery(_configuration["Config:TestFromUserId"]).FirstOrDefault();
+                var startFromRained = startFromUser.UserStat.Rained.Value;
+                var startFromTotalRained = startFromUser.UserStat.RainTotal.Value;
+
                 var startToUser = dbContext.TwitchQuery(_configuration["Config:TestToUserId"]).FirstOrDefault();
-                var results = await Rain(10,startFromUser,new User[] { startToUser },true);
-                var result = results[0];
-                Assert.Equal(result.FromEndBalance, result.FromStartBalance - result.Amount);
-                Assert.Equal(result.ToEndBalance, result.ToStartBalance + result.Amount);
+                var startToRainedOn = startToUser.UserStat.RainedOn.Value;
+                var startToRainedOnTotal = startToUser.UserStat.RainedOnTotal.Value;
+                var startBalance = startFromUser.UserWallet.Balance.Value;
+                
+                var rainAmount = 10;
+                var results = await Rain(rainAmount, startFromUser, new User[] { startToUser}, true);
+
+                using(var dbContext2 = TestUtils.CreateDatabase())
+                {
+                    var endFromUser = dbContext2.TwitchQuery(_configuration["Config:TestFromUserId"]).FirstOrDefault();
+                    var endToUser = dbContext2.TwitchQuery(_configuration["Config:TestToUserId"]).FirstOrDefault();
+                    Assert.Equal(startFromRained+1,endFromUser.UserStat.Rained.Value);
+                    Assert.Equal(startFromTotalRained+rainAmount,endFromUser.UserStat.RainTotal.Value);
+                    Assert.Equal(startToRainedOn+1,endToUser.UserStat.RainedOn.Value);
+                    Assert.Equal(startToRainedOnTotal+rainAmount,endToUser.UserStat.RainedOnTotal.Value);
+                }
             }
             finally
             {
                 dbContext.Dispose();
             }
         }
+
+        [Fact]
+        public async Task TestRainSuccess()
+        {
+            var dbContext = TestUtils.CreateDatabase();
+            try
+            {
+                var startFromUser = dbContext.TwitchQuery(_configuration["Config:TestFromUserId"]).FirstOrDefault();
+               
+                var startBalance = startFromUser.UserWallet.Balance.Value;
+                var recipientCount = 10;
+                var rainAmount = 10;
+
+                var to = dbContext.JoinUserModels().Where(u=>!u.IsBanned).Take(recipientCount).ToArray();
+            
+                var results = await Rain(rainAmount, startFromUser, to, true);
+                var receipts = results[0].ResponseObject.Value;
+                
+                for (int i = 0; i < results.Length; i++)
+                {
+                    var result = results[i];
+                    Assert.Equal(result.ToEndBalance, result.ToStartBalance + result.Amount);
+                    
+                }
+                var endBalance = dbContext.TwitchQuery(_configuration["Config:TestFromUserId"]).Select(u => u.UserWallet.Balance.Value).FirstOrDefault();
+                Assert.Equal(endBalance, startBalance - rainAmount*recipientCount);
+
+            }
+            finally
+            {
+                dbContext.Dispose();
+            }
+        }
+    
         [Fact]
         public async Task TestPayoutSuccess()
         {
@@ -153,6 +202,56 @@ namespace BITCORNServiceTests
             }
         }
         [Fact]
+        public async Task TestManyRains()
+        {
+            var dbContext = TestUtils.CreateDatabase();
+            try
+            {
+                var startFromUser = dbContext.TwitchQuery(_configuration["Config:TestFromUserId"]).FirstOrDefault();
+                var startBalance = startFromUser.UserWallet.Balance.Value;
+                var recipientCount = 10;
+                var rainAmount = 10;
+                var runs = 5;
+                int success = 0;
+                var recipients = dbContext.JoinUserModels().Where(u => !u.IsBanned).Take(recipientCount).ToArray();
+                var recipientBalances = recipients.ToDictionary(u=>u.UserId,u=>u.UserWallet.Balance);
+                List<Task> tasks = new List<Task>();
+
+                for (int j = 0; j < runs; j++)
+                {
+                    var task = Rain(rainAmount, startFromUser, recipients, true);
+                    tasks.Add(task);
+                    tasks.Add(task.ContinueWith((res) => {
+                        if (res.Result[0].ResponseObject.Result == null)
+                        {
+                            if (res.Result[0].ResponseObject.Value[0].Tx != null)
+                            {
+                                success++;
+                            }
+                        }
+                    }));
+
+                }
+                await Task.WhenAll(tasks);
+                using (var dbContext2 = TestUtils.CreateDatabase())
+                {
+                    var endBalance = dbContext2.TwitchQuery(_configuration["Config:TestFromUserId"]).Select(u => u.UserWallet.Balance.Value).FirstOrDefault();
+                    Assert.Equal(endBalance, startBalance - ((rainAmount * recipientCount) * success));
+                    var gain = rainAmount * success;
+                    foreach (var recipient in recipients)
+                    {
+                        var user = await dbContext2.TwitchAsync(recipient.UserIdentity.TwitchId);
+                        Assert.Equal(recipientBalances[user.UserId]+gain, user.UserWallet.Balance);
+                    }
+                }
+            }
+               
+            finally
+            {
+                dbContext.Dispose();
+            }
+        }
+        [Fact]
         public async Task TestManyTips()
         {
             decimal amount = 1;
@@ -209,20 +308,186 @@ namespace BITCORNServiceTests
             var dbContext = TestUtils.CreateDatabase();
             try
             {
-                var fromUser = dbContext.TwitchQuery(_configuration["Config:TestFromUserId"]).FirstOrDefault();
-                var toUser = dbContext.TwitchQuery(_configuration["Config:TestToUserId"]).FirstOrDefault();
+                var tipAmount = 100;
+                var startFromUser = dbContext.TwitchQuery(_configuration["Config:TestFromUserId"]).FirstOrDefault();
+                var startFromTip = startFromUser.UserStat.Tip;
+                var startFromTotalTip = startFromUser.UserStat.TipTotal;
 
-                var result = await Tip(100, fromUser, toUser);
+                var startToUser = dbContext.TwitchQuery(_configuration["Config:TestToUserId"]).FirstOrDefault();
+                var startToUserTipped = startToUser.UserStat.Tipped;
+                var startToUserTotalTipped = startToUser.UserStat.TippedTotal;
+
+
+                var result = await Tip(tipAmount, startFromUser, startToUser);
                 Assert.Equal(result.FromEndBalance, result.FromStartBalance - result.Amount);
                 Assert.Equal(result.ToEndBalance, result.ToStartBalance + result.Amount);
-               
+                using (var dbContext2 = TestUtils.CreateDatabase())
+                {
+                    var endFromUser = dbContext2.TwitchQuery(_configuration["Config:TestFromUserId"]).FirstOrDefault();
+                    var endToUser = dbContext2.TwitchQuery(_configuration["Config:TestToUserId"]).FirstOrDefault();
+                    Assert.Equal(startFromTip+1,endFromUser.UserStat.Tip);
+                    Assert.Equal(startFromTotalTip+tipAmount,endFromUser.UserStat.TipTotal);
+                    Assert.Equal(startToUserTipped+1,endToUser.UserStat.Tipped);
+                    Assert.Equal(startToUserTotalTipped+tipAmount,endToUser.UserStat.TippedTotal);
+                }
             }
             finally
             {
                 dbContext.Dispose();
             }
         }
- 
+      
+        [Fact]
+        public async Task TestTipCornSelf()
+        {
+            var dbContext = TestUtils.CreateDatabase();
+            try
+            {
+                var fromUser = dbContext.TwitchQuery(_configuration["Config:TestFromUserId"]).FirstOrDefault();
+                var toUser = dbContext.TwitchQuery(_configuration["Config:TestFromUserId"]).FirstOrDefault();
+
+                var result = await Tip(100, fromUser, toUser);
+                Assert.Equal(result.FromEndBalance, result.FromStartBalance);
+                Assert.Equal(result.ToEndBalance, result.ToStartBalance);
+                Assert.Null(result.ResponseObject.Value[0].Tx);
+
+            }
+            finally
+            {
+                dbContext.Dispose();
+            }
+        }
+        [Fact]
+        public async Task TestTipCornFromUnregistered()
+        {
+            var dbContext = TestUtils.CreateDatabase();
+            try
+            {
+                var startToUser = dbContext.TwitchQuery(_configuration["Config:TestToUserId"]).FirstOrDefault().UserWallet.Balance;
+                var txController = new TxController(dbContext);
+                var request = new TipRequest();
+                request.Columns = new string[] { };
+                request.To = "twitch|" + _configuration["Config:TestToUserId"];
+                request.From = "twitch|123123";
+                request.Platform = "twitch";
+                request.Amount = 100;
+                var response = await txController.Tipcorn(request);
+                var receipt = response.Value[0];
+                Assert.Null(receipt.Tx);
+                Assert.Null(receipt.From);
+                Assert.NotNull(receipt.To);
+                var endToUser = dbContext.TwitchQuery(_configuration["Config:TestToUserId"]).FirstOrDefault().UserWallet.Balance;
+                Assert.Equal(startToUser,endToUser);
+            }
+            finally
+            {
+                dbContext.Dispose();
+            }
+        }
+        [Fact]
+        public async Task TestTipCornToUnregistered()
+        {
+            var dbContext = TestUtils.CreateDatabase();
+            try
+            {
+                var startFromUser = dbContext.TwitchQuery(_configuration["Config:TestFromUserId"]).FirstOrDefault().UserWallet.Balance;
+                var txController = new TxController(dbContext);
+                var request = new TipRequest();
+                request.Columns = new string[] { };
+                request.To = "twitch|123123" ;
+                request.From = "twitch|"+_configuration["Config:TestFromUserId"];
+                request.Platform = "twitch";
+                request.Amount = 100;
+                var response = await txController.Tipcorn(request);
+                var receipt = response.Value[0];
+                Assert.Null(receipt.Tx);
+                Assert.NotNull(receipt.From);
+                Assert.Null(receipt.To);
+
+                var endFromUser = dbContext.TwitchQuery(_configuration["Config:TestFromUserId"]).FirstOrDefault().UserWallet.Balance;
+                Assert.Equal(startFromUser,endFromUser);
+            }
+            finally
+            {
+                dbContext.Dispose();
+            }
+        }
+        [Fact]
+        public async Task TestTipCornFromBannedUser()
+        {
+            var dbContext = TestUtils.CreateDatabase();
+            try
+            {
+                var fromUser = dbContext.TwitchQuery(_configuration["Config:TestBannedUser"]).FirstOrDefault();
+                var toUser = dbContext.TwitchQuery(_configuration["Config:TestToUserId"]).FirstOrDefault();
+
+                var result = await Tip(100, fromUser, toUser);
+                Assert.Equal(result.FromEndBalance, result.FromStartBalance);
+                Assert.Equal(result.ToEndBalance, result.ToStartBalance);
+                Assert.Null(result.ResponseObject.Value[0].Tx);
+
+            }
+            finally
+            {
+                dbContext.Dispose();
+            }
+        }
+        [Fact]
+        public async Task TestTipCornToBannedUser()
+        {
+            var dbContext = TestUtils.CreateDatabase();
+            try
+            {
+                var fromUser = dbContext.TwitchQuery(_configuration["Config:TestFromUserId"]).FirstOrDefault();
+                var toUser = dbContext.TwitchQuery(_configuration["Config:TestBannedUser"]).FirstOrDefault();
+
+                var result = await Tip(100, fromUser, toUser);
+                Assert.Equal(result.FromEndBalance, result.FromStartBalance);
+                Assert.Equal(result.ToEndBalance, result.ToStartBalance);
+                Assert.Null(result.ResponseObject.Value[0].Tx);
+
+            }
+            finally
+            {
+                dbContext.Dispose();
+            }
+        }
+        [Fact]
+        public async Task TestRainNegativeAmount()
+        {
+            var dbContext = TestUtils.CreateDatabase();
+            try
+            {
+                var startFromUser = dbContext.TwitchQuery(_configuration["Config:TestFromUserId"]).FirstOrDefault();
+                var startToUser = dbContext.TwitchQuery(_configuration["Config:TestToUserId"]).FirstOrDefault();
+                var results = await Rain(-1, startFromUser, new User[] { startToUser }, true);
+                var result = results[0];
+                Assert.Equal((result.ResponseObject.Result as StatusCodeResult).StatusCode, (int)HttpStatusCode.BadRequest);
+            }
+            finally
+            {
+                dbContext.Dispose();
+            }
+        }
+        [Fact]
+        public async Task TestRainInsufficientFunds()
+        {
+            var dbContext = TestUtils.CreateDatabase();
+            try
+            {
+                var startFromUser = dbContext.TwitchQuery(_configuration["Config:TestFromUserId"]).FirstOrDefault();
+                var startToUser = dbContext.TwitchQuery(_configuration["Config:TestToUserId"]).FirstOrDefault();
+                var results = await Rain(startToUser.UserWallet.Balance.Value+1, startFromUser, new User[] { startToUser }, true);
+                var result = results[0];
+                Assert.Equal(result.ToEndBalance, result.ToStartBalance);
+                Assert.Equal(result.FromEndBalance, result.FromStartBalance);
+                Assert.Null(result.ResponseObject.Value[0].Tx);
+            }
+            finally
+            {
+                dbContext.Dispose();
+            }
+        }
         [Fact]
         public async Task TestTipCornNegativeAmount()
         {
@@ -240,8 +505,8 @@ namespace BITCORNServiceTests
             {
                 dbContext.Dispose();
             }
-
         }
+
         [Fact] 
         public async Task TestTipCornInsufficientFunds()
         {
