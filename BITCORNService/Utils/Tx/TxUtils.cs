@@ -148,7 +148,7 @@ namespace BITCORNService.Utils.Tx
                     receipt.To = new SelectableUser(user);
                     if (canExecuteAll)
                     {
-                        receipt.Tx = CheckTxValidity(fromUser, user, req.Amount, req.Platform, req.TxType, txid);
+                        receipt.Tx = VerifyTx(fromUser, user, req.Amount, req.Platform, req.TxType, txid);
                     }
                     if (receipt.Tx != null)
                     {
@@ -223,11 +223,13 @@ namespace BITCORNService.Utils.Tx
             return sql.ToString();
         }
 
-        public static CornTx CheckTxValidity(User from, User to, decimal amount,string platform,string txType,string txId)
+        public static CornTx VerifyTx(User from, User to, decimal amount,string platform,string txType,string txId)
         {
             if (from == null || to == null)
                 return null;
             if (from.IsBanned || to.IsBanned)
+                return null;
+            if (from.UserId == to.UserId)
                 return null;
             if (from.UserWallet.Balance >= amount)
             {
