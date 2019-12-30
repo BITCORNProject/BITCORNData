@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -52,32 +53,39 @@ namespace BITCORNService.Utils.Tx
                 }
             }
         }
-      
-        public static async Task RefundUnclaimed(BitcornContext dbContext)
+
+        public static async Task RefundUnclaimed(BitcornContext dbContext, int addExpirationMinutes = 60)
         {
             var now = DateTime.Now;
-            var txs = await dbContext.UnclaimedTx.Where(t => t.Expiration.AddHours(1) < now && !t.Claimed && !t.Refunded)
-                .Join(dbContext.UserWallet,tx=>tx.SenderUserId,user=>user.UserId,(tx,wallet)=> new { Tx = tx, Wallet = wallet})
+            var txs = await dbContext.UnclaimedTx.Where(t => t.Expiration.AddMinutes(addExpirationMinutes) < now && !t.Claimed && !t.Refunded)
+                .Join(dbContext.UserWallet, tx => tx.SenderUserId, user => user.UserId, (tx, wallet) => new { Tx = tx, Wallet = wallet })
                 .ToArrayAsync();
 
-            foreach (var item in txs)
+            var pk = nameof(UserWallet.UserId);
+            var sql = new StringBuilder();
+            foreach (var entry in txs)
             {
-                item.Tx.Refunded = true;
-                item.Wallet.Balance += item.Tx.Amount;
-            }
+                entry.Tx.Refunded = true;
 
+                sql.Append(TxUtils.ModifyNumber(nameof(UserWallet), nameof(UserWallet.Balance), entry.Tx.Amount, '+', pk, entry.Wallet.UserId));
+            }
+            await dbContext.Database.ExecuteSqlRawAsync(sql.ToString());
             await dbContext.SaveAsync();
         }
-        public static async Task TryClaimTx(PlatformId platformId, User user, BitcornContext dbContext)
+        public static async Task<int> TryClaimTx(PlatformId platformId, User user, BitcornContext dbContext)
         {
             var now = DateTime.Now;
             var txs = await dbContext.UnclaimedTx.Where(u => u.Platform == platformId.Platform
                 && u.ReceiverPlatformId == platformId.Id
                 && !u.Claimed && !u.Refunded
                 && u.Expiration > now).ToArrayAsync();
-         
+
+            var sql = new StringBuilder();
+            var pk = nameof(UserWallet.UserId);
+       
             foreach (var tx in txs)
             {
+         
                 tx.Claimed = true;
 
                 var log = new CornTx();
@@ -91,11 +99,23 @@ namespace BITCORNService.Utils.Tx
                 log.UnclaimedTx.Add(tx);
                 dbContext.CornTx.Add(log);
 
-                user.UserWallet.Balance += tx.Amount;
+                sql.Append(TxUtils.ModifyNumber(nameof(UserWallet), nameof(UserWallet.Balance), tx.Amount, '+', pk, user.UserId));
+                sql.Append(TxUtils.ModifyNumber(nameof(UserStat), nameof(UserStat.Tipped), 1, '+', pk, user.UserId));
+                sql.Append(TxUtils.ModifyNumber(nameof(UserStat), nameof(UserStat.TippedTotal), tx.Amount, '+', pk, user.UserId));
+                sql.Append(TxUtils.UpdateNumberIfTop(nameof(UserStat), nameof(UserStat.TopTipped), tx.Amount, pk, user.UserId));
+
+
+                sql.Append(TxUtils.ModifyNumber(nameof(UserStat),nameof(UserStat.Tip),1,'+',pk,tx.SenderUserId));
+                sql.Append(TxUtils.ModifyNumber(nameof(UserStat), nameof(UserStat.TipTotal), tx.Amount, '+', pk, tx.SenderUserId));
+                sql.Append(TxUtils.UpdateNumberIfTop(nameof(UserStat), nameof(UserStat.TopTip), tx.Amount, pk, tx.SenderUserId));
+
             }
-
-            await dbContext.SaveAsync();
-
+            if (txs.Length>0)
+            {
+                await dbContext.Database.ExecuteSqlRawAsync(sql.ToString());
+                await dbContext.SaveAsync();
+            }
+            return txs.Length;
         }
         public static async Task<TxProcessInfo> ProcessRequest(ITxRequest req, BitcornContext dbContext)
         {
@@ -163,8 +183,9 @@ namespace BITCORNService.Utils.Tx
         }
         public static string UpdateNumberIfTop(string table, string column, decimal value, string primaryKeyName, params int[] primaryKeyValues)
         {
-            StringBuilder sql = new StringBuilder();
-            sql.Append($" UPDATE [{table}] SET {column} = {value} where {value} > {column} and [{table}].{primaryKeyName} ");
+            var sql = new StringBuilder();
+            var valueString = value.ToString(CultureInfo.InvariantCulture);
+            sql.Append($" UPDATE [{table}] SET {column} = {valueString} where {valueString} > {column} and [{table}].{primaryKeyName} ");
             if (primaryKeyValues.Length == 1)
             {
                 sql.Append('=');
@@ -196,12 +217,23 @@ namespace BITCORNService.Utils.Tx
             sql.Append($" UPDATE [{table}] SET ");
             for (int i = 0; i < setters.Count; i++)
             {
+              
                 var item = setters[i];
+                object value = null;
+                if (item.Value is decimal)
+                {
+                    value = ((decimal)item.Value).ToString(CultureInfo.InvariantCulture);
+                }
+                else
+                {
+                    value = item.Value.ToString();
+                }
+
                 if (i != 0)
                 {
                     sql.Append(',');
                 }
-                sql.Append($" {item.Column} = {item.Column} {operation} {item.Value} ");
+                sql.Append($" {item.Column} = {item.Column} {operation} {value} ");
             
             }
 

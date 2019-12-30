@@ -36,16 +36,25 @@ namespace BITCORNServiceTests.Utils
         public static void AddUser(this BitcornContext context, UserIdentity identity,UserWallet wallet)
         {
             var user = new User();
+            user.UserWallet = wallet;
+            user.UserIdentity = identity;
+            user.UserStat = new UserStat();
             context.User.Add(user);
-            context.SaveChanges();
-            
-            identity.UserId = user.UserId;
-            wallet.UserId = user.UserId;
 
-            context.UserIdentity.Add(identity);
-            context.UserWallet.Add(wallet);
             context.SaveChanges();
 
+        }
+
+        public static void RemoveUserIfExists(DbContext dbContext,User user)
+        {
+            if (user != null)
+            {
+                dbContext.Remove(user.UserWallet);
+                dbContext.Remove(user.UserIdentity);
+                dbContext.Remove(user.UserStat);
+                dbContext.Remove(user);
+                dbContext.SaveChanges();
+            }
         }
     }
 }

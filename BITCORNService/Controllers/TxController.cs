@@ -25,6 +25,7 @@ namespace BITCORNService.Controllers
     public class TxController : ControllerBase
     {
         const int BitcornHubPK = 196;
+        public int TimeToClaimTipMinutes { get; set; } = 60 * 24;
         private readonly BitcornContext _dbContext;
 
         public TxController(BitcornContext dbContext)
@@ -123,6 +124,7 @@ namespace BITCORNService.Controllers
             if (tipRequest == null) throw new ArgumentNullException();
             if (tipRequest.From == null) throw new ArgumentNullException();
             if (tipRequest.To == null) throw new ArgumentNullException();
+            if (tipRequest.To == tipRequest.From) return StatusCode((int)HttpStatusCode.BadRequest);
             if (tipRequest.Amount <= 0) return StatusCode((int)HttpStatusCode.BadRequest);
 
             try
@@ -164,32 +166,31 @@ namespace BITCORNService.Controllers
                             await _dbContext.SaveAsync(IsolationLevel.RepeatableRead);
                         }
                     }
+                    else
+                    {
+                        if (processInfo.From != null && !processInfo.From.IsBanned && processInfo.Transactions[0].To == null)
+                        {
+                            if (processInfo.From.UserWallet.Balance >= tipRequest.Amount)
+                            {
+                                var unclaimed = new UnclaimedTx();
+                                unclaimed.TxType = ((ITxRequest)tipRequest).TxType;
+                                unclaimed.Platform = tipRequest.Platform;
+                                unclaimed.ReceiverPlatformId = BitcornUtils.GetPlatformId(tipRequest.To).Id;
+                                unclaimed.Amount = tipRequest.Amount;
+                                unclaimed.Timestamp = DateTime.Now;
+                                unclaimed.SenderUserId = processInfo.From.UserId;
+                                unclaimed.Expiration = DateTime.Now.AddMinutes(TimeToClaimTipMinutes);
+                                unclaimed.Claimed = false;
+                                unclaimed.Refunded = false;
+
+                                _dbContext.UnclaimedTx.Add(unclaimed);
+                                await _dbContext.Database.ExecuteSqlRawAsync(TxUtils.ModifyNumber(nameof(UserWallet), nameof(UserWallet.Balance), tipRequest.Amount, '-', nameof(UserWallet.UserId), processInfo.From.UserId));
+                                await _dbContext.SaveAsync();
+                            }
+                        }
+                    }
                     await TxUtils.AppendTxs(transactions, _dbContext, tipRequest.Columns);
 
-                }
-                else
-                {
-                    if (processInfo.From != null && !processInfo.From.IsBanned)
-                    {
-                        if (processInfo.From.UserWallet.Balance >= tipRequest.Amount)
-                        {
-                            var unclaimed = new UnclaimedTx();
-                            unclaimed.TxType = ((ITxRequest)tipRequest).TxType;
-                            unclaimed.Platform = tipRequest.Platform;
-                            unclaimed.ReceiverPlatformId = BitcornUtils.GetPlatformId(tipRequest.To).Id;
-                            unclaimed.Amount = tipRequest.Amount;
-                            unclaimed.Timestamp = DateTime.Now;
-                            unclaimed.SenderUserId = processInfo.From.UserId;
-                            unclaimed.Expiration = DateTime.Now.AddHours(24);
-                            unclaimed.Claimed = false;
-                            unclaimed.Refunded = false;
-
-                            _dbContext.UnclaimedTx.Add(unclaimed);
-                            await _dbContext.Database.ExecuteSqlRawAsync(TxUtils.ModifyNumber(nameof(UserWallet), nameof(UserWallet.Balance), tipRequest.Amount, '-', nameof(UserWallet.UserId), processInfo.From.UserId));
-                            await _dbContext.SaveAsync();
-                        }
-                        //    unclaimed.SenderUser
-                    }
                 }
                 return transactions;
             }
