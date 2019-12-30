@@ -257,6 +257,8 @@ namespace BITCORNService.Utils.Tx
 
         public static CornTx VerifyTx(User from, User to, decimal amount,string platform,string txType,string txId)
         {
+            if (amount <= 0)
+                return null;
             if (from == null || to == null)
                 return null;
             if (from.IsBanned || to.IsBanned)

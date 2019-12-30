@@ -32,8 +32,13 @@ namespace BITCORNService.Utils.LockUser
                 throw;
             }
             
-            if (userId == 0) throw new Exception("User not found");
-            
+            if (userId == 0)
+            {
+                //let the api deal with unregistered sender
+                await next();
+                return;
+            }
+
             var userLocked = LockedUsers.Contains(userId);
             
             if (userLocked)
@@ -52,7 +57,17 @@ namespace BITCORNService.Utils.LockUser
             {
                 LockedUsers.Add(userId);
             }
-            context.HttpContext.Items.Add(new KeyValuePair<object, object>("Id", userId));
+            try
+            {
+                await next();
+            }
+            finally
+            {
+                lock (LockedUsers)
+                {
+                    LockedUsers.Remove(userId);
+                }
+            }
         }
     }
 

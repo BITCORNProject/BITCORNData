@@ -19,7 +19,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace BITCORNService.Controllers
 {
-    //[ServiceFilter(typeof(LockUserAttribute))]
+    [ServiceFilter(typeof(LockUserAttribute))]
     [Route("api/[controller]")]
     [ApiController]
     public class TxController : ControllerBase
