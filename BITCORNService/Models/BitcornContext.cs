@@ -157,6 +157,14 @@ namespace BITCORNService.Models
                     .HasMaxLength(100)
                     .IsUnicode(false);
 
+                entity.Property(e=>e.TwitterUsername)
+                    .HasMaxLength(50)
+                    .IsUnicode(false);
+
+                entity.Property(e=>e.DiscordUsername)
+                    .HasMaxLength(50)
+                    .IsUnicode(false);
+
                 entity.Property(e => e.DiscordId)
                     .HasMaxLength(100)
                     .IsUnicode(false);
