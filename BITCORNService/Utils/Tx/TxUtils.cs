@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using BITCORNService.Models;
 using BITCORNService.Reflection;
 using BITCORNService.Utils.DbActions;
+using BITCORNService.Utils.LockUser;
 using BITCORNService.Utils.Models;
 using BITCORNService.Utils.Stats;
 using Microsoft.EntityFrameworkCore;
@@ -74,48 +75,80 @@ namespace BITCORNService.Utils.Tx
         }
         public static async Task<int> TryClaimTx(PlatformId platformId, User user, BitcornContext dbContext)
         {
-            var now = DateTime.Now;
-            var txs = await dbContext.UnclaimedTx.Where(u => u.Platform == platformId.Platform
-                && u.ReceiverPlatformId == platformId.Id
-                && !u.Claimed && !u.Refunded
-                && u.Expiration > now).ToArrayAsync();
-
-            var sql = new StringBuilder();
-            var pk = nameof(UserWallet.UserId);
-       
-            foreach (var tx in txs)
+            if (user == null)
             {
-         
-                tx.Claimed = true;
-
-                var log = new CornTx();
-                log.Amount = tx.Amount;
-                log.Platform = tx.Platform;
-                log.ReceiverId = user.UserId;
-                log.SenderId = tx.SenderUserId;
-                log.Timestamp = tx.Timestamp;
-                log.TxGroupId = Guid.NewGuid().ToString();
-                log.TxType = tx.TxType;
-                log.UnclaimedTx.Add(tx);
-                dbContext.CornTx.Add(log);
-
-                sql.Append(TxUtils.ModifyNumber(nameof(UserWallet), nameof(UserWallet.Balance), tx.Amount, '+', pk, user.UserId));
-                sql.Append(TxUtils.ModifyNumber(nameof(UserStat), nameof(UserStat.Tipped), 1, '+', pk, user.UserId));
-                sql.Append(TxUtils.ModifyNumber(nameof(UserStat), nameof(UserStat.TippedTotal), tx.Amount, '+', pk, user.UserId));
-                sql.Append(TxUtils.UpdateNumberIfTop(nameof(UserStat), nameof(UserStat.TopTipped), tx.Amount, pk, user.UserId));
-
-
-                sql.Append(TxUtils.ModifyNumber(nameof(UserStat),nameof(UserStat.Tip),1,'+',pk,tx.SenderUserId));
-                sql.Append(TxUtils.ModifyNumber(nameof(UserStat), nameof(UserStat.TipTotal), tx.Amount, '+', pk, tx.SenderUserId));
-                sql.Append(TxUtils.UpdateNumberIfTop(nameof(UserStat), nameof(UserStat.TopTip), tx.Amount, pk, tx.SenderUserId));
-
+                user = await BitcornUtils.GetUserForPlatform(platformId, dbContext).FirstOrDefaultAsync();
             }
-            if (txs.Length>0)
+            if (user == null)
+                return 0;
+
+            bool lockApplied = false;
+            try
             {
-                await dbContext.Database.ExecuteSqlRawAsync(sql.ToString());
-                await dbContext.SaveAsync();
+                lock (LockUserAttribute.LockedUsers)
+                {
+                    if (LockUserAttribute.LockedUsers.Contains(user.UserId))
+                        return 0;
+                    lockApplied = LockUserAttribute.LockedUsers.Add(user.UserId);
+                }
+
+                var now = DateTime.Now;
+                var txs = await dbContext.UnclaimedTx.Where(u => u.Platform == platformId.Platform
+                    && u.ReceiverPlatformId == platformId.Id
+                    && !u.Claimed && !u.Refunded
+                    && u.Expiration > now).ToArrayAsync();
+
+                var sql = new StringBuilder();
+                var pk = nameof(UserWallet.UserId);
+
+                foreach (var tx in txs)
+                {
+
+                    tx.Claimed = true;
+
+                    var log = new CornTx();
+                    log.Amount = tx.Amount;
+                    log.Platform = tx.Platform;
+                    log.ReceiverId = user.UserId;
+                    log.SenderId = tx.SenderUserId;
+                    log.Timestamp = tx.Timestamp;
+                    log.TxGroupId = Guid.NewGuid().ToString();
+                    log.TxType = tx.TxType;
+                    log.UnclaimedTx.Add(tx);
+                    dbContext.CornTx.Add(log);
+
+                    sql.Append(TxUtils.ModifyNumber(nameof(UserWallet), nameof(UserWallet.Balance), tx.Amount, '+', pk, user.UserId));
+                    sql.Append(TxUtils.ModifyNumber(nameof(UserStat), nameof(UserStat.Tipped), 1, '+', pk, user.UserId));
+                    sql.Append(TxUtils.ModifyNumber(nameof(UserStat), nameof(UserStat.TippedTotal), tx.Amount, '+', pk, user.UserId));
+                    sql.Append(TxUtils.UpdateNumberIfTop(nameof(UserStat), nameof(UserStat.TopTipped), tx.Amount, pk, user.UserId));
+
+
+                    sql.Append(TxUtils.ModifyNumber(nameof(UserStat), nameof(UserStat.Tip), 1, '+', pk, tx.SenderUserId));
+                    sql.Append(TxUtils.ModifyNumber(nameof(UserStat), nameof(UserStat.TipTotal), tx.Amount, '+', pk, tx.SenderUserId));
+                    sql.Append(TxUtils.UpdateNumberIfTop(nameof(UserStat), nameof(UserStat.TopTip), tx.Amount, pk, tx.SenderUserId));
+
+                }
+                if (txs.Length > 0)
+                {
+                    await dbContext.Database.ExecuteSqlRawAsync(sql.ToString());
+                    await dbContext.SaveAsync();
+                }
+                return txs.Length;
             }
-            return txs.Length;
+            catch(Exception e)
+            {
+                await BITCORNLogger.LogError(e);
+            }
+            finally
+            {
+                if (lockApplied)
+                {
+                    lock (LockUserAttribute.LockedUsers)
+                    {
+                        LockUserAttribute.LockedUsers.Remove(user.UserId);
+                    }
+                }
+            }
         }
         public static async Task<TxProcessInfo> ProcessRequest(ITxRequest req, BitcornContext dbContext)
         {
