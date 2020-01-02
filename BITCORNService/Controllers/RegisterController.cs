@@ -5,6 +5,7 @@ using BITCORNService.Models;
 using BITCORNService.Utils;
 using BITCORNService.Utils.DbActions;
 using BITCORNService.Utils.Models;
+using BITCORNService.Utils.Tx;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -87,8 +88,8 @@ namespace BITCORNService.Controllers
                             twitchDbUser.Auth0Id = auth0Id;
                             twitchDbUser.Auth0Nickname = auth0DbUser.Auth0Nickname;
                             await _dbContext.SaveAsync();
-                            ////////////////////////////////////////////////////////////////
-                            // TODO: Add claims
+
+                            await TxUtils.TryClaimTx(platformId, null, _dbContext);
                             return twitchDbUser;
                         }
                         else if (twitchDbUser == null && auth0DbUser != null)
@@ -96,6 +97,8 @@ namespace BITCORNService.Controllers
                             auth0DbUser.TwitchId = platformId.Id;
                             auth0DbUser.TwitchUsername = twitchUser.name;
                             await _dbContext.SaveAsync();
+
+                            await TxUtils.TryClaimTx(platformId, null, _dbContext);
                             return auth0DbUser;
                         }
                         else if (twitchDbUser != null)
@@ -127,9 +130,7 @@ namespace BITCORNService.Controllers
                                 discordDbUser.Auth0Id = auth0Id;
                                 discordDbUser.Auth0Nickname = auth0DbUser.Auth0Nickname;
                                 await _dbContext.SaveAsync();
-                                ////////////////////////////////////////////////////////////////
-                                // TODO: Add registrations claims
-                                // await Payments.ScheduledPaymentManager.TryClaim(discordDbUser, _logger, true);
+                                await TxUtils.TryClaimTx(platformId, null, _dbContext);
                                 return discordDbUser;
                             }
                             else if (discordDbUser == null && auth0DbUser != null)
@@ -138,6 +139,8 @@ namespace BITCORNService.Controllers
                                 auth0DbUser.DiscordUsername = DiscordApi.GetUsernameString(discordUser);
 
                                 await _dbContext.SaveAsync();
+
+                                await TxUtils.TryClaimTx(platformId, null, _dbContext);
                                 return auth0DbUser;
                             }
                             else if (discordDbUser?.Auth0Id != null)
@@ -174,9 +177,7 @@ namespace BITCORNService.Controllers
                                 twitterDbUser.TwitterUsername = twitterUser.Name;
                                 twitterDbUser.Auth0Nickname = auth0DbUser.Auth0Nickname;
                                 await _dbContext.SaveAsync();
-                                ///////////////////////////////////////
-                                //TODO claim transactions
-                                // await Payments.ScheduledPaymentManager.TryClaim(twitterDbUser, _logger, true);
+                                await TxUtils.TryClaimTx(platformId,null,_dbContext);
                                 return twitterDbUser;
                             }
                             if (twitterDbUser == null && auth0DbUser != null)
@@ -184,6 +185,7 @@ namespace BITCORNService.Controllers
                                 auth0DbUser.TwitterId = platformId.Id;
                                 auth0DbUser.TwitterUsername = twitterUser.Name;
                                 await _dbContext.SaveAsync();
+                                await TxUtils.TryClaimTx(platformId, null, _dbContext);
                                 return auth0DbUser;
                             }
                             if (twitterDbUser?.Auth0Id != null)
@@ -213,15 +215,15 @@ namespace BITCORNService.Controllers
                                 redditDbUser.Auth0Id = auth0Id;
                                 redditDbUser.Auth0Nickname = auth0DbUser.Auth0Nickname;
                                 await _dbContext.SaveAsync();
-                                /////////////////////////////
-                                // TODO claim tx
-                                // await Payments.ScheduledPaymentManager.TryClaim(redditDbUser, _logger, true);
+                                await TxUtils.TryClaimTx(platformId, null, _dbContext);
                                 return redditDbUser;
                             }
                             else if (redditDbUser == null && auth0DbUser != null)
                             {
                                 auth0DbUser.RedditId = platformId.Id;
                                 await _dbContext.SaveAsync();
+
+                                await TxUtils.TryClaimTx(platformId, null, _dbContext);
                                 return auth0DbUser;
                             }
                             else if (redditDbUser?.Auth0Id != null)
