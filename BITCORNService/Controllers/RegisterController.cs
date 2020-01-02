@@ -7,6 +7,7 @@ using BITCORNService.Utils.DbActions;
 using BITCORNService.Utils.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 
 namespace BITCORNService.Controllers
 {
@@ -15,10 +16,11 @@ namespace BITCORNService.Controllers
     public class RegisterController : ControllerBase
     {
         private readonly BitcornContext _dbContext;
-
-        public RegisterController(BitcornContext dbContext)
+        private readonly IConfiguration _configuration;
+        public RegisterController(BitcornContext dbContext,IConfiguration configuration)
         {
             _dbContext = dbContext;
+            _configuration = configuration;
         }
 
         [HttpPost("newuser")]
@@ -112,12 +114,16 @@ namespace BITCORNService.Controllers
                     case "discord":
                         try
                         {
-                            var discordDbUser = await _dbContext.DiscordQuery(platformId.Id).Select(u => u.UserIdentity).FirstOrDefaultAsync();
+                            var discordToken = DiscordApi.GetDiscordBotToken(_configuration);
+                            var discordUser = await DiscordApi.GetDiscordUser(discordToken,platformId.Id);
 
+                            var discordDbUser = await _dbContext.DiscordQuery(platformId.Id).Select(u => u.UserIdentity).FirstOrDefaultAsync();
+                            
                             if (discordDbUser != null && discordDbUser.Auth0Id == null)
                             {
                                 _dbContext.UserIdentity.Remove(auth0DbUser);
                                 await _dbContext.SaveAsync();
+                                discordDbUser.DiscordUsername = DiscordApi.GetUsernameString(discordUser);
                                 discordDbUser.Auth0Id = auth0Id;
                                 discordDbUser.Auth0Nickname = auth0DbUser.Auth0Nickname;
                                 await _dbContext.SaveAsync();
@@ -129,6 +135,8 @@ namespace BITCORNService.Controllers
                             else if (discordDbUser == null && auth0DbUser != null)
                             {
                                 auth0DbUser.DiscordId = platformId.Id;
+                                auth0DbUser.DiscordUsername = DiscordApi.GetUsernameString(discordUser);
+
                                 await _dbContext.SaveAsync();
                                 return auth0DbUser;
                             }
@@ -156,13 +164,14 @@ namespace BITCORNService.Controllers
                     case "twitter":
                         try
                         {
+                            var twitterUser = await TwitterApi.GetTwitterUser(_configuration, platformId.Id);
                             var twitterDbUser = await _dbContext.TwitterQuery(platformId.Id).Select(u => u.UserIdentity).FirstOrDefaultAsync();
-
 
                             if (twitterDbUser != null && twitterDbUser.Auth0Id == null)
                             {
                                 _dbContext.UserIdentity.Remove(auth0DbUser);
                                 twitterDbUser.Auth0Id = auth0Id;
+                                twitterDbUser.TwitterUsername = twitterUser.Name;
                                 twitterDbUser.Auth0Nickname = auth0DbUser.Auth0Nickname;
                                 await _dbContext.SaveAsync();
                                 ///////////////////////////////////////
@@ -173,6 +182,7 @@ namespace BITCORNService.Controllers
                             if (twitterDbUser == null && auth0DbUser != null)
                             {
                                 auth0DbUser.TwitterId = platformId.Id;
+                                auth0DbUser.TwitterUsername = twitterUser.Name;
                                 await _dbContext.SaveAsync();
                                 return auth0DbUser;
                             }

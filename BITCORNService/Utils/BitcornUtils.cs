@@ -136,6 +136,8 @@ namespace BITCORNService.Utils
             fullUser.Auth0Nickname = userIdentity.Auth0Nickname;
             fullUser.TwitchId = userIdentity.TwitchId;
             fullUser.TwitchUsername = userIdentity.TwitchUsername;
+            fullUser.TwitterUsername = userIdentity.TwitterUsername;
+            fullUser.DiscordUsername = userIdentity.DiscordUsername;
             fullUser.DiscordId = userIdentity.DiscordId;
             fullUser.TwitterId = userIdentity.TwitterId;
             fullUser.RedditId = userIdentity.RedditId;
