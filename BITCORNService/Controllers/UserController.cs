@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using BITCORNService.Models;
+using BITCORNService.Reflection;
 using BITCORNService.Utils;
 using BITCORNService.Utils.DbActions;
 using BITCORNService.Utils.Models;
@@ -34,7 +35,26 @@ namespace BITCORNService.Controllers
             
             return BitcornUtils.GetFullUser(user, user.UserIdentity, user.UserWallet, user.UserStat);
         }
+        [HttpPost("ban/{id}")]
+        public async Task<object> Ban([FromRoute] string id)
+        {
+            if (string.IsNullOrWhiteSpace(id)) throw new ArgumentNullException("id");
 
+            var platformId = BitcornUtils.GetPlatformId(id);
+            var primaryKey = -1;
+
+            var user = await BitcornUtils.GetUserForPlatform(platformId, _dbContext).FirstOrDefaultAsync();
+            if (user != null)
+            {
+                primaryKey = user.UserId;
+                user.IsBanned = true;
+                _dbContext.Update(user);
+
+                await _dbContext.SaveAsync();
+            }
+            var obj = await UserReflection.GetColumns(_dbContext, new string[] { "*" }, new[] { primaryKey });
+            return obj.First();
+        }
         [HttpGet("{name}/[action]")]
         public bool Check(string name)
         {

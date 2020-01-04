@@ -139,7 +139,9 @@ namespace BITCORNService.Models
                     .HasMaxLength(50)
                     .IsUnicode(false);
 
-                entity.Property(e=>e.IsBanned);
+                entity.Property(e=>e.IsBanned)
+                    .HasColumnName("IsBanned")
+                    .HasDefaultValueSql("((0))");
             });
 
             modelBuilder.Entity<UserIdentity>(entity =>
