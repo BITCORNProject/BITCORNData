@@ -1,4 +1,6 @@
-﻿namespace BITCORNService.Models
+﻿using BITCORNService.Reflection;
+
+namespace BITCORNService.Models
 {
     public partial class UserIdentity
     {
@@ -6,6 +8,7 @@
         public string TwitchUsername { get; set; }
         public string DiscordUsername { get; set; }
         public string TwitterUsername { get; set; }
+        [UserPropertyRoute(nameof(RedditId))]
         public string RedditUsername { get => RedditId; }
         public string Auth0Nickname { get; set; }
         public string Auth0Id { get; set; }

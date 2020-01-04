@@ -39,7 +39,17 @@ namespace BITCORNService.Reflection
                             property.PropertyType == typeof(int?) ||
                             property.PropertyType == typeof(decimal?))
                         {
-                            string name = property.Name.ToLower();
+                            string name;
+                            var attribute = property.GetCustomAttribute<UserPropertyRouteAttribute>();
+                            if (attribute != null)
+                            {
+                                name = attribute.RouteTo;
+                            }
+                            else
+                            {
+                                name = property.Name.ToLower();
+                            }
+                            
                             if (!closedColumns.Contains(name))
                             {
                                 ColumnToTable.Add(name, model);
