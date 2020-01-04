@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using BITCORNService.Models;
 using BITCORNService.Reflection;
 using BITCORNService.Utils;
+using BITCORNService.Utils.LockUser;
 using BITCORNService.Utils.Models;
 using BITCORNService.Utils.Wallet;
 using Microsoft.AspNetCore.Mvc;
@@ -69,6 +70,7 @@ namespace BITCORNService.Controllers
         }
 
         //API: /api/wallet/withdraw
+        [ServiceFilter(typeof(LockUserAttribute))]
         [HttpPost("withdraw")]
         public async Task<object> Withdraw([FromBody] WithdrawRequest request)
         {
