@@ -115,7 +115,7 @@ namespace BITCORNService.Controllers
             {
                 await _dbContext.Database.ExecuteSqlRawAsync(TxUtils.ModifyNumber(nameof(UserWallet), nameof(UserWallet.Balance), total, '-', pk, BitcornHubPK));
             }
-            return changedRows;
+            return changedRows/2;
         }
 
         [HttpPost("tipcorn")]
