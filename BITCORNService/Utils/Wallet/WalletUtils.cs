@@ -249,6 +249,8 @@ namespace BITCORNService.Utils.Wallet
             {
                 var server = dbContext.WalletServer.FirstOrDefault((s) => s.Index == request.Index);
                 int newDeposits = 0;
+
+                var sql = new StringBuilder();
                 foreach (dynamic payment in request.Payments)
                 {
                     decimal amount = payment.amount;
@@ -261,30 +263,34 @@ namespace BITCORNService.Utils.Wallet
                     {
                         newDeposits++;
                         var wallet = await dbContext.WalletByAddress(address);
-                        wallet.Balance += amount;
+                        if (wallet != null)
+                        {
+                            var cornTx = new CornTx();
+                            cornTx.Amount = amount;
+                            cornTx.BlockchainTxId = txid;
+                            cornTx.ReceiverId = wallet.UserId;
+                            cornTx.SenderId = null;
+                            cornTx.Timestamp = DateTime.Now;
+                            cornTx.TxType = TransactionType.receive.ToString();
+                            cornTx.Platform = "wallet-server";
 
-                        var cornTx = new CornTx();
-                        cornTx.Amount = amount;
-                        cornTx.BlockchainTxId = txid;
-                        cornTx.ReceiverId = wallet.UserId;
-                        cornTx.SenderId = null;
-                        cornTx.Timestamp = DateTime.Now;
-                        cornTx.TxType = TransactionType.receive.ToString();
-                        cornTx.Platform = "wallet-server";
+                            var deposit = new CornDeposit();
+                            deposit.TxId = txid;
+                            deposit.UserId = wallet.UserId;
 
-                        var deposit = new CornDeposit();
-                        deposit.TxId = txid;
-                        deposit.UserId = wallet.UserId;
-
-                        server.ServerBalance += amount;
-                        dbContext.CornTx.Add(cornTx);
-                        dbContext.CornDeposit.Add(deposit);
+                            sql.Append(TxUtils.ModifyNumber(nameof(UserWallet), nameof(UserWallet.Balance), amount, '+', nameof(UserWallet.UserId), wallet.UserId));
+                            sql.Append(TxUtils.ModifyNumber(nameof(WalletServer), nameof(WalletServer.ServerBalance), amount, '+', nameof(WalletServer.Id), server.Id));
+                           
+                            dbContext.CornTx.Add(cornTx);
+                            dbContext.CornDeposit.Add(deposit);
+                        }
                     }
                 }
 
                 if (newDeposits > 0)
                 {
                     server.LastBalanceUpdateBlock = request.Block;
+                    await dbContext.Database.ExecuteSqlRawAsync(sql.ToString());
                     await dbContext.SaveAsync();
                 }
             }
