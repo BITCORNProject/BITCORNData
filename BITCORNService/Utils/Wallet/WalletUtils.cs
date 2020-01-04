@@ -12,6 +12,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -147,6 +148,29 @@ namespace BITCORNService.Utils.Wallet
         {
             return !string.IsNullOrEmpty(accessToken);
         }
+        public static async Task<CornTx> DebitWithdrawTx(string txId, User user, WalletServer server, decimal amount, BitcornContext dbContext, string platform)
+        {
+            if (user.UserWallet.Balance >= amount)
+            {
+                var sql = new StringBuilder();
+                sql.Append(TxUtils.ModifyNumber(nameof(UserWallet), nameof(UserWallet.Balance), amount, '-', nameof(UserWallet.UserId), user.UserId));
+                sql.Append(TxUtils.ModifyNumber(nameof(WalletServer), nameof(WalletServer.ServerBalance), amount, '-', nameof(WalletServer.Id), server.Id));
+                await dbContext.Database.ExecuteSqlRawAsync(sql.ToString());
+
+                var log = new CornTx();
+                log.BlockchainTxId = txId;
+                log.Amount = amount;
+                log.Timestamp = DateTime.Now;
+                log.TxType = "$withdraw";
+                log.TxGroupId = Guid.NewGuid().ToString();
+                log.Platform = platform;
+                log.ReceiverId = user.UserId;
+                dbContext.CornTx.Add(log);
+                await dbContext.SaveAsync();
+                return log;
+            }
+            return null;
+        }
         public static async Task<BitcornResponse> Withdraw(BitcornContext dbContext, IConfiguration configuration,User user,string cornAddy,decimal amount,string platform)
         {
             var cornResponse = new BitcornResponse();
@@ -183,18 +207,7 @@ namespace BITCORNService.Utils.Wallet
                     if (!response.IsError)
                     {
                         string txId = response.GetParsedContent();
-                        user.UserWallet.Balance -= amount;
-                        server.ServerBalance -= amount;
-                        var log = new CornTx();
-                        log.BlockchainTxId = txId;
-                        log.Amount = amount;
-                        log.Timestamp = DateTime.Now;
-                        log.TxType = "$withdraw";
-                        log.TxGroupId = Guid.NewGuid().ToString();
-                        log.Platform = platform;
-                        log.ReceiverId = user.UserId;
-                        dbContext.CornTx.Add(log);
-                        await dbContext.SaveAsync();
+                        await DebitWithdrawTx(txId,user,server,amount,dbContext,platform);
                         cornResponse.WalletObject = txId;
 
                     }
