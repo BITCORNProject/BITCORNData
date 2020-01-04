@@ -138,6 +138,7 @@ namespace BITCORNService.Utils.Tx
             catch(Exception e)
             {
                 await BITCORNLogger.LogError(e);
+                return 0;
             }
             finally
             {
