@@ -3,6 +3,7 @@ using BITCORNService.Models;
 using BITCORNService.Utils.DbActions;
 using BITCORNService.Utils.Models;
 using BITCORNService.Utils.Tx;
+using BITCORNService.Utils.Wallet;
 using BITCORNServiceTests.Models;
 using BITCORNServiceTests.Utils;
 using Microsoft.AspNetCore.Mvc;
@@ -619,27 +620,53 @@ namespace BITCORNServiceTests
             }
         }
         [Fact]
-        public async Task TestWithdrawSuccess()
+        public async Task TestWithdrawDebit()
         {
-            /*
-            var withdrawUser = new WithdrawRequest()
+            var dbContext = TestUtils.CreateDatabase();
+            try
             {
-                Id = _configuration["Config:TestUserId"],
-                Amount = 1,
-                CornAddy = _configuration["Config:TestAddress"]
-            };
+                var amount = 10;
+                var user = dbContext.TwitchQuery(_configuration["Config:TestFromUserId"]).FirstOrDefault();
+                var server = dbContext.WalletServer.FirstOrDefault(u=>u.Index==user.UserWallet.WalletServer);
+                await WalletUtils.DebitWithdrawTx("test",user,server,amount,dbContext,"test");
+                using (var dbContext2 = TestUtils.CreateDatabase())
+                {
+                    var user2 = dbContext2.TwitchQuery(_configuration["Config:TestFromUserId"]).FirstOrDefault();
 
-            using (var dbContext = TestUtils.CreateDatabase())
+                    var server2 = dbContext2.WalletServer.FirstOrDefault(u => u.Index == user.UserWallet.WalletServer);
+                    Assert.Equal(user.UserWallet.Balance-amount,user2.UserWallet.Balance);
+                    Assert.Equal(server.ServerBalance-amount,server2.ServerBalance);
+                }
+            }
+            finally
             {
-                var txController = new TxController(dbContext);
+                dbContext.Dispose();
+            }
+        }
+        [Fact]
+        public async Task TestWithdrawInsufficientFunds()
+        {
+            var dbContext = TestUtils.CreateDatabase();
+            try
+            {
+                var user = dbContext.TwitchQuery(_configuration["Config:TestFromUserId"]).FirstOrDefault();
 
-                var startUser = await dbContext.TwitchAsync(withdrawUser.Id);
-                var startBalance = dbContext.UserWallet.FirstOrDefault(w => w.UserId == startUser.UserId).Balance;
-                await txController.Withdraw(withdrawUser);
+                var amount = user.UserWallet.Balance.Value+10;
+                var server = dbContext.WalletServer.FirstOrDefault(u => u.Index == user.UserWallet.WalletServer);
+                await WalletUtils.DebitWithdrawTx("test", user, server, amount, dbContext, "test");
+                using (var dbContext2 = TestUtils.CreateDatabase())
+                {
+                    var user2 = dbContext2.TwitchQuery(_configuration["Config:TestFromUserId"]).FirstOrDefault();
 
-                var endBalance = dbContext.UserWallet.FirstOrDefault(w => w.UserId == startUser.UserId).Balance;
-                Assert.True(startBalance - withdrawUser.Amount == endBalance);
-            }*/
+                    var server2 = dbContext2.WalletServer.FirstOrDefault(u => u.Index == user.UserWallet.WalletServer);
+                    Assert.Equal(user.UserWallet.Balance, user2.UserWallet.Balance);
+                    Assert.Equal(server.ServerBalance, server2.ServerBalance);
+                }
+            }
+            finally
+            {
+                dbContext.Dispose();
+            }
         }
     }
 }
