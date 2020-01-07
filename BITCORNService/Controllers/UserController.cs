@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net;
 using System.Threading.Tasks;
 using BITCORNService.Models;
 using BITCORNService.Utils;
@@ -25,25 +26,25 @@ namespace BITCORNService.Controllers
 
         // POST: api/User
         [HttpPost("{id}")]
-        public async Task<FullUser> Post([FromRoute] string id)
+        public async Task<IActionResult> Post([FromRoute] string id)
         {
             if(string.IsNullOrWhiteSpace(id)) throw new ArgumentNullException("id");
 
             var platformId = BitcornUtils.GetPlatformId(id);
             var userIdentity = await BitcornUtils.GetUserIdentityForPlatform(platformId, _dbContext);
-            if (userIdentity == null) throw new ArgumentNullException("userIdentity");
+            if (userIdentity == null) return NotFound();
 
             var user = _dbContext.User.FirstOrDefault(u => u.UserId == userIdentity.UserId);
-            if (user == null) throw new ArgumentNullException("user");
+            if (user == null) return NotFound();
 
             var userWallet = _dbContext.UserWallet.FirstOrDefault(u => u.UserId == userIdentity.UserId);
-            if (userWallet == null) throw new ArgumentNullException("userWallet");
+            if (userWallet == null) return NotFound();
 
             var userStats = _dbContext.UserStat.FirstOrDefault(u => u.UserId == userIdentity.UserId);
             
-            if (userStats == null) throw new ArgumentNullException("userStats");
+            if (userStats == null) return NotFound();
 
-             return BitcornUtils.GetFullUser(user, userIdentity, userWallet, userStats);
+            return Ok(BitcornUtils.GetFullUser(user, userIdentity, userWallet, userStats));
         }
 
         [HttpGet("{name}/[action]")]
