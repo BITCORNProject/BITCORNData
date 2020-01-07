@@ -35,7 +35,7 @@ namespace BITCORNService.Controllers
 
             var platformId = BitcornUtils.GetPlatformId(id);
             var user = await BitcornUtils.GetUserForPlatform(platformId, _dbContext).FirstOrDefaultAsync();
-            
+
             return BitcornUtils.GetFullUser(user, user.UserIdentity, user.UserWallet, user.UserStat);
         }
         [HttpPost("ban/{id}")]
@@ -74,7 +74,7 @@ namespace BITCORNService.Controllers
             //join identity with user table to select in 1 query
             var user = await _dbContext.Auth0Query(auth0IdUsername.Auth0Id)
                 .Join(_dbContext.User,identity=>identity.UserId,us=>us.UserId,(id,u)=> u).FirstOrDefaultAsync();
-          
+
             user.Username = auth0IdUsername.Username;
             await _dbContext.SaveAsync();
             return true;
