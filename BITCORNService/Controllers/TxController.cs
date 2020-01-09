@@ -14,11 +14,13 @@ using BITCORNService.Utils.LockUser;
 using BITCORNService.Utils.Models;
 using BITCORNService.Utils.Stats;
 using BITCORNService.Utils.Tx;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
 namespace BITCORNService.Controllers
 {
+    [Authorize]
     [ServiceFilter(typeof(LockUserAttribute))]
     [Route("api/[controller]")]
     [ApiController]

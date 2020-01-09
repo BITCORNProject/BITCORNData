@@ -2,11 +2,13 @@
 using System.Threading.Tasks;
 using BITCORNService.Models;
 using BITCORNService.Utils;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
 namespace BITCORNService.Controllers
 {
+    [Authorize]
     [Route("api/[controller]")]
     [ApiController]
     public class UserWalletController : ControllerBase

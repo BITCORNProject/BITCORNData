@@ -1,6 +1,7 @@
 using System;
 using BITCORNService.Models;
 using BITCORNService.Utils.LockUser;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.EntityFrameworkCore;
@@ -26,6 +27,17 @@ namespace BITCORNService
         public void ConfigureServices(IServiceCollection services)
         {
             var connection = Configuration["Config:ConnectionString"];
+            var auth0Domain = $"https://{Configuration["Auth0:Domain"]}/";
+            var audience = Configuration["Auth0:ApiIdentifier"];
+            services.AddAuthentication(options =>
+            {
+                options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+                options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+            }).AddJwtBearer(options =>
+            {
+                options.Authority = auth0Domain;
+                options.Audience = audience;
+            });
             services.AddScoped<LockUserAttribute>();
             services.AddSingleton(Configuration);
             
@@ -52,6 +64,7 @@ namespace BITCORNService
 
             app.UseRouting();
 
+            app.UseAuthentication();
             app.UseAuthorization();
 
             app.UseEndpoints(endpoints =>

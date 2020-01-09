@@ -7,9 +7,11 @@ using BITCORNService.Utils.DbActions;
 using BITCORNService.Utils.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Authorization;
 
 namespace BITCORNService.Controllers
 {
+    [Authorize]
     [Route("api/[controller]")]
     [ApiController]
     public class UserIdentityController : ControllerBase
