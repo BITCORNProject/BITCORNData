@@ -42,9 +42,9 @@ namespace BITCORNService.Controllers
             if (user != null)
             {
                 var walletResponse = await WalletUtils.CreateCornaddy(_dbContext, user.UserWallet, _configuration);
-                response.Add("UserError", walletResponse.UserError);
-                response.Add("WalletAvailable",walletResponse.WalletAvailable);
-                response.Add("CornAddy",walletResponse.WalletObject);
+                response.Add("usererror", walletResponse.UserError);
+                response.Add("walletavailable",walletResponse.WalletAvailable);
+                response.Add("cornaddy",walletResponse.WalletObject);
                 if (request.Columns.Length > 0)
                 {
                     var columns = await UserReflection.GetColumns(_dbContext, request.Columns, new int[] { user.UserId });
@@ -82,9 +82,9 @@ namespace BITCORNService.Controllers
             if (user != null)
             {
                 var withdrawResult = await WalletUtils.Withdraw(_dbContext, _configuration,user,request.CornAddy,request.Amount, platformId.Platform);
-                response.Add("UserError",withdrawResult.UserError);
-                response.Add("WalletAvailable",withdrawResult.WalletAvailable);
-                response.Add("TxId",withdrawResult.WalletObject);
+                response.Add("usererror",withdrawResult.UserError);
+                response.Add("walletavailable",withdrawResult.WalletAvailable);
+                response.Add("txid",withdrawResult.WalletObject);
                 if (request.Columns.Length > 0)
                 {
                     var columns = await UserReflection.GetColumns(_dbContext, request.Columns, new int[] { user.UserId });
