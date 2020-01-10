@@ -16,7 +16,7 @@ namespace BITCORNService.Utils
             var platformId = new PlatformId();
             var parts = routeId.Split('|');
             platformId.Platform = parts[0].ToLower();
-            platformId.Id = parts[1].ToLower();
+            platformId.Id = parts[1];
             if (parts[0] == "auth0")
             {
                 platformId.Id = routeId;
