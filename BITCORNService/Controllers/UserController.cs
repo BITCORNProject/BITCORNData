@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net;
 using System.Threading.Tasks;
 using BITCORNService.Models;
 using BITCORNService.Reflection;
@@ -34,7 +35,7 @@ namespace BITCORNService.Controllers
 
             var platformId = BitcornUtils.GetPlatformId(id);
             var user = await BitcornUtils.GetUserForPlatform(platformId, _dbContext).FirstOrDefaultAsync();
-            
+
             return BitcornUtils.GetFullUser(user, user.UserIdentity, user.UserWallet, user.UserStat);
         }
         [HttpPost("ban/{id}")]
@@ -54,8 +55,8 @@ namespace BITCORNService.Controllers
 
                 await _dbContext.SaveAsync();
             }
-            var obj = await UserReflection.GetColumns(_dbContext, new string[] { "*" }, new[] { primaryKey });
-            return obj.First();
+            var users = await UserReflection.GetColumns(_dbContext, new string[] { "*" }, new[] { primaryKey });
+            return users.First();
         }
         [HttpGet("{name}/[action]")]
         public bool Check(string name)
@@ -72,8 +73,8 @@ namespace BITCORNService.Controllers
             }
             //join identity with user table to select in 1 query
             var user = await _dbContext.Auth0Query(auth0IdUsername.Auth0Id)
-                .Join(_dbContext.User,identity=>identity.UserId,user=>user.UserId,(id,u)=> u).FirstOrDefaultAsync();
-          
+                .Join(_dbContext.User, identity => identity.UserId, us => us.UserId, (id, u) => u).FirstOrDefaultAsync();
+
             user.Username = auth0IdUsername.Username;
             await _dbContext.SaveAsync();
             return true;
