@@ -201,7 +201,7 @@ namespace BITCORNService.Utils.Wallet
                     throw new UnauthorizedAccessException("Failed to fetch wallet server access token");
                 }
 
-                using (var client = new WalletClient(server.Endpoint, accessToken))
+                using (var client = new WalletClient("https://localhost:44323/api/llapi", accessToken))
                 {
                     var response = await client.SendToAddressAsync(cornAddy, amount);
                     if (!response.IsError)
@@ -251,11 +251,11 @@ namespace BITCORNService.Utils.Wallet
                 int newDeposits = 0;
 
                 var sql = new StringBuilder();
-                foreach (dynamic payment in request.Payments)
+                foreach (var payment in request.Payments)
                 {
-                    decimal amount = payment.amount;
-                    string address = payment.address;
-                    string txid = payment.txid;
+                    decimal amount = payment.Amount;
+                    string address = payment.Address;
+                    string txid = payment.TxId;
 
                     bool isLogged = await dbContext.IsDepositRegistered(txid);
 
@@ -273,7 +273,7 @@ namespace BITCORNService.Utils.Wallet
                             cornTx.Timestamp = DateTime.Now;
                             cornTx.TxType = TransactionType.receive.ToString();
                             cornTx.Platform = "wallet-server";
-
+                            cornTx.TxGroupId = Guid.NewGuid().ToString();
                             var deposit = new CornDeposit();
                             deposit.TxId = txid;
                             deposit.UserId = wallet.UserId;
@@ -290,13 +290,13 @@ namespace BITCORNService.Utils.Wallet
                 if (newDeposits > 0)
                 {
                     server.LastBalanceUpdateBlock = request.Block;
-                    await dbContext.Database.ExecuteSqlRawAsync(sql.ToString());
+                    int count = await dbContext.Database.ExecuteSqlRawAsync(sql.ToString());
                     await dbContext.SaveAsync();
                 }
             }
             catch (Exception e)
             {
-                await BITCORNLogger.LogError(e);
+                await BITCORNLogger.LogError(dbContext, e);
             }
         }
     }
