@@ -106,14 +106,14 @@ namespace BITCORNService.Controllers
                         else if (twitchDbUser != null)
                         {
                             var e = new Exception($"A login id already exists for this twitch id {platformId.Id}");
-                            await BITCORNLogger.LogError(e);
+                            await BITCORNLogger.LogError(_dbContext, e);
                             throw e;
                         }
                         else
                         {
                             var e = new Exception(
                                 $"Failed to register twitch {platformId.Id} {auth0Id}");
-                            await BITCORNLogger.LogError(e);
+                            await BITCORNLogger.LogError(_dbContext, e);
                             throw e;
                         }
                     case "discord":
@@ -148,20 +148,20 @@ namespace BITCORNService.Controllers
                             else if (discordDbUser?.Auth0Id != null)
                             {
                                 var e = new Exception($"A login id already exists for this discord id");
-                                await BITCORNLogger.LogError(e, $"Auth0Id already exists for user {platformId.Id}");
+                                await BITCORNLogger.LogError(_dbContext,e, $"Auth0Id already exists for user {platformId.Id}");
                                 throw e;
                             }
                             else
                             {
                                 var e = new Exception($"Failed to register discord");
-                                await BITCORNLogger.LogError(e, $"Failed to register discord id for user {platformId.Id} {auth0Id}");
-                                await BITCORNLogger.LogError(e, $"Failed to register discord id for user {platformId.Id} {auth0Id}");
+                                await BITCORNLogger.LogError(_dbContext,e, $"Failed to register discord id for user {platformId.Id} {auth0Id}");
+                                await BITCORNLogger.LogError(_dbContext,e, $"Failed to register discord id for user {platformId.Id} {auth0Id}");
                                 throw e;
                             }
                         }
                         catch (Exception e)
                         {
-                            await BITCORNLogger.LogError(e);
+                            await BITCORNLogger.LogError(_dbContext,e);
                             throw new Exception($"Failed to add user's discord");
                         }
 
@@ -193,16 +193,16 @@ namespace BITCORNService.Controllers
                             if (twitterDbUser?.Auth0Id != null)
                             {
                                 var e = new Exception($"Auth0Id already exists for user {platformId.Id}");
-                                await BITCORNLogger.LogError(e);
+                                await BITCORNLogger.LogError(_dbContext,e);
                                 throw e;
                             }
                             var ex = new Exception($"Failed to register twitter id for user {platformId.Id} {auth0Id}");
-                            await BITCORNLogger.LogError(ex);
+                            await BITCORNLogger.LogError(_dbContext,ex);
                             throw ex;
                         }
                         catch (Exception e)
                         {
-                            await BITCORNLogger.LogError(e);
+                            await BITCORNLogger.LogError(_dbContext, e);
                             throw e;
                         }
                         throw new Exception($"HOW THE FUCK DID YOU GET HERE");
@@ -231,19 +231,19 @@ namespace BITCORNService.Controllers
                             else if (redditDbUser?.Auth0Id != null)
                             {
                                 var e = new Exception($"Auth0Id already exists for user {platformId.Id}");
-                                await BITCORNLogger.LogError(e);
+                                await BITCORNLogger.LogError(_dbContext, e);
                                 throw e;
                             }
                             else
                             {
                                 var e = new Exception($"Failed to register reddit id for user {platformId.Id} {platformId.Id}");
-                                await BITCORNLogger.LogError(e);
+                                await BITCORNLogger.LogError(_dbContext, e);
                                 throw e;
                             }
                         }
                         catch (Exception e)
                         {
-                            await BITCORNLogger.LogError(e);
+                            await BITCORNLogger.LogError(_dbContext, e);
                             throw e;
                         }
 
