@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Net;
 using System.Threading.Tasks;
+using BITCORNService.Models;
 using BITCORNService.Utils;
 using BITCORNService.Utils.Twitch;
 using Microsoft.AspNetCore.Mvc;
@@ -13,9 +14,11 @@ namespace BITCORNService.Controllers
     public class TestController : ControllerBase
     {
         private IConfiguration _config;
-        public TestController(IConfiguration configuration)
+        private BitcornContext _dbContext;
+        public TestController(IConfiguration configuration, BitcornContext dbContext)
         {
             _config = configuration;
+            _dbContext = dbContext;
         }
 
         [HttpPost]
@@ -44,7 +47,7 @@ namespace BITCORNService.Controllers
         {
             try
             {
-                var krak = new Kraken(_config);
+                var krak = new Kraken(_config, _dbContext);
                 krak.Nachos();
                 return HttpStatusCode.OK;
             }
