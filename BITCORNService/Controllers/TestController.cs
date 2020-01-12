@@ -27,7 +27,6 @@ namespace BITCORNService.Controllers
             }
             catch (Exception e)
             {
-                await BITCORNLogger.LogError(e);
                 return HttpStatusCode.InternalServerError;
             }
         }
@@ -41,7 +40,6 @@ namespace BITCORNService.Controllers
             }
             catch (Exception e)
             {
-                await BITCORNLogger.LogError(e);
                 return HttpStatusCode.InternalServerError;
             }
         }

@@ -32,5 +32,6 @@
         public int? WalletServer { get; set; }
         public decimal? Balance { get; set; }
         public string CornAddy { get; set; }
+        public int SubTier { get; set; }
     }
 }

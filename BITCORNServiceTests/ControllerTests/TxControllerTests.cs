@@ -102,7 +102,7 @@ namespace BITCORNServiceTests
                     _configuration["Config:TestFromUserId"],
                     _configuration["Config:TestToUserId"]
                 });
-                Assert.Equal(4,changeCount);
+                Assert.Equal(2,changeCount);
             }
             finally
             {

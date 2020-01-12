@@ -23,6 +23,7 @@ namespace BITCORNService.Utils.DbActions
                         UserId = user.UserId,
                         Level = user.Level,
                         Username = user.Username,
+                        SubTier = user.SubTier,
                         Avatar = user.Avatar,
                         IsBanned = user.IsBanned,
                         UserWallet = wallet,

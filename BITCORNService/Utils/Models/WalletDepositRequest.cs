@@ -1,4 +1,5 @@
-﻿using Newtonsoft.Json.Linq;
+﻿using BITCORNService.Utils.Wallet.Models;
+using Newtonsoft.Json.Linq;
 
 namespace BITCORNService.Models
 {
@@ -6,6 +7,7 @@ namespace BITCORNService.Models
     {
         public int Index { get; set; }
         public string Block { get; set; }
-        public JArray Payments { get; set; }
+        public WalletDeposit[] Payments { get; set; }
     }
+    
 }

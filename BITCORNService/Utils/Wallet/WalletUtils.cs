@@ -243,19 +243,20 @@ namespace BITCORNService.Utils.Wallet
             return cornResponse;
         }
                 
-        public static async Task Deposit(BitcornContext dbContext, WalletDepositRequest request)
+        public static async Task<CornTx[]> Deposit(BitcornContext dbContext, WalletDepositRequest request)
         {
+            var receipts = new List<CornTx>();
             try
             {
                 var server = dbContext.WalletServer.FirstOrDefault((s) => s.Index == request.Index);
                 int newDeposits = 0;
 
                 var sql = new StringBuilder();
-                foreach (dynamic payment in request.Payments)
+                foreach (var payment in request.Payments)
                 {
-                    decimal amount = payment.amount;
-                    string address = payment.address;
-                    string txid = payment.txid;
+                    decimal amount = payment.Amount;
+                    string address = payment.Address;
+                    string txid = payment.TxId;
 
                     bool isLogged = await dbContext.IsDepositRegistered(txid);
 
@@ -273,7 +274,7 @@ namespace BITCORNService.Utils.Wallet
                             cornTx.Timestamp = DateTime.Now;
                             cornTx.TxType = TransactionType.receive.ToString();
                             cornTx.Platform = "wallet-server";
-
+                            cornTx.TxGroupId = Guid.NewGuid().ToString();
                             var deposit = new CornDeposit();
                             deposit.TxId = txid;
                             deposit.UserId = wallet.UserId;
@@ -283,6 +284,7 @@ namespace BITCORNService.Utils.Wallet
                            
                             dbContext.CornTx.Add(cornTx);
                             dbContext.CornDeposit.Add(deposit);
+                            receipts.Add(cornTx);
                         }
                     }
                 }
@@ -290,14 +292,15 @@ namespace BITCORNService.Utils.Wallet
                 if (newDeposits > 0)
                 {
                     server.LastBalanceUpdateBlock = request.Block;
-                    await dbContext.Database.ExecuteSqlRawAsync(sql.ToString());
+                    int count = await dbContext.Database.ExecuteSqlRawAsync(sql.ToString());
                     await dbContext.SaveAsync();
                 }
             }
             catch (Exception e)
             {
-                await BITCORNLogger.LogError(e);
+                await BITCORNLogger.LogError(dbContext, e);
             }
+            return receipts.ToArray();
         }
     }
 }

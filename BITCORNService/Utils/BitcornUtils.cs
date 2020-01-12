@@ -1,11 +1,14 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using BITCORNService.Models;
 using BITCORNService.Utils.DbActions;
 using BITCORNService.Utils.Models;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
+using RestSharp;
 
 namespace BITCORNService.Utils
 {
@@ -91,7 +94,23 @@ namespace BITCORNService.Utils
             }
         }
 
+        public static async Task TxTracking(IConfiguration config, object data)
+        {
+            var client = new RestClient(config["Config:TxTrackingEndpoint"]);
+            var request = new RestRequest(Method.POST);
+            request.AddHeader("content-type", "application/json");
+            request.AddJsonBody(data);
 
+            var cancellationTokenSource = new CancellationTokenSource();
+            try
+            {
+                await client.ExecuteTaskAsync(request, cancellationTokenSource.Token);
+            }
+            finally
+            {
+                cancellationTokenSource.Dispose();
+            }
+        }
         public static async Task<UserIdentity> DeleteIdForPlatform(UserIdentity userIdentity, PlatformId platformId, BitcornContext dbContext)
         {
             switch (platformId.Platform.ToLower())
@@ -157,7 +176,7 @@ namespace BITCORNService.Utils
             fullUser.RainedOn = userStats.RainedOn;
             fullUser.RainedOnTotal = userStats.RainedOnTotal;
             fullUser.RainTotal = userStats.TopRainedOn;
-
+            fullUser.SubTier = user.SubTier;
             //call for twitter username
             //call for discord username
             return fullUser;
