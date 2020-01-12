@@ -96,12 +96,13 @@ namespace BITCORNService.Controllers
                 var t2 = subs.Where(s => s.Tier == "2000").ToList();
                 var t3 = subs.Where(s => s.Tier == "3000").ToList();
 
-                await _dbContext.Database.ExecuteSqlRawAsync("UPDATE users SET subtier = 0");
-                
-                await _dbContext.Database.ExecuteSqlRawAsync(BitcornUtils.BuildSubtierUpdateString(t1,1));
-                await _dbContext.Database.ExecuteSqlRawAsync(BitcornUtils.BuildSubtierUpdateString(t2, 2));
-                await _dbContext.Database.ExecuteSqlRawAsync(BitcornUtils.BuildSubtierUpdateString(t3, 3));
-                
+                await _dbContext.Database.ExecuteSqlRawAsync("UPDATE [user] SET [subtier] = 0");
+                if(t1.Count>0)
+                    await _dbContext.Database.ExecuteSqlRawAsync(BitcornUtils.BuildSubtierUpdateString(t1,1));
+                if(t2.Count>0)
+                    await _dbContext.Database.ExecuteSqlRawAsync(BitcornUtils.BuildSubtierUpdateString(t2, 2));
+                if (t3.Count > 0)
+                    await _dbContext.Database.ExecuteSqlRawAsync(BitcornUtils.BuildSubtierUpdateString(t3, 3));
                 return HttpStatusCode.OK;
             }
             catch (Exception e)
