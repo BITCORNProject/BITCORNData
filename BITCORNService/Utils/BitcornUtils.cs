@@ -157,7 +157,7 @@ namespace BITCORNService.Utils
             fullUser.RainedOn = userStats.RainedOn;
             fullUser.RainedOnTotal = userStats.RainedOnTotal;
             fullUser.RainTotal = userStats.TopRainedOn;
-
+            fullUser.SubTier = user.SubTier;
             //call for twitter username
             //call for discord username
             return fullUser;

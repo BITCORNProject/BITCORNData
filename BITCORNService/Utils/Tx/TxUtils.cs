@@ -61,7 +61,8 @@ namespace BITCORNService.Utils.Tx
             var txs = await dbContext.UnclaimedTx.Where(t => t.Expiration.AddMinutes(addExpirationMinutes) < now && !t.Claimed && !t.Refunded)
                 .Join(dbContext.UserWallet, tx => tx.SenderUserId, user => user.UserId, (tx, wallet) => new { Tx = tx, Wallet = wallet })
                 .ToArrayAsync();
-
+            if (txs.Length == 0)
+                return;
             var pk = nameof(UserWallet.UserId);
             var sql = new StringBuilder();
             foreach (var entry in txs)
