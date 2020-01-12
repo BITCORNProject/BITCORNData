@@ -12,6 +12,7 @@ namespace BITCORNService.Models
 
         public int UserId { get; set; }
         public string Level { get; set; }
+        public int SubTier { get; set; }
         public string Username { get; set; }
         public string Avatar { get; set; }
         public bool IsBanned { get; set; }
