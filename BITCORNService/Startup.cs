@@ -58,7 +58,7 @@ namespace BITCORNService
                 app.UseDeveloperExceptionPage();
             }
 
-            app.UseHttpsRedirection();
+            //app.UseHttpsRedirection();
 
             loggerFactory.AddSerilog();
 

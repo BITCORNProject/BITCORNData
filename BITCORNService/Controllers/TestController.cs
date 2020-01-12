@@ -2,7 +2,9 @@
 using System.Net;
 using System.Threading.Tasks;
 using BITCORNService.Utils;
+using BITCORNService.Utils.Twitch;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Configuration;
 
 namespace BITCORNService.Controllers
 {
@@ -10,6 +12,12 @@ namespace BITCORNService.Controllers
     [ApiController]
     public class TestController : ControllerBase
     {
+        private IConfiguration _config;
+        public TestController(IConfiguration configuration)
+        {
+            _config = configuration;
+        }
+
         [HttpPost]
         public async Task<HttpStatusCode> Post([FromBody] dynamic data)
         {
@@ -36,6 +44,8 @@ namespace BITCORNService.Controllers
         {
             try
             {
+                var krak = new Kraken(_config);
+                krak.Nachos();
                 return HttpStatusCode.OK;
             }
             catch (Exception e)
