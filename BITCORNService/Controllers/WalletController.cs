@@ -16,7 +16,7 @@ using Microsoft.Extensions.Configuration;
 
 namespace BITCORNService.Controllers
 {
-    //[Authorize]
+    [Authorize]
     [Route("api/[controller]")]
     [ApiController]
     public class WalletController : ControllerBase
