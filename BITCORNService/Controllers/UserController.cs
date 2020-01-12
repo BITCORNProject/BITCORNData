@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
+using System.Text;
 using System.Threading.Tasks;
 using BITCORNService.Models;
 using BITCORNService.Reflection;
@@ -12,6 +13,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Newtonsoft.Json;
 
 namespace BITCORNService.Controllers
 {
@@ -78,6 +80,104 @@ namespace BITCORNService.Controllers
             user.Username = auth0IdUsername.Username;
             await _dbContext.SaveAsync();
             return true;
+        }
+
+        [HttpPost]
+        public async Task<HttpStatusCode> Post([FromBody] dynamic data)
+        {
+            //Update [user] 
+//            set SubTier = $"{sub.Tier}"
+//            inner join userIdentity
+//            on [user].UserId = UserIdentity.UserId
+//            where twitchid = $"sub.twitchId"
+            try
+            {
+                var subData = data.ToString(Formatting.None);
+                List<Sub> subs = JsonConvert.DeserializeObject<List<Sub>>(subData);
+
+                var t1 = subs.Where(s => s.Tier == "1000").ToList();
+                var t2 = subs.Where(s => s.Tier == "2000").ToList();
+                var t3 = subs.Where(s => s.Tier == "3000").ToList();
+
+                using (var db = new BitcornContext())
+                {
+                    await db.Database.ExecuteSqlCommandAsync("UPDATE users SET subtier = '0000'");
+                }
+
+                //tier 1 subs
+                var sb = new StringBuilder();
+                var prefix = "UPDATE [user] SET subtier = '1000'" +
+                             "FROM [userIdentity] " +
+                             "inner join [user]" +
+                             "  on [useridentity].userid = [user].userid" +
+                             " where [useridentity].twitchid in (";
+                sb.Append(prefix);
+
+                foreach (var sub in t1)
+                {
+                    sb.Append($"{sub.TwitchId}, ");
+                }
+
+                sb.Length -= 2;
+                sb.Append(")");
+
+                var query = sb.ToString().Substring(0, sb.ToString().Length - 4);
+                using (var db = new BitcornContext())
+                {
+                    await db.Database.ExecuteSqlCommandAsync(query);
+                }
+
+                //tier 2 subs
+                var sb2 = new StringBuilder();
+                var prefix2 = "UPDATE [user] SET subtier = '2000'" +
+                              "FROM [userIdentity] " +
+                              "inner join [user]" +
+                              "  on [useridentity].userid = [user].userid" +
+                              " where [useridentity].twitchid in (";
+                sb2.Append(prefix2);
+                foreach (var sub in t2)
+                {
+                    sb2.Append($"{sub.TwitchId}, ");
+                }
+
+                sb2.Length -= 2;
+                sb2.Append(")");
+
+                var query2 = sb2.ToString().Substring(0, sb2.ToString().Length - 4);
+                using (var db = new BitcornContext())
+                {
+                    await db.Database.ExecuteSqlCommandAsync(query2);
+                }
+
+                //tier 3 subs
+                var sb3 = new StringBuilder();
+                var prefix3 = "UPDATE [user] SET subtier = '3000'" + 
+                              "FROM [userIdentity] " +
+                              "inner join [user]" +
+                              "  on [useridentity].userid = [user].userid" +
+                              " where [useridentity].twitchid in (";
+                sb3.Append(prefix3);
+                foreach (var sub in t3)
+                {
+                    sb3.Append($"{sub.TwitchId}, ");
+                }
+
+                sb3.Length -= 2;
+                sb3.Append(")");
+                var query3 = sb3.ToString().Substring(0, sb3.ToString().Length - 4);
+                using (var db = new BitcornContext())
+                {
+                    await db.Database.ExecuteSqlCommandAsync(query3);
+                }
+
+
+                return HttpStatusCode.OK;
+            }
+            catch (Exception e)
+            {
+                //_logger.LogError(e, $"Failed to update subtiers {data}");
+                return HttpStatusCode.InternalServerError;
+            }
         }
 
     }
