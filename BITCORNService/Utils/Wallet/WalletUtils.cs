@@ -201,7 +201,7 @@ namespace BITCORNService.Utils.Wallet
                     throw new UnauthorizedAccessException("Failed to fetch wallet server access token");
                 }
 
-                using (var client = new WalletClient("https://localhost:44323/api/llapi", accessToken))
+                using (var client = new WalletClient(server.Endpoint, accessToken))
                 {
                     var response = await client.SendToAddressAsync(cornAddy, amount);
                     if (!response.IsError)
@@ -243,8 +243,9 @@ namespace BITCORNService.Utils.Wallet
             return cornResponse;
         }
                 
-        public static async Task Deposit(BitcornContext dbContext, WalletDepositRequest request)
+        public static async Task<CornTx[]> Deposit(BitcornContext dbContext, WalletDepositRequest request)
         {
+            var receipts = new List<CornTx>();
             try
             {
                 var server = dbContext.WalletServer.FirstOrDefault((s) => s.Index == request.Index);
@@ -283,6 +284,7 @@ namespace BITCORNService.Utils.Wallet
                            
                             dbContext.CornTx.Add(cornTx);
                             dbContext.CornDeposit.Add(deposit);
+                            receipts.Add(cornTx);
                         }
                     }
                 }
@@ -298,6 +300,7 @@ namespace BITCORNService.Utils.Wallet
             {
                 await BITCORNLogger.LogError(dbContext, e);
             }
+            return receipts.ToArray();
         }
     }
 }

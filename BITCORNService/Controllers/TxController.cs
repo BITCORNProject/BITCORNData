@@ -37,90 +37,106 @@ namespace BITCORNService.Controllers
         [HttpPost("rain")]
         public async Task<ActionResult<TxReceipt[]>> Rain([FromBody] RainRequest rainRequest)
         {
-            if (rainRequest == null) throw new ArgumentNullException();
-            if (rainRequest.From == null) throw new ArgumentNullException();
-            if (rainRequest.To == null) throw new ArgumentNullException();
-            if (rainRequest.Amount <= 0) return StatusCode((int)HttpStatusCode.BadRequest);
-
-            var processInfo = await TxUtils.ProcessRequest(rainRequest, _dbContext);
-            var transactions = processInfo.Transactions;
-            if (transactions != null && transactions.Length > 0)
+            try
             {
-                StringBuilder sql = new StringBuilder();
-                if (processInfo.WriteTransactionOutput(sql)) 
+                if (rainRequest == null) throw new ArgumentNullException();
+                if (rainRequest.From == null) throw new ArgumentNullException();
+                if (rainRequest.To == null) throw new ArgumentNullException();
+                if (rainRequest.Amount <= 0) return StatusCode((int)HttpStatusCode.BadRequest);
+
+                var processInfo = await TxUtils.ProcessRequest(rainRequest, _dbContext);
+                var transactions = processInfo.Transactions;
+                if (transactions != null && transactions.Length > 0)
                 {
-                    string pk = nameof(UserStat.UserId);
-                    string table = nameof(UserStat);
-                    var recipients = processInfo.ValidRecipients;
-                    var fromId = transactions[0].From.UserId;
+                    StringBuilder sql = new StringBuilder();
+                    if (processInfo.WriteTransactionOutput(sql))
+                    {
+                        string pk = nameof(UserStat.UserId);
+                        string table = nameof(UserStat);
+                        var recipients = processInfo.ValidRecipients;
+                        var fromId = transactions[0].From.UserId;
 
-                    var recipientStats = new List<ColumnValuePair>();
-                    recipientStats.Add(new ColumnValuePair(nameof(UserStat.RainedOn), 1));
-                    recipientStats.Add(new ColumnValuePair(nameof(UserStat.RainedOnTotal), rainRequest.Amount));
+                        var recipientStats = new List<ColumnValuePair>();
+                        recipientStats.Add(new ColumnValuePair(nameof(UserStat.RainedOn), 1));
+                        recipientStats.Add(new ColumnValuePair(nameof(UserStat.RainedOnTotal), rainRequest.Amount));
 
-                    sql.Append(TxUtils.ModifyNumbers(table, recipientStats, '+', pk, recipients));
-                    sql.Append(TxUtils.UpdateNumberIfTop(table,nameof(UserStat.TopRainedOn),rainRequest.Amount,pk,recipients));
+                        sql.Append(TxUtils.ModifyNumbers(table, recipientStats, '+', pk, recipients));
+                        sql.Append(TxUtils.UpdateNumberIfTop(table, nameof(UserStat.TopRainedOn), rainRequest.Amount, pk, recipients));
 
-                    var senderStats = new List<ColumnValuePair>();
-                    senderStats.Add(new ColumnValuePair(nameof(UserStat.Rained), 1));
-                    senderStats.Add(new ColumnValuePair(nameof(UserStat.RainTotal), processInfo.TotalAmount));
-                    
-                    sql.Append(TxUtils.ModifyNumbers(table, senderStats, '+', pk,fromId));
-                    sql.Append(TxUtils.UpdateNumberIfTop(table,nameof(UserStat.TopRain),processInfo.TotalAmount,pk,fromId));
+                        var senderStats = new List<ColumnValuePair>();
+                        senderStats.Add(new ColumnValuePair(nameof(UserStat.Rained), 1));
+                        senderStats.Add(new ColumnValuePair(nameof(UserStat.RainTotal), processInfo.TotalAmount));
 
-                    await _dbContext.Database.ExecuteSqlRawAsync(sql.ToString());
-                    await _dbContext.SaveAsync(IsolationLevel.RepeatableRead);
+                        sql.Append(TxUtils.ModifyNumbers(table, senderStats, '+', pk, fromId));
+                        sql.Append(TxUtils.UpdateNumberIfTop(table, nameof(UserStat.TopRain), processInfo.TotalAmount, pk, fromId));
+
+                        await _dbContext.Database.ExecuteSqlRawAsync(sql.ToString());
+                        await _dbContext.SaveAsync(IsolationLevel.RepeatableRead);
+                    }
+                    await TxUtils.AppendTxs(transactions, _dbContext, rainRequest.Columns);
+
                 }
-                await TxUtils.AppendTxs(transactions, _dbContext, rainRequest.Columns);
-
+                return processInfo.Transactions;
             }
-            return processInfo.Transactions;
+            catch(Exception e)
+            {
+                await BITCORNLogger.LogError(_dbContext, e);
+                throw e;
+            }
         }
 
         [HttpPost("payout")]
         public async Task<int> Payout([FromBody] HashSet<string> chatters)
         {
-            var grouping = (await _dbContext.JoinUserModels().Where(u => chatters.Contains(u.UserIdentity.TwitchId))
-                .AsNoTracking()
-                .ToArrayAsync()).GroupBy(u=>u.SubTier).ToArray();
-
-            decimal total = 0;
-            int changedRows = 0;
-            StringBuilder sql = new StringBuilder();
-
-            var pk = nameof(UserWallet.UserId);
-            foreach (var group in grouping)
+            try
             {
-                decimal payout = 0;
-                var level = group.Key;
-                if (level == 0) continue;
-                var ids = group.Select(u => u.UserId).ToArray();
-                if (level == 1)
-                {
-                    payout = 0.25m;
-                }
-                else if (level == 2)
-                {
-                    payout = .5m;
-                }
-                else 
-                {
-                    payout = 1;
-                }
-                sql.Append(TxUtils.ModifyNumber(nameof(UserWallet), nameof(UserWallet.Balance), payout, '+', pk, ids));
-                sql.Append(TxUtils.ModifyNumber(nameof(UserStat), nameof(UserStat.EarnedIdle), payout, '+', pk, ids));
+                var grouping = (await _dbContext.JoinUserModels().Where(u => chatters.Contains(u.UserIdentity.TwitchId))
+                    .AsNoTracking()
+                    .ToArrayAsync()).GroupBy(u => u.SubTier).ToArray();
 
-                int count = await _dbContext.Database.ExecuteSqlRawAsync(sql.ToString());
-                total += payout * count;
-                changedRows += count;
+                decimal total = 0;
+                int changedRows = 0;
+                StringBuilder sql = new StringBuilder();
+
+                var pk = nameof(UserWallet.UserId);
+                foreach (var group in grouping)
+                {
+                    decimal payout = 0;
+                    var level = group.Key;
+                    if (level == 0) continue;
+                    var ids = group.Select(u => u.UserId).ToArray();
+                    if (level == 1)
+                    {
+                        payout = 0.25m;
+                    }
+                    else if (level == 2)
+                    {
+                        payout = .5m;
+                    }
+                    else
+                    {
+                        payout = 1;
+                    }
+                    sql.Append(TxUtils.ModifyNumber(nameof(UserWallet), nameof(UserWallet.Balance), payout, '+', pk, ids));
+                    sql.Append(TxUtils.ModifyNumber(nameof(UserStat), nameof(UserStat.EarnedIdle), payout, '+', pk, ids));
+
+                    int count = await _dbContext.Database.ExecuteSqlRawAsync(sql.ToString());
+                    total += payout * count;
+                    changedRows += count;
+                }
+                if (changedRows > 0)
+                {
+                    await _dbContext.Database.ExecuteSqlRawAsync(TxUtils.ModifyNumber(nameof(UserWallet), nameof(UserWallet.Balance), total, '-', pk, BitcornHubPK));
+                }
+                //this endpoint is called frequently so can use this to check if there are tx's that need to be refunded
+                await TxUtils.RefundUnclaimed(_dbContext);
+                return changedRows / 2;
             }
-            if (changedRows > 0)
+            catch(Exception e)
             {
-                await _dbContext.Database.ExecuteSqlRawAsync(TxUtils.ModifyNumber(nameof(UserWallet), nameof(UserWallet.Balance), total, '-', pk, BitcornHubPK));
+                await BITCORNLogger.LogError(_dbContext, e);
+                throw e;
             }
-            //this endpoint is called frequently so can use this to check if there are tx's that need to be refunded
-            await TxUtils.RefundUnclaimed(_dbContext);
-            return changedRows/2;
         }
 
         [HttpPost("tipcorn")]
@@ -201,6 +217,7 @@ namespace BITCORNService.Controllers
             }
             catch (Exception e)
             {
+                await BITCORNLogger.LogError(_dbContext,e);
                 throw e;
             }
 
