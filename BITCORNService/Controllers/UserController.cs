@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Data;
 using System.Linq;
 using System.Net;
 using System.Text;
@@ -14,10 +15,9 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
-
 namespace BITCORNService.Controllers
 {
-    [Authorize]
+    //[Authorize]
     [Route("api/[controller]")]
     [ApiController]
     public class UserController : ControllerBase
@@ -28,7 +28,18 @@ namespace BITCORNService.Controllers
         {
             _dbContext = dbContext;
         }
+        [HttpPost("getsubtiers")]
+        public async Task<SubTierDiscord[]> GetSubTiers()
+        {
 
+            return await _dbContext.UserIdentity.
+                Where(u => u.DiscordId != null).
+                Join(_dbContext.User,
+                identity => identity.UserId,
+                us => us.UserId,
+                (id, u) => new SubTierDiscord(id.DiscordId, u.SubTier)).
+                ToArrayAsync();
+        }
         // POST: api/User
         [HttpPost("{id}")]
         public async Task<FullUser> Post([FromRoute] string id)
