@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using BITCORNService.Models;
@@ -141,7 +142,25 @@ namespace BITCORNService.Utils
 
             return userIdentity;
         }
+        public static string BuildSubtierUpdateString(List<Sub> subs, int tier)
+        {
+            var sb = new StringBuilder();
+            var prefix = $"UPDATE [user] SET subtier = {tier} " +
+                         "FROM [userIdentity] " +
+                         "inner join [user]" +
+                         "  on [useridentity].userid = [user].userid" +
+                         " where [useridentity].twitchid in (";
+            sb.Append(prefix);
 
+            foreach (var sub in subs)
+            {
+                sb.Append($"{sub.TwitchId}, ");
+            }
+
+            sb.Length -= 2;
+            sb.Append(")");
+            return sb.ToString();
+        }
 
         public static FullUser GetFullUser(User user, UserIdentity userIdentity, UserWallet userWallet, UserStat userStats)
         {
