@@ -16,7 +16,6 @@ namespace BITCORNService.Models
         public string Username { get; set; }
         public string Avatar { get; set; }
         public bool IsBanned { get; set; }
-        public int SubTier { get; set; }
         public virtual UserIdentity UserIdentity { get; set; }
         public virtual UserStat UserStat { get; set; }
         public virtual UserWallet UserWallet { get; set; }
