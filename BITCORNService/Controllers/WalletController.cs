@@ -16,7 +16,7 @@ using Microsoft.Extensions.Configuration;
 
 namespace BITCORNService.Controllers
 {
-    [Authorize]
+    //[Authorize]
     [Route("api/[controller]")]
     [ApiController]
     public class WalletController : ControllerBase
@@ -60,7 +60,13 @@ namespace BITCORNService.Controllers
             return response;
 
         }
-
+        //API: /api/wallet/server
+        //called by the wallet servers only
+        [HttpGet("server/{index}")]
+        public async Task<WalletServer> Server([FromRoute] int index)
+        {
+            return await _dbContext.WalletServer.FirstOrDefaultAsync((s)=>s.Index==index);
+        }
         //API: /api/wallet/deposit
         //called by the wallet servers only
         [HttpPost("deposit")]
