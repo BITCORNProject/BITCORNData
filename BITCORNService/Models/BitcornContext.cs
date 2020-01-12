@@ -142,6 +142,9 @@ namespace BITCORNService.Models
                 entity.Property(e=>e.IsBanned)
                     .HasColumnName("IsBanned")
                     .HasDefaultValueSql("((0))");
+
+                entity.Property(e=>e.SubTier)
+                    .HasDefaultValueSql("((0))");
             });
 
             modelBuilder.Entity<UserIdentity>(entity =>

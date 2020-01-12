@@ -82,7 +82,7 @@ namespace BITCORNService.Controllers
         {
             var grouping = (await _dbContext.JoinUserModels().Where(u => chatters.Contains(u.UserIdentity.TwitchId))
                 .AsNoTracking()
-                .ToArrayAsync()).GroupBy(u=>u.Level).ToArray();
+                .ToArrayAsync()).GroupBy(u=>u.SubTier).ToArray();
 
             decimal total = 0;
             int changedRows = 0;
@@ -93,12 +93,13 @@ namespace BITCORNService.Controllers
             {
                 decimal payout = 0;
                 var level = group.Key;
+                if (level == 0) continue;
                 var ids = group.Select(u => u.UserId).ToArray();
-                if (level == "1000")
+                if (level == 1)
                 {
                     payout = 0.25m;
                 }
-                else if (level == "2000")
+                else if (level == 2)
                 {
                     payout = .5m;
                 }
@@ -117,6 +118,8 @@ namespace BITCORNService.Controllers
             {
                 await _dbContext.Database.ExecuteSqlRawAsync(TxUtils.ModifyNumber(nameof(UserWallet), nameof(UserWallet.Balance), total, '-', pk, BitcornHubPK));
             }
+            //this endpoint is called frequently so can use this to check if there are tx's that need to be refunded
+            await TxUtils.RefundUnclaimed(_dbContext);
             return changedRows/2;
         }
 
