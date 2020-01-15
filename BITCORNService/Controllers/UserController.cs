@@ -10,10 +10,12 @@ using BITCORNService.Reflection;
 using BITCORNService.Utils;
 using BITCORNService.Utils.DbActions;
 using BITCORNService.Utils.Models;
+using BITCORNService.Utils.Twitch;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Newtonsoft.Json;
 namespace BITCORNService.Controllers
 {
@@ -23,22 +25,18 @@ namespace BITCORNService.Controllers
     public class UserController : ControllerBase
     {
         private readonly BitcornContext _dbContext;
+        private IConfiguration _config;
 
-        public UserController(BitcornContext dbContext)
+        public UserController(IConfiguration config,BitcornContext dbContext)
         {
             _dbContext = dbContext;
+            _config = config;
         }
-        [HttpPost("getsubtiers")]
-        public async Task<SubTierDiscord[]> GetSubTiers()
+        [HttpPost("updatesubs")]
+        public async Task<SubTierDiscord[]> UpdateSubs()
         {
-
-            return await _dbContext.UserIdentity.
-                Where(u => u.DiscordId != null).
-                Join(_dbContext.User,
-                identity => identity.UserId,
-                us => us.UserId,
-                (id, u) => new SubTierDiscord(id.DiscordId, u.SubTier)).
-                ToArrayAsync();
+            var krak = new Kraken(_config, _dbContext);
+            return await krak.Nachos();
         }
         // POST: api/User
         [HttpPost("{id}")]
@@ -96,11 +94,6 @@ namespace BITCORNService.Controllers
         [HttpPost]
         public async Task<HttpStatusCode> Post([FromBody] Sub[] subs)
         {
-            //Update [user] 
-//            set SubTier = $"{sub.Tier}"
-//            inner join userIdentity
-//            on [user].UserId = UserIdentity.UserId
-//            where twitchid = $"sub.twitchId"
             try
             {
                 var t1 = subs.Where(s => s.Tier == "1000").ToList();
@@ -122,6 +115,5 @@ namespace BITCORNService.Controllers
                 return HttpStatusCode.InternalServerError;
             }
         }
-
     }
 }

@@ -1,8 +1,11 @@
 ﻿using System;
 using System.Net;
 using System.Threading.Tasks;
+using BITCORNService.Models;
 using BITCORNService.Utils;
+using BITCORNService.Utils.Twitch;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Configuration;
 
 namespace BITCORNService.Controllers
 {
@@ -10,6 +13,14 @@ namespace BITCORNService.Controllers
     [ApiController]
     public class TestController : ControllerBase
     {
+        private IConfiguration _config;
+        private BitcornContext _dbContext;
+        public TestController(IConfiguration configuration, BitcornContext dbContext)
+        {
+            _config = configuration;
+            _dbContext = dbContext;
+        }
+
         [HttpPost]
         public async Task<HttpStatusCode> Post([FromBody] dynamic data)
         {
