@@ -33,10 +33,19 @@ namespace BITCORNService.Controllers
             _config = config;
         }
         [HttpPost("updatesubs")]
-        public async Task<SubTierDiscord[]> UpdateSubs()
+        public async Task<HttpStatusCode> UpdateSubs()
         {
-            var krak = new Kraken(_config, _dbContext);
-            return await krak.Nachos();
+            try
+            {
+                var krak = new Kraken(_config, _dbContext);
+                await krak.Nachos();
+                return HttpStatusCode.OK;
+            }
+            catch (Exception e)
+            {
+                await BITCORNLogger.LogError(_dbContext,e);
+                return HttpStatusCode.InternalServerError;
+            }
         }
         // POST: api/User
         [HttpPost("{id}")]
