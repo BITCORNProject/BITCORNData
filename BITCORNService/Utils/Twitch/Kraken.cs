@@ -80,7 +80,7 @@ namespace BITCORNService.Utils.Twitch
             var client = new RestClient(@"https://b23d8cc0.ngrok.io/");
 
             //create request
-            var req = new RestRequest(Method.GET);
+            var req = new RestRequest(Method.POST);
             req.Resource = "discord";
             req.AddJsonBody(discordSubs);
             client.Execute(req);
