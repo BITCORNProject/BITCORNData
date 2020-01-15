@@ -47,8 +47,6 @@ namespace BITCORNService.Controllers
         {
             try
             {
-                var krak = new Kraken(_config, _dbContext);
-                await krak.Nachos();
                 return HttpStatusCode.OK;
             }
             catch (Exception e)
