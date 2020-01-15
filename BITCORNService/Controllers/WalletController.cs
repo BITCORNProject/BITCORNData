@@ -48,11 +48,6 @@ namespace BITCORNService.Controllers
                     response.Add("usererror", walletResponse.UserError);
                     response.Add("walletavailable", walletResponse.WalletAvailable);
                     response.Add("cornaddy", walletResponse.WalletObject);
-                    if (!string.IsNullOrEmpty(walletResponse.WalletObject))
-                    {
-                        user.UserWallet.CornAddy = walletResponse.WalletObject;
-                        await _dbContext.SaveAsync();
-                    }
                     if (request.Columns.Length > 0)
                     {
                         var columns = await UserReflection.GetColumns(_dbContext, request.Columns, new int[] { user.UserId });
