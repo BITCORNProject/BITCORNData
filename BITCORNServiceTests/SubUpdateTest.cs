@@ -40,7 +40,7 @@ namespace BITCORNServiceTests
                         Tier = "3000",
                     }
                 };
-                var userController = new UserController(dbContext);
+                var userController = new UserController(TestUtils.GetConfig(),dbContext);
                 await userController.Post(subs);
                 using (var dbContext2 = TestUtils.CreateDatabase())
                 {

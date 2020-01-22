@@ -58,25 +58,38 @@ namespace BITCORNService.Controllers
 
             return BitcornUtils.GetFullUser(user, user.UserIdentity, user.UserWallet, user.UserStat);
         }
-        [HttpPost("ban/{id}")]
-        public async Task<object> Ban([FromRoute] string id)
+        [HttpPost("ban")]
+        public async Task<ActionResult<object>> Ban([FromBody] BanUserRequest request)
         {
-            if (string.IsNullOrWhiteSpace(id)) throw new ArgumentNullException("id");
+            if (string.IsNullOrWhiteSpace(request.Sender)) throw new ArgumentNullException("Sender");
 
-            var platformId = BitcornUtils.GetPlatformId(id);
-            var primaryKey = -1;
+            if (string.IsNullOrWhiteSpace(request.BanUser)) throw new ArgumentNullException("BanUser");
 
-            var user = await BitcornUtils.GetUserForPlatform(platformId, _dbContext).FirstOrDefaultAsync();
-            if (user != null)
+            var senderPlatformId = BitcornUtils.GetPlatformId(request.Sender);
+            var senderUser = await BitcornUtils.GetUserForPlatform(senderPlatformId, _dbContext).FirstOrDefaultAsync();
+            if (senderUser!=null&&senderUser.Level == "5000")
             {
-                primaryKey = user.UserId;
-                user.IsBanned = true;
-                _dbContext.Update(user);
+                var banPlatformId = BitcornUtils.GetPlatformId(request.BanUser);
+                var primaryKey = -1;
 
-                await _dbContext.SaveAsync();
+                var banUser = await BitcornUtils.GetUserForPlatform(banPlatformId, _dbContext).FirstOrDefaultAsync();
+                if (banUser != null)
+                {
+                    primaryKey = banUser.UserId;
+                    banUser.IsBanned = true;
+                    _dbContext.Update(banUser);
+
+                    await _dbContext.SaveAsync();
+                }
+                var users = await UserReflection.GetColumns(_dbContext, new string[] { "*" }, new[] { primaryKey });
+                if (users.Count > 0) 
+                    return users.First();
+                return null;
             }
-            var users = await UserReflection.GetColumns(_dbContext, new string[] { "*" }, new[] { primaryKey });
-            return users.First();
+            else
+            {
+                return StatusCode((int)HttpStatusCode.Forbidden);
+            }
         }
         [HttpGet("{name}/[action]")]
         public bool Check(string name)
