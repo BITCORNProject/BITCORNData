@@ -94,6 +94,7 @@ namespace BITCORNService.Utils.Wallet
                     var address = response.GetParsedContent();
                     userWallet.CornAddy = address;
                     userWallet.WalletServer = walletServer.Index;
+                 
                     cornResponse.WalletObject = address;
                     await dbContext.SaveAsync();
                     

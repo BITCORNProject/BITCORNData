@@ -32,7 +32,7 @@ namespace BITCORNService.Controllers
         }
         //API: /api/wallet/createcornaddy/{id}
         [HttpPost("CreateCornaddy")]
-        public async Task<object> CreateCornaddy([FromBody] CreateCornaddyRequest request)
+        public async Task<ActionResult<FullUser>> CreateCornaddy([FromBody] CreateCornaddyRequest request)
         {
             try
             {
@@ -41,26 +41,20 @@ namespace BITCORNService.Controllers
                 var platformId = BitcornUtils.GetPlatformId(request.Id);
 
                 var user = await BitcornUtils.GetUserForPlatform(platformId, _dbContext).FirstOrDefaultAsync();
-                var response = new Dictionary<string, object>();
+                
                 if (user != null)
                 {
                     var walletResponse = await WalletUtils.CreateCornaddy(_dbContext, user.UserWallet, _configuration);
-                    response.Add("usererror", walletResponse.UserError);
-                    response.Add("walletavailable", walletResponse.WalletAvailable);
-                    response.Add("cornaddy", walletResponse.WalletObject);
-                    if (request.Columns.Length > 0)
+                    if (!walletResponse.WalletAvailable)
                     {
-                        var columns = await UserReflection.GetColumns(_dbContext, request.Columns, new int[] { user.UserId });
-                        if (columns.Count > 0)
-                        {
-                            foreach (var item in columns.First().Value)
-                            {
-                                response.Add(item.Key, item.Value);
-                            }
-                        }
+                        return StatusCode((int)HttpStatusCode.ServiceUnavailable);
                     }
+                    return BitcornUtils.GetFullUser(user, user.UserIdentity, user.UserWallet, user.UserStat);
                 }
-                return response;
+                else
+                {
+                    return StatusCode(500);
+                }
             }
             catch(Exception e)
             {

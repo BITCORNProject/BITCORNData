@@ -49,14 +49,20 @@ namespace BITCORNService.Controllers
         }
         // POST: api/User
         [HttpPost("{id}")]
-        public async Task<FullUser> Post([FromRoute] string id)
+        public async Task<ActionResult<FullUser>> Post([FromRoute] string id)
         {
             if (string.IsNullOrWhiteSpace(id)) throw new ArgumentNullException("id");
 
             var platformId = BitcornUtils.GetPlatformId(id);
             var user = await BitcornUtils.GetUserForPlatform(platformId, _dbContext).FirstOrDefaultAsync();
-
-            return BitcornUtils.GetFullUser(user, user.UserIdentity, user.UserWallet, user.UserStat);
+            if (user != null)
+            {
+                return BitcornUtils.GetFullUser(user, user.UserIdentity, user.UserWallet, user.UserStat);
+            }
+            else
+            {
+                return StatusCode(404);
+            }
         }
         [HttpPost("ban")]
         public async Task<ActionResult<object>> Ban([FromBody] BanUserRequest request)
