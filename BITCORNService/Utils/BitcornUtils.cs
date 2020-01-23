@@ -118,18 +118,22 @@ namespace BITCORNService.Utils
             {
                 case "auth0":
                     userIdentity.Auth0Id = null;
+                    userIdentity.Auth0Nickname = null;
                     await dbContext.SaveAsync();
                     break;
                 case "twitch":
                     userIdentity.TwitchId = null;
+                    userIdentity.TwitchUsername = null;
                     await dbContext.SaveAsync();
                     break;
                 case "discord":
                     userIdentity.DiscordId = null;
+                    userIdentity.DiscordUsername = null;
                     await dbContext.SaveAsync();
                     break;
                 case "twitter":
                     userIdentity.TwitterId = null;
+                    userIdentity.TwitterUsername = null;
                     await dbContext.SaveAsync();
                     break;
                 case "reddit":

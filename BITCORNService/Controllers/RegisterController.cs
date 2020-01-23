@@ -63,9 +63,12 @@ namespace BITCORNService.Controllers
                 throw;
             }
         }
-        FullUser GetFullUser(User user)
+        object GetFullUser(User user,bool isMigration)
         {
-            return BitcornUtils.GetFullUser(user, user.UserIdentity, user.UserWallet, user.UserStat);
+            return new { 
+                IsMigration = isMigration,
+                User = BitcornUtils.GetFullUser(user, user.UserIdentity, user.UserWallet, user.UserStat)
+            };
         }
         async Task MigrateUser(User delete, User user)
         {
@@ -114,7 +117,7 @@ namespace BITCORNService.Controllers
             to.TwitterUsername = from.TwitterUsername;
         }
         [HttpPost]
-        public async Task<FullUser> Register([FromBody] RegistrationData registrationData)
+        public async Task<object> Register([FromBody] RegistrationData registrationData)
         { 
             if (registrationData == null) throw new ArgumentNullException("registrationData");
             if (registrationData.Auth0Id == null) throw new ArgumentNullException("registrationData.Auth0Id");
@@ -137,7 +140,7 @@ namespace BITCORNService.Controllers
                             //   _dbContext.UserIdentity.Remove(auth0DbUser);
                             auth0DbUser.UserIdentity.TwitchId = twitchDbUser.UserIdentity.TwitchId;
                             CopyIdentity(auth0DbUser.UserIdentity,twitchDbUser.UserIdentity);
-                            twitchDbUser.UserIdentity.TwitchUsername = twitchUser.name;
+                            twitchDbUser.UserIdentity.TwitchUsername = twitchUser.display_name;
                             twitchDbUser.UserIdentity.Auth0Id = auth0Id;
                             twitchDbUser.UserIdentity.Auth0Nickname = auth0DbUser.UserIdentity.Auth0Nickname;
                            
@@ -145,7 +148,7 @@ namespace BITCORNService.Controllers
              
 
                             await TxUtils.TryClaimTx(platformId, null, _dbContext);
-                            return GetFullUser(twitchDbUser);
+                            return GetFullUser(twitchDbUser,true);
                         }
                         else if (twitchDbUser == null && auth0DbUser != null)
                         {
@@ -154,7 +157,7 @@ namespace BITCORNService.Controllers
                             await _dbContext.SaveAsync();
 
                             await TxUtils.TryClaimTx(platformId, null, _dbContext);
-                            return GetFullUser(auth0DbUser);
+                            return GetFullUser(auth0DbUser,false);
                         }
                         else if (twitchDbUser != null)
                         {
@@ -189,7 +192,7 @@ namespace BITCORNService.Controllers
                                 discordDbUser.UserIdentity.Auth0Nickname = auth0DbUser.UserIdentity.Auth0Nickname;
                                 await MigrateUser(auth0DbUser,discordDbUser);
                                 await TxUtils.TryClaimTx(platformId, null, _dbContext);
-                                return GetFullUser(discordDbUser);
+                                return GetFullUser(discordDbUser,true);
                             }
                             else if (discordDbUser == null && auth0DbUser != null)
                             {
@@ -199,7 +202,7 @@ namespace BITCORNService.Controllers
                                 await _dbContext.SaveAsync();
 
                                 await TxUtils.TryClaimTx(platformId, null, _dbContext);
-                                return GetFullUser(auth0DbUser);
+                                return GetFullUser(auth0DbUser,false);
                             }
                             else if (discordDbUser?.UserIdentity.Auth0Id != null)
                             {
@@ -233,19 +236,19 @@ namespace BITCORNService.Controllers
                                 //_dbContext.UserIdentity.Remove(auth0DbUser);
                                 CopyIdentity(auth0DbUser.UserIdentity,twitterDbUser.UserIdentity);
                                 twitterDbUser.UserIdentity.Auth0Id = auth0Id;
-                                twitterDbUser.UserIdentity.TwitterUsername = twitterUser.Name;
+                                twitterDbUser.UserIdentity.TwitterUsername = twitterUser.ScreenName;
                                 twitterDbUser.UserIdentity.Auth0Nickname = auth0DbUser.UserIdentity.Auth0Nickname;
                                 await MigrateUser(auth0DbUser,twitterDbUser);
                                 await TxUtils.TryClaimTx(platformId,null,_dbContext);
-                                return GetFullUser(twitterDbUser);
+                                return GetFullUser(twitterDbUser,true);
                             }
                             if (twitterDbUser == null && auth0DbUser != null)
                             {
                                 auth0DbUser.UserIdentity.TwitterId = platformId.Id;
-                                auth0DbUser.UserIdentity.TwitterUsername = twitterUser.Name;
+                                auth0DbUser.UserIdentity.TwitterUsername = twitterUser.ScreenName;
                                 await _dbContext.SaveAsync();
                                 await TxUtils.TryClaimTx(platformId, null, _dbContext);
-                                return GetFullUser(auth0DbUser);
+                                return GetFullUser(auth0DbUser,false);
                             }
                             if (twitterDbUser?.UserIdentity.Auth0Id != null)
                             {
@@ -277,7 +280,7 @@ namespace BITCORNService.Controllers
                                 redditDbUser.UserIdentity.Auth0Nickname = auth0DbUser.UserIdentity.Auth0Nickname;
                                 await MigrateUser(auth0DbUser,redditDbUser);
                                 await TxUtils.TryClaimTx(platformId, null, _dbContext);
-                                return GetFullUser(redditDbUser);
+                                return GetFullUser(redditDbUser,true);
                             }
                             else if (redditDbUser == null && auth0DbUser != null)
                             {
@@ -285,7 +288,7 @@ namespace BITCORNService.Controllers
                                 await _dbContext.SaveAsync();
 
                                 await TxUtils.TryClaimTx(platformId, null, _dbContext);
-                                return GetFullUser(auth0DbUser);
+                                return GetFullUser(auth0DbUser,false);
                             }
                             else if (redditDbUser?.UserIdentity.Auth0Id != null)
                             {
