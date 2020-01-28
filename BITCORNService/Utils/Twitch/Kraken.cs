@@ -31,7 +31,7 @@ namespace BITCORNService.Utils.Twitch
 
 
 
-        public async Task Nachos()
+        public async Task UpdateSubs()
         {
             var subs = new List<Sub>();
             var limit = 100;
@@ -69,21 +69,24 @@ namespace BITCORNService.Utils.Twitch
             }
 
             await UpdateSubTiers(subs.ToArray());
+            var updateEndpoint = _config["Config:SubTierDiscordUpdate"];
+            if (!string.IsNullOrEmpty(updateEndpoint))
+            {
+                var discordSubs = await _dbContext.UserIdentity.
+                    Where(u => u.DiscordId != null).
+                    Join(_dbContext.User,
+                        identity => identity.UserId,
+                        us => us.UserId,
+                        (id, u) => new SubTierDiscord(id.DiscordId, u.SubTier)).
+                    ToArrayAsync();
+                var client = new RestClient(updateEndpoint);
 
-            var discordSubs = await _dbContext.UserIdentity.
-                Where(u => u.DiscordId != null).
-                Join(_dbContext.User,
-                    identity => identity.UserId,
-                    us => us.UserId,
-                    (id, u) => new SubTierDiscord(id.DiscordId, u.SubTier)).
-                ToArrayAsync();
-            var client = new RestClient(@"https://b23d8cc0.ngrok.io/");
-
-            //create request
-            var req = new RestRequest(Method.POST);
-            req.Resource = "discord";
-            req.AddJsonBody(discordSubs);
-            client.Execute(req);
+                //create request
+                var req = new RestRequest(Method.POST);
+                req.Resource = "discord";
+                req.AddJsonBody(discordSubs);
+                client.Execute(req);
+            }
         }
 
         public async Task<bool> UpdateSubTiers(Sub[] subs)

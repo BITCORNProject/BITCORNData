@@ -13,10 +13,12 @@ using BITCORNService.Utils.DbActions;
 using BITCORNService.Utils.LockUser;
 using BITCORNService.Utils.Models;
 using BITCORNService.Utils.Stats;
+using BITCORNService.Utils.Twitch;
 using BITCORNService.Utils.Tx;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 
 namespace BITCORNService.Controllers
 {
@@ -29,9 +31,10 @@ namespace BITCORNService.Controllers
         const int BitcornHubPK = 196;
         public int TimeToClaimTipMinutes { get; set; } = 60 * 24;
         private readonly BitcornContext _dbContext;
-
-        public TxController(BitcornContext dbContext)
+        IConfiguration _configuration;
+        public TxController(IConfiguration configuration,BitcornContext dbContext)
         {
+            _configuration = configuration;
             _dbContext = dbContext;
         }
         [HttpPost("rain")]
@@ -84,13 +87,15 @@ namespace BITCORNService.Controllers
                 throw e;
             }
         }
-
+        
         [HttpPost("payout")]
-        public async Task<int> Payout([FromBody] HashSet<string> chatters)
+        public async Task<int> Payout([FromBody] PayoutRequest request)
         {
             try
             {
-                var grouping = (await _dbContext.JoinUserModels().Where(u => chatters.Contains(u.UserIdentity.TwitchId))
+                var twitchApi = new Kraken(_configuration, _dbContext);
+                await twitchApi.UpdateSubs();
+                var grouping = (await _dbContext.JoinUserModels().Where(u => request.Chatters.Contains(u.UserIdentity.TwitchId))
                     .AsNoTracking()
                     .ToArrayAsync()).GroupBy(u => u.SubTier).ToArray();
 
@@ -117,6 +122,7 @@ namespace BITCORNService.Controllers
                     {
                         payout = 1;
                     }
+                    payout *= request.Minutes;
                     sql.Append(TxUtils.ModifyNumber(nameof(UserWallet), nameof(UserWallet.Balance), payout, '+', pk, ids));
                     sql.Append(TxUtils.ModifyNumber(nameof(UserStat), nameof(UserStat.EarnedIdle), payout, '+', pk, ids));
 

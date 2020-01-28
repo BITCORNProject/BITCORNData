@@ -2,7 +2,7 @@
 
 namespace BITCORNService.Models
 {
-    public partial class ErrorLogs
+    public class ErrorLogs
     {
         public int Id { get; set; }
         public string Application { get; set; }
