@@ -92,9 +92,11 @@ namespace BITCORNService.Controllers
             user.UserStat.TopTipped += delete.UserStat.TopTipped;
 
             user.UserWallet.Balance += delete.UserWallet.Balance;
-            user.UserWallet.CornAddy = delete.UserWallet.CornAddy;
-            user.UserWallet.WalletServer = delete.UserWallet.WalletServer;
-
+            if (!string.IsNullOrEmpty(delete.UserWallet.CornAddy))
+            {
+                user.UserWallet.CornAddy = delete.UserWallet.CornAddy;
+                user.UserWallet.WalletServer = delete.UserWallet.WalletServer;
+            }
             _dbContext.Remove(delete.UserWallet);
             _dbContext.Remove(delete.UserIdentity);
             _dbContext.Remove(delete.UserStat);
@@ -108,13 +110,25 @@ namespace BITCORNService.Controllers
         {
             to.Auth0Id = from.Auth0Id;
             to.Auth0Nickname = from.Auth0Nickname;
-            to.DiscordId = from.DiscordId;
-            to.DiscordUsername = from.DiscordUsername;
-            to.RedditId = from.RedditId;
-            to.TwitchId = from.TwitchId;
-            to.TwitchUsername = from.TwitchUsername;
-            to.TwitterId = from.TwitterId;
-            to.TwitterUsername = from.TwitterUsername;
+            if (!string.IsNullOrEmpty(from.DiscordId))
+            {
+                to.DiscordId = from.DiscordId;
+                to.DiscordUsername = from.DiscordUsername;
+            }
+            if (!string.IsNullOrEmpty(from.RedditId))
+            {
+                to.RedditId = from.RedditId;
+            }
+            if (!string.IsNullOrEmpty(from.TwitchId))
+            {
+                to.TwitchId = from.TwitchId;
+                to.TwitchUsername = from.TwitchUsername;
+            }
+            if (!string.IsNullOrEmpty(from.TwitterId))
+            {
+                to.TwitterId = from.TwitterId;
+                to.TwitterUsername = from.TwitterUsername;
+            }
         }
         [HttpPost]
         public async Task<object> Register([FromBody] RegistrationData registrationData)
