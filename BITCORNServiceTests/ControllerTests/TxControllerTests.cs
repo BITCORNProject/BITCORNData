@@ -94,15 +94,37 @@ namespace BITCORNServiceTests
         [Fact]
         public async Task TestPayoutSuccess()
         {
+            using (var db = TestUtils.CreateDatabase())
+            {
+                var user1 = db.TwitchQuery(_configuration["Config:TestFromUserId"]).FirstOrDefault();
+                var user2 = db.TwitchQuery(_configuration["Config:TestToUserId"]).FirstOrDefault();
+                user1.SubTier = 1;
+                db.Update(user1);
+                user2.SubTier = 1;
+                db.Update(user2);
+                db.SaveChanges();
+            }
             var dbContext = TestUtils.CreateDatabase();
             try
             {
-                var txController = new TxController(dbContext);
-                int changeCount = await txController.Payout(new HashSet<string>() {
-                    _configuration["Config:TestFromUserId"],
-                    _configuration["Config:TestToUserId"]
+                var txController = new TxController(_configuration, dbContext);
+                int changeCount = await txController.Payout(new PayoutRequest()
+                {
+                    Chatters = new HashSet<string>() { _configuration["Config:TestFromUserId"], _configuration["Config:TestToUserId"] },
+                    Minutes = 1
+
                 });
-                Assert.Equal(2,changeCount);
+                Assert.Equal(2, changeCount);
+                using (var db = TestUtils.CreateDatabase())
+                {
+                    var user1 = db.TwitchQuery(_configuration["Config:TestFromUserId"]).FirstOrDefault();
+                    var user2 = db.TwitchQuery(_configuration["Config:TestToUserId"]).FirstOrDefault();
+                    user1.SubTier = 0;
+                    db.Update(user1);
+                    user1.SubTier = 0;
+                    db.Update(user2);
+                    db.SaveChanges();
+                }
             }
             finally
             {
@@ -129,7 +151,7 @@ namespace BITCORNServiceTests
                     results.Add(res);
                 }
                
-                var txController = new TxController(dbContext);
+                var txController = new TxController(_configuration, dbContext);
                 var request = new RainRequest();
                 request.Columns = new string[] {"twitchid" };
                 request.Amount = amount;
@@ -174,7 +196,7 @@ namespace BITCORNServiceTests
                 tipResult.ToUserId = toUser.UserId;
                 tipResult.FromUserId = fromUser.UserId;
 
-                var txController = new TxController(dbContext);
+                var txController = new TxController(_configuration, dbContext);
                 var request = new TipRequest();
                 request.Columns = new string[] { };
 
@@ -369,7 +391,7 @@ namespace BITCORNServiceTests
             try
             {
                 var startToUser = dbContext.TwitchQuery(_configuration["Config:TestToUserId"]).FirstOrDefault().UserWallet.Balance;
-                var txController = new TxController(dbContext);
+                var txController = new TxController(_configuration, dbContext);
                 var request = new TipRequest();
                 request.Columns = new string[] { };
                 request.To = "twitch|" + _configuration["Config:TestToUserId"];
@@ -396,7 +418,7 @@ namespace BITCORNServiceTests
             try
             {
                 var startFromUser = dbContext.TwitchQuery(_configuration["Config:TestFromUserId"]).FirstOrDefault().UserWallet.Balance;
-                var txController = new TxController(dbContext);
+                var txController = new TxController(_configuration, dbContext);
                 txController.TimeToClaimTipMinutes = -1;
                 var request = new TipRequest();
                 request.Columns = new string[] { };
@@ -458,7 +480,7 @@ namespace BITCORNServiceTests
             try
             {
                 var startFromUser = dbContext.TwitchQuery(_configuration["Config:TestFromUserId"]).FirstOrDefault().UserWallet.Balance;
-                var txController = new TxController(dbContext);
+                var txController = new TxController(_configuration, dbContext);
  
                 var request = new TipRequest();
                 request.Columns = new string[] { };
@@ -511,6 +533,13 @@ namespace BITCORNServiceTests
             var dbContext = TestUtils.CreateDatabase();
             try
             {
+                using(var db = TestUtils.CreateDatabase())
+                {
+                    var user = dbContext.TwitchQuery(_configuration["Config:TestBannedUser"]).FirstOrDefault();
+                    user.IsBanned = true;
+                    db.Update(user);
+                    db.SaveChanges();
+                }
                 var fromUser = dbContext.TwitchQuery(_configuration["Config:TestBannedUser"]).FirstOrDefault();
                 var toUser = dbContext.TwitchQuery(_configuration["Config:TestToUserId"]).FirstOrDefault();
 
@@ -518,7 +547,13 @@ namespace BITCORNServiceTests
                 Assert.Equal(result.FromEndBalance, result.FromStartBalance);
                 Assert.Equal(result.ToEndBalance, result.ToStartBalance);
                 Assert.Null(result.ResponseObject.Value[0].Tx);
-
+                using (var db = TestUtils.CreateDatabase())
+                {
+                    var user = dbContext.TwitchQuery(_configuration["Config:TestBannedUser"]).FirstOrDefault();
+                    user.IsBanned = false;
+                    db.Update(user);
+                    db.SaveChanges();
+                }
             }
             finally
             {
@@ -531,6 +566,13 @@ namespace BITCORNServiceTests
             var dbContext = TestUtils.CreateDatabase();
             try
             {
+                using (var db = TestUtils.CreateDatabase())
+                {
+                    var user = dbContext.TwitchQuery(_configuration["Config:TestBannedUser"]).FirstOrDefault();
+                    user.IsBanned = true;
+                    db.Update(user);
+                    db.SaveChanges();
+                }
                 var fromUser = dbContext.TwitchQuery(_configuration["Config:TestFromUserId"]).FirstOrDefault();
                 var toUser = dbContext.TwitchQuery(_configuration["Config:TestBannedUser"]).FirstOrDefault();
 
@@ -538,6 +580,13 @@ namespace BITCORNServiceTests
                 Assert.Equal(result.FromEndBalance, result.FromStartBalance);
                 Assert.Equal(result.ToEndBalance, result.ToStartBalance);
                 Assert.Null(result.ResponseObject.Value[0].Tx);
+                using (var db = TestUtils.CreateDatabase())
+                {
+                    var user = dbContext.TwitchQuery(_configuration["Config:TestBannedUser"]).FirstOrDefault();
+                    user.IsBanned = false;
+                    db.Update(user);
+                    db.SaveChanges();
+                }
 
             }
             finally
