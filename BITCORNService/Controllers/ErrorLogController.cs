@@ -1,8 +1,11 @@
-﻿using System.Threading.Tasks;
+﻿using System;
+using System.Threading.Tasks;
 using BITCORNService.Models;
+using BITCORNService.Utils;
 using BITCORNService.Utils.DbActions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Newtonsoft.Json.Linq;
 
 namespace BITCORNService.Controllers
 {
@@ -19,10 +22,19 @@ namespace BITCORNService.Controllers
         }
         // POST: api/ErrorLog
         [HttpPost]
-        public async Task Post([FromBody] ErrorLogs errorLogs)
+        public async Task<bool> Post([FromBody] ErrorLogs data)
         {
-            _dbContext.ErrorLogs.Add(errorLogs);
-            await _dbContext.SaveAsync();
+            try
+            {
+                _dbContext.ErrorLogs.Add(data);
+                await _dbContext.SaveAsync();
+                return true;
+            }
+            catch (Exception e)
+            {
+                await BITCORNLogger.LogError(_dbContext,e);
+                return false;
+            }
         }
     }
 }
