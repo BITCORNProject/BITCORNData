@@ -121,7 +121,7 @@ namespace BITCORNServiceTests
                     var user2 = db.TwitchQuery(_configuration["Config:TestToUserId"]).FirstOrDefault();
                     user1.SubTier = 0;
                     db.Update(user1);
-                    user1.SubTier = 0;
+                    user2.SubTier = 0;
                     db.Update(user2);
                     db.SaveChanges();
                 }
