@@ -168,38 +168,41 @@ namespace BITCORNService.Utils
 
         public static FullUser GetFullUser(User user, UserIdentity userIdentity, UserWallet userWallet, UserStat userStats)
         {
-            var fullUser = new FullUser();
-            fullUser.Username = user.Username;
-            fullUser.UserId = user.UserId;
-            fullUser.Avatar = user.Avatar;
-            fullUser.Level = user.Level;
-            fullUser.UserId = userIdentity.UserId;
-            fullUser.Auth0Id = userIdentity.Auth0Id;
-            fullUser.Auth0Nickname = userIdentity.Auth0Nickname;
-            fullUser.TwitchId = userIdentity.TwitchId;
-            fullUser.TwitchUsername = userIdentity.TwitchUsername;
-            fullUser.TwitterUsername = userIdentity.TwitterUsername;
-            fullUser.DiscordUsername = userIdentity.DiscordUsername;
-            fullUser.DiscordId = userIdentity.DiscordId;
-            fullUser.TwitterId = userIdentity.TwitterId;
-            fullUser.RedditId = userIdentity.RedditId;
-            fullUser.WalletServer = userWallet.WalletServer;
-            fullUser.CornAddy = userWallet.CornAddy;
-            fullUser.Balance = userWallet.Balance;
-            fullUser.EarnedIdle = userStats.EarnedIdle;
-            fullUser.Tipped = userStats.Tipped;
-            fullUser.TippedTotal = userStats.TippedTotal;
-            fullUser.TopTipped = userStats.TopTipped;
-            fullUser.Tip = userStats.Tip;
-            fullUser.TipTotal = userStats.TipTotal;
-            fullUser.TopTip = userStats.TopTip;
-            fullUser.Rained = userStats.Rained;
-            fullUser.RainTotal = userStats.RainTotal;
-            fullUser.TopRain = userStats.TopRain;
-            fullUser.RainedOn = userStats.RainedOn;
-            fullUser.RainedOnTotal = userStats.RainedOnTotal;
-            fullUser.RainTotal = userStats.TopRainedOn;
-            fullUser.SubTier = user.SubTier;
+            var fullUser = new FullUser()
+            {
+                Username = user.Username,
+                UserId = user.UserId,
+                Avatar = user.Avatar,
+                Level = user.Level,
+
+                Auth0Id = userIdentity.Auth0Id,
+                Auth0Nickname = userIdentity.Auth0Nickname,
+                TwitchId = userIdentity.TwitchId,
+                TwitchUsername = userIdentity.TwitchUsername,
+                TwitterUsername = userIdentity.TwitterUsername,
+                DiscordUsername = userIdentity.DiscordUsername,
+                DiscordId = userIdentity.DiscordId,
+                TwitterId = userIdentity.TwitterId,
+                RedditId = userIdentity.RedditId,
+                WalletServer = userWallet.WalletServer,
+                CornAddy = userWallet.CornAddy,
+                Balance = userWallet.Balance,
+                EarnedIdle = userStats.EarnedIdle,
+                Tipped = userStats.Tipped,
+                TippedTotal = userStats.TippedTotal,
+                TopTipped = userStats.TopTipped,
+                Tip = userStats.Tip,
+                TipTotal = userStats.TipTotal,
+                TopTip = userStats.TopTip,
+                Rained = userStats.Rained,
+                RainTotal = userStats.RainTotal,
+                TopRain = userStats.TopRain,
+                RainedOn = userStats.RainedOn,
+                RainedOnTotal = userStats.RainedOnTotal,
+                SubTier = user.SubTier,
+                TopRainedOn = userStats.TopRainedOn
+            };
+        
             //call for twitter username
             //call for discord username
             return fullUser;
