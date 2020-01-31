@@ -7,52 +7,52 @@
         /// <summary>
         ///how many times tipped 
         /// </summary>
-        public int? Tipped { get; set; }
+        public int? AmountOfTipsReceived { get; set; }
 
         /// <summary>
         /// how much tipped total 
         /// </summary>
-        public decimal? TippedTotal { get; set; }
+        public decimal? TotalReceivedBitcornTips { get; set; }
         /// <summary>
         /// biggest received tip
         /// </summary>
-        public decimal? TopTipped { get; set; }
+        public decimal? LargestReceivedBitcornTip { get; set; }
         /// <summary>
         /// how many times tipped
         /// </summary>
-        public int? Tip { get; set; }
+        public int? AmountOfTipsSent { get; set; }
         /// <summary>
         /// how much you have tipped
         /// </summary>
-        public decimal? TipTotal { get; set; }
+        public decimal? TotalSentBitcornViaTips { get; set; }
         /// <summary>
         /// biggest tip
         /// </summary>
-        public decimal? TopTip { get; set; }
+        public decimal? LargestSentBitcornTip { get; set; }
         /// <summary>
         /// how many times rained
         /// </summary>
-        public int? Rained { get; set; }
+        public int? AmountOfRainsSent { get; set; }
         /// <summary>
         /// how much rained total
         /// </summary>
-        public decimal? RainTotal { get; set; }
+        public decimal? TotalSentBitcornViaRains { get; set; }
         /// <summary>
         /// biggest rain 
         /// </summary>
-        public decimal? TopRain { get; set; }
+        public decimal? LargestSentBitcornRain { get; set; }
         /// <summary>
         /// how many times rained on 
         /// </summary>
-        public int? RainedOn { get; set; }
+        public int? AmountOfRainsReceived { get; set; }
         /// <summary>
         /// how much rained on total
         /// </summary>
-        public decimal? RainedOnTotal { get; set; }
+        public decimal? TotalReceivedBitcornRains { get; set; }
         /// <summary>
         /// biggest received rain
         /// </summary>
-        public decimal? TopRainedOn { get; set; }
+        public decimal? LargestReceivedBitcornRain { get; set; }
         /// <summary>
         /// how much earned idling
         /// </summary>

@@ -78,18 +78,18 @@ namespace BITCORNService.Controllers
             user.SubTier = delete.SubTier;
          
             user.UserStat.EarnedIdle += delete.UserStat.EarnedIdle;
-            user.UserStat.Rained += delete.UserStat.Rained;
-            user.UserStat.RainedOn += delete.UserStat.RainedOn;
-            user.UserStat.RainedOnTotal += delete.UserStat.RainedOnTotal;
-            user.UserStat.RainTotal += delete.UserStat.RainTotal;
-            user.UserStat.Tip += delete.UserStat.Tip;
-            user.UserStat.Tipped += delete.UserStat.Tipped;
-            user.UserStat.TippedTotal += delete.UserStat.TippedTotal;
-            user.UserStat.TipTotal += delete.UserStat.TipTotal;
-            user.UserStat.TopRain += delete.UserStat.TopRain;
-            user.UserStat.TopRainedOn += delete.UserStat.TopRainedOn;
-            user.UserStat.TopTip += delete.UserStat.TopTip;
-            user.UserStat.TopTipped += delete.UserStat.TopTipped;
+            user.UserStat.AmountOfRainsSent += delete.UserStat.AmountOfRainsSent;
+            user.UserStat.AmountOfRainsReceived += delete.UserStat.AmountOfRainsReceived;
+            user.UserStat.TotalReceivedBitcornRains += delete.UserStat.TotalReceivedBitcornRains;
+            user.UserStat.TotalSentBitcornViaRains += delete.UserStat.TotalSentBitcornViaRains;
+            user.UserStat.AmountOfTipsSent += delete.UserStat.AmountOfTipsSent;
+            user.UserStat.AmountOfTipsReceived += delete.UserStat.AmountOfTipsReceived;
+            user.UserStat.TotalReceivedBitcornTips += delete.UserStat.TotalReceivedBitcornTips;
+            user.UserStat.TotalSentBitcornViaTips += delete.UserStat.TotalSentBitcornViaTips;
+            user.UserStat.LargestSentBitcornRain += delete.UserStat.LargestSentBitcornRain;
+            user.UserStat.LargestReceivedBitcornRain += delete.UserStat.LargestReceivedBitcornRain;
+            user.UserStat.LargestSentBitcornTip += delete.UserStat.LargestSentBitcornTip;
+            user.UserStat.LargestReceivedBitcornTip += delete.UserStat.LargestReceivedBitcornTip;
 
             user.UserWallet.Balance += delete.UserWallet.Balance;
             if (!string.IsNullOrEmpty(delete.UserWallet.CornAddy))

@@ -9,42 +9,42 @@ namespace BITCORNService.Utils.Stats
     {
         public static void Tip(UserStat userStats, decimal amount)
         {
-            userStats.Tip += 1;
-            userStats.TipTotal += amount;
-            if (userStats.TopTip < amount)
+            userStats.AmountOfTipsSent += 1;
+            userStats.TotalSentBitcornViaTips += amount;
+            if (userStats.LargestSentBitcornTip < amount)
             {
-                userStats.TopTip = amount;
+                userStats.LargestSentBitcornTip = amount;
             }
         }
 
         public static void Tipped(UserStat userStats, decimal amount)
         {
-            userStats.Tipped += 1;
-            userStats.TippedTotal += amount;
+            userStats.AmountOfTipsReceived += 1;
+            userStats.TotalReceivedBitcornTips += amount;
 
-            if (userStats.TopTipped < amount)
+            if (userStats.LargestReceivedBitcornTip < amount)
             {
-                userStats.TopTipped = amount;
+                userStats.LargestReceivedBitcornTip = amount;
             }
         }
 
         public static void Rain(UserStat userStats, decimal amount)
         {
-            userStats.Rained += 1;
-            userStats.RainTotal += amount;
-            if (userStats.TopRain < amount)
+            userStats.AmountOfRainsSent += 1;
+            userStats.TotalSentBitcornViaRains += amount;
+            if (userStats.LargestSentBitcornRain < amount)
             {
-                userStats.TopRain = amount;
+                userStats.LargestSentBitcornRain = amount;
             }
         }
 
         public static void RainedOn(UserStat userStats, decimal amount)
         {
-            userStats.RainedOn += 1;
-            userStats.RainedOnTotal += amount;
-            if (userStats.TopRainedOn < amount)
+            userStats.AmountOfRainsReceived += 1;
+            userStats.TotalReceivedBitcornRains += amount;
+            if (userStats.LargestReceivedBitcornRain < amount)
             {
-                userStats.TopRainedOn = amount;
+                userStats.LargestReceivedBitcornRain = amount;
             }
         }
 

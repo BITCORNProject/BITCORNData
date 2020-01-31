@@ -36,7 +36,7 @@ namespace BITCORNService.Controllers
             if (string.IsNullOrWhiteSpace(auth0Id)) throw new ArgumentNullException();
 
             var user = await _dbContext.Auth0Query(auth0Id).FirstOrDefaultAsync();
-            return Convert.ToDecimal(user.UserStat.RainedOnTotal + user.UserStat.TippedTotal);
+            return Convert.ToDecimal(user.UserStat.TotalReceivedBitcornRains + user.UserStat.TotalReceivedBitcornTips);
         }
 
     }

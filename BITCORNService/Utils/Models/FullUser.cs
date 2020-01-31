@@ -16,18 +16,18 @@
         public string DiscordId { get; set; }
         public string TwitterId { get; set; }
         public string RedditId { get; set; }
-        public int? Tipped { get; set; }
-        public decimal? TippedTotal { get; set; }
-        public decimal? TopTipped { get; set; }
-        public int? Tip { get; set; }
-        public decimal? TipTotal { get; set; }
-        public decimal? TopTip { get; set; }
-        public int? Rained { get; set; }
-        public decimal? RainTotal { get; set; }
-        public decimal? TopRain { get; set; }
-        public int? RainedOn { get; set; }
-        public decimal? RainedOnTotal { get; set; }
-        public decimal? TopRainedOn { get; set; }
+        public int? AmountOfTipsReceived { get; set; }
+        public decimal? TotalReceivedBitcornTips { get; set; }
+        public decimal? LargestReceivedBitcornTip { get; set; }
+        public int? AmountOfTipsSent { get; set; }
+        public decimal? TotalSentBitcornViaTips { get; set; }
+        public decimal? LargestSentBitcornTip { get; set; }
+        public int? AmountOfRainsSent { get; set; }
+        public decimal? TotalSentBitcornViaRains { get; set; }
+        public decimal? LargestSentBitcornRain { get; set; }
+        public int? AmountOfRainsReceived { get; set; }
+        public decimal? TotalReceivedBitcornRains { get; set; }
+        public decimal? LargestReceivedBitcornRain { get; set; }
         public decimal? EarnedIdle { get; set; }
         public int? WalletServer { get; set; }
         public decimal? Balance { get; set; }

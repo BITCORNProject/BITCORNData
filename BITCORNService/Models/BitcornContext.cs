@@ -208,44 +208,43 @@ namespace BITCORNService.Models
                     .HasColumnType("numeric(19, 8)")
                     .HasDefaultValueSql("((0))");
 
-                entity.Property(e => e.RainTotal)
+                entity.Property(e => e.TotalSentBitcornViaRains)
                     .HasColumnType("numeric(19, 8)")
                     .HasDefaultValueSql("((0))");
 
-                entity.Property(e => e.Rained).HasDefaultValueSql("((0))");
+                entity.Property(e => e.AmountOfRainsSent).HasDefaultValueSql("((0))");
 
-                entity.Property(e => e.RainedOn).HasDefaultValueSql("((0))");
+                entity.Property(e => e.AmountOfRainsReceived).HasDefaultValueSql("((0))");
 
-                entity.Property(e => e.RainedOnTotal)
+                entity.Property(e => e.TotalReceivedBitcornRains)
                     .HasColumnType("numeric(19, 8)")
                     .HasDefaultValueSql("((0))");
 
-                entity.Property(e => e.Tip).HasDefaultValueSql("((0))");
+                entity.Property(e => e.AmountOfTipsSent).HasDefaultValueSql("((0))");
 
-                entity.Property(e => e.TipTotal)
+                entity.Property(e => e.TotalSentBitcornViaTips)
                     .HasColumnType("numeric(19, 8)")
                     .HasDefaultValueSql("((0))");
 
-                entity.Property(e => e.Tipped).HasDefaultValueSql("((0))");
+                entity.Property(e => e.AmountOfTipsReceived).HasDefaultValueSql("((0))");
 
-                entity.Property(e => e.TippedTotal)
-                    .HasColumnName("TIppedTotal")
+                entity.Property(e => e.TotalReceivedBitcornTips)
                     .HasColumnType("numeric(19, 8)")
                     .HasDefaultValueSql("((0))");
 
-                entity.Property(e => e.TopRain)
+                entity.Property(e => e.LargestSentBitcornRain)
                     .HasColumnType("numeric(19, 8)")
                     .HasDefaultValueSql("((0))");
 
-                entity.Property(e => e.TopRainedOn)
+                entity.Property(e => e.LargestReceivedBitcornRain)
                     .HasColumnType("numeric(19, 8)")
                     .HasDefaultValueSql("((0))");
 
-                entity.Property(e => e.TopTip)
+                entity.Property(e => e.LargestSentBitcornTip)
                     .HasColumnType("numeric(19, 8)")
                     .HasDefaultValueSql("((0))");
 
-                entity.Property(e => e.TopTipped)
+                entity.Property(e => e.LargestReceivedBitcornTip)
                     .HasColumnType("numeric(19, 8)")
                     .HasDefaultValueSql("((0))");
 

@@ -188,19 +188,19 @@ namespace BITCORNService.Utils
                 CornAddy = userWallet.CornAddy,
                 Balance = userWallet.Balance,
                 EarnedIdle = userStats.EarnedIdle,
-                Tipped = userStats.Tipped,
-                TippedTotal = userStats.TippedTotal,
-                TopTipped = userStats.TopTipped,
-                Tip = userStats.Tip,
-                TipTotal = userStats.TipTotal,
-                TopTip = userStats.TopTip,
-                Rained = userStats.Rained,
-                RainTotal = userStats.RainTotal,
-                TopRain = userStats.TopRain,
-                RainedOn = userStats.RainedOn,
-                RainedOnTotal = userStats.RainedOnTotal,
+                AmountOfTipsReceived = userStats.AmountOfTipsReceived,
+                TotalReceivedBitcornTips = userStats.TotalReceivedBitcornTips,
+                LargestReceivedBitcornTip = userStats.LargestReceivedBitcornTip,
+                AmountOfTipsSent = userStats.AmountOfTipsSent,
+                TotalSentBitcornViaTips = userStats.TotalSentBitcornViaTips,
+                LargestSentBitcornTip = userStats.LargestSentBitcornTip,
+                AmountOfRainsSent = userStats.AmountOfRainsSent,
+                TotalSentBitcornViaRains = userStats.TotalSentBitcornViaRains,
+                LargestSentBitcornRain = userStats.LargestSentBitcornRain,
+                AmountOfRainsReceived = userStats.AmountOfRainsReceived,
+                TotalReceivedBitcornRains = userStats.TotalReceivedBitcornRains,
                 SubTier = user.SubTier,
-                TopRainedOn = userStats.TopRainedOn
+                LargestReceivedBitcornRain = userStats.LargestReceivedBitcornRain
             };
         
             //call for twitter username

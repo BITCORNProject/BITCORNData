@@ -31,12 +31,12 @@ namespace BITCORNServiceTests
             try
             {
                 var startFromUser = dbContext.TwitchQuery(_configuration["Config:TestFromUserId"]).FirstOrDefault();
-                var startFromRained = startFromUser.UserStat.Rained.Value;
-                var startFromTotalRained = startFromUser.UserStat.RainTotal.Value;
+                var startFromRained = startFromUser.UserStat.AmountOfRainsSent.Value;
+                var startFromTotalRained = startFromUser.UserStat.TotalSentBitcornViaRains.Value;
 
                 var startToUser = dbContext.TwitchQuery(_configuration["Config:TestToUserId"]).FirstOrDefault();
-                var startToRainedOn = startToUser.UserStat.RainedOn.Value;
-                var startToRainedOnTotal = startToUser.UserStat.RainedOnTotal.Value;
+                var startToRainedOn = startToUser.UserStat.AmountOfRainsReceived.Value;
+                var startToRainedOnTotal = startToUser.UserStat.TotalReceivedBitcornRains.Value;
                 var startBalance = startFromUser.UserWallet.Balance.Value;
                 
                 var rainAmount = 10;
@@ -46,10 +46,10 @@ namespace BITCORNServiceTests
                 {
                     var endFromUser = dbContext2.TwitchQuery(_configuration["Config:TestFromUserId"]).FirstOrDefault();
                     var endToUser = dbContext2.TwitchQuery(_configuration["Config:TestToUserId"]).FirstOrDefault();
-                    Assert.Equal(startFromRained+1,endFromUser.UserStat.Rained.Value);
-                    Assert.Equal(startFromTotalRained+rainAmount,endFromUser.UserStat.RainTotal.Value);
-                    Assert.Equal(startToRainedOn+1,endToUser.UserStat.RainedOn.Value);
-                    Assert.Equal(startToRainedOnTotal+rainAmount,endToUser.UserStat.RainedOnTotal.Value);
+                    Assert.Equal(startFromRained+1,endFromUser.UserStat.AmountOfRainsSent.Value);
+                    Assert.Equal(startFromTotalRained+rainAmount,endFromUser.UserStat.TotalSentBitcornViaRains.Value);
+                    Assert.Equal(startToRainedOn+1,endToUser.UserStat.AmountOfRainsReceived.Value);
+                    Assert.Equal(startToRainedOnTotal+rainAmount,endToUser.UserStat.TotalReceivedBitcornRains.Value);
                 }
             }
             finally
@@ -338,12 +338,12 @@ namespace BITCORNServiceTests
             {
                 var tipAmount = 100;
                 var startFromUser = dbContext.TwitchQuery(_configuration["Config:TestFromUserId"]).FirstOrDefault();
-                var startFromTip = startFromUser.UserStat.Tip;
-                var startFromTotalTip = startFromUser.UserStat.TipTotal;
+                var startFromTip = startFromUser.UserStat.AmountOfTipsSent;
+                var startFromTotalTip = startFromUser.UserStat.TotalSentBitcornViaTips;
 
                 var startToUser = dbContext.TwitchQuery(_configuration["Config:TestToUserId"]).FirstOrDefault();
-                var startToUserTipped = startToUser.UserStat.Tipped;
-                var startToUserTotalTipped = startToUser.UserStat.TippedTotal;
+                var startToUserTipped = startToUser.UserStat.AmountOfTipsReceived;
+                var startToUserTotalTipped = startToUser.UserStat.TotalReceivedBitcornTips;
 
 
                 var result = await Tip(tipAmount, startFromUser, startToUser);
@@ -353,10 +353,10 @@ namespace BITCORNServiceTests
                 {
                     var endFromUser = dbContext2.TwitchQuery(_configuration["Config:TestFromUserId"]).FirstOrDefault();
                     var endToUser = dbContext2.TwitchQuery(_configuration["Config:TestToUserId"]).FirstOrDefault();
-                    Assert.Equal(startFromTip+1,endFromUser.UserStat.Tip);
-                    Assert.Equal(startFromTotalTip+tipAmount,endFromUser.UserStat.TipTotal);
-                    Assert.Equal(startToUserTipped+1,endToUser.UserStat.Tipped);
-                    Assert.Equal(startToUserTotalTipped+tipAmount,endToUser.UserStat.TippedTotal);
+                    Assert.Equal(startFromTip+1,endFromUser.UserStat.AmountOfTipsSent);
+                    Assert.Equal(startFromTotalTip+tipAmount,endFromUser.UserStat.TotalSentBitcornViaTips);
+                    Assert.Equal(startToUserTipped+1,endToUser.UserStat.AmountOfTipsReceived);
+                    Assert.Equal(startToUserTotalTipped+tipAmount,endToUser.UserStat.TotalReceivedBitcornTips);
                 }
             }
             finally

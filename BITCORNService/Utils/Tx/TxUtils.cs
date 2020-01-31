@@ -119,14 +119,14 @@ namespace BITCORNService.Utils.Tx
                     dbContext.CornTx.Add(log);
 
                     sql.Append(TxUtils.ModifyNumber(nameof(UserWallet), nameof(UserWallet.Balance), tx.Amount, '+', pk, user.UserId));
-                    sql.Append(TxUtils.ModifyNumber(nameof(UserStat), nameof(UserStat.Tipped), 1, '+', pk, user.UserId));
-                    sql.Append(TxUtils.ModifyNumber(nameof(UserStat), nameof(UserStat.TippedTotal), tx.Amount, '+', pk, user.UserId));
-                    sql.Append(TxUtils.UpdateNumberIfTop(nameof(UserStat), nameof(UserStat.TopTipped), tx.Amount, pk, user.UserId));
+                    sql.Append(TxUtils.ModifyNumber(nameof(UserStat), nameof(UserStat.AmountOfTipsReceived), 1, '+', pk, user.UserId));
+                    sql.Append(TxUtils.ModifyNumber(nameof(UserStat), nameof(UserStat.TotalReceivedBitcornTips), tx.Amount, '+', pk, user.UserId));
+                    sql.Append(TxUtils.UpdateNumberIfTop(nameof(UserStat), nameof(UserStat.LargestReceivedBitcornTip), tx.Amount, pk, user.UserId));
 
 
-                    sql.Append(TxUtils.ModifyNumber(nameof(UserStat), nameof(UserStat.Tip), 1, '+', pk, tx.SenderUserId));
-                    sql.Append(TxUtils.ModifyNumber(nameof(UserStat), nameof(UserStat.TipTotal), tx.Amount, '+', pk, tx.SenderUserId));
-                    sql.Append(TxUtils.UpdateNumberIfTop(nameof(UserStat), nameof(UserStat.TopTip), tx.Amount, pk, tx.SenderUserId));
+                    sql.Append(TxUtils.ModifyNumber(nameof(UserStat), nameof(UserStat.AmountOfTipsSent), 1, '+', pk, tx.SenderUserId));
+                    sql.Append(TxUtils.ModifyNumber(nameof(UserStat), nameof(UserStat.TotalSentBitcornViaTips), tx.Amount, '+', pk, tx.SenderUserId));
+                    sql.Append(TxUtils.UpdateNumberIfTop(nameof(UserStat), nameof(UserStat.LargestSentBitcornTip), tx.Amount, pk, tx.SenderUserId));
 
                 }
                 if (txs.Length > 0)

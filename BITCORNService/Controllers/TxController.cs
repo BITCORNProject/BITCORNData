@@ -60,18 +60,18 @@ namespace BITCORNService.Controllers
                         var fromId = transactions[0].From.UserId;
 
                         var recipientStats = new List<ColumnValuePair>();
-                        recipientStats.Add(new ColumnValuePair(nameof(UserStat.RainedOn), 1));
-                        recipientStats.Add(new ColumnValuePair(nameof(UserStat.RainedOnTotal), rainRequest.Amount));
+                        recipientStats.Add(new ColumnValuePair(nameof(UserStat.AmountOfRainsReceived), 1));
+                        recipientStats.Add(new ColumnValuePair(nameof(UserStat.TotalReceivedBitcornRains), rainRequest.Amount));
 
                         sql.Append(TxUtils.ModifyNumbers(table, recipientStats, '+', pk, recipients));
-                        sql.Append(TxUtils.UpdateNumberIfTop(table, nameof(UserStat.TopRainedOn), rainRequest.Amount, pk, recipients));
+                        sql.Append(TxUtils.UpdateNumberIfTop(table, nameof(UserStat.LargestReceivedBitcornRain), rainRequest.Amount, pk, recipients));
 
                         var senderStats = new List<ColumnValuePair>();
-                        senderStats.Add(new ColumnValuePair(nameof(UserStat.Rained), 1));
-                        senderStats.Add(new ColumnValuePair(nameof(UserStat.RainTotal), processInfo.TotalAmount));
+                        senderStats.Add(new ColumnValuePair(nameof(UserStat.AmountOfRainsSent), 1));
+                        senderStats.Add(new ColumnValuePair(nameof(UserStat.TotalSentBitcornViaRains), processInfo.TotalAmount));
 
                         sql.Append(TxUtils.ModifyNumbers(table, senderStats, '+', pk, fromId));
-                        sql.Append(TxUtils.UpdateNumberIfTop(table, nameof(UserStat.TopRain), processInfo.TotalAmount, pk, fromId));
+                        sql.Append(TxUtils.UpdateNumberIfTop(table, nameof(UserStat.LargestSentBitcornRain), processInfo.TotalAmount, pk, fromId));
 
                         await _dbContext.Database.ExecuteSqlRawAsync(sql.ToString());
                         await _dbContext.SaveAsync(IsolationLevel.RepeatableRead);
@@ -175,19 +175,19 @@ namespace BITCORNService.Controllers
                             var pk = nameof(UserStat.UserId);
                             var fromStats = new List<ColumnValuePair>();
 
-                            fromStats.Add(new ColumnValuePair(nameof(UserStat.Tip), 1));
-                            fromStats.Add(new ColumnValuePair(nameof(UserStat.TipTotal), amount));
+                            fromStats.Add(new ColumnValuePair(nameof(UserStat.AmountOfTipsSent), 1));
+                            fromStats.Add(new ColumnValuePair(nameof(UserStat.TotalSentBitcornViaTips), amount));
 
                             sql.Append(TxUtils.ModifyNumbers(table, fromStats, '+', pk, from.UserId));
 
                             var toStats = new List<ColumnValuePair>();
-                            toStats.Add(new ColumnValuePair(nameof(UserStat.Tipped), 1));
-                            toStats.Add(new ColumnValuePair(nameof(UserStat.TippedTotal), amount));
+                            toStats.Add(new ColumnValuePair(nameof(UserStat.AmountOfTipsReceived), 1));
+                            toStats.Add(new ColumnValuePair(nameof(UserStat.TotalReceivedBitcornTips), amount));
 
                             sql.Append(TxUtils.ModifyNumbers(table, toStats, '+', pk, to.UserId));
                            
-                            sql.Append(TxUtils.UpdateNumberIfTop(table, nameof(UserStat.TopTip), amount, pk, from.UserId));
-                            sql.Append(TxUtils.UpdateNumberIfTop(table, nameof(UserStat.TopTipped), amount, pk, to.UserId));
+                            sql.Append(TxUtils.UpdateNumberIfTop(table, nameof(UserStat.LargestSentBitcornTip), amount, pk, from.UserId));
+                            sql.Append(TxUtils.UpdateNumberIfTop(table, nameof(UserStat.LargestReceivedBitcornTip), amount, pk, to.UserId));
                            
                             await _dbContext.Database.ExecuteSqlRawAsync(sql.ToString());
                             await _dbContext.SaveAsync(IsolationLevel.RepeatableRead);
