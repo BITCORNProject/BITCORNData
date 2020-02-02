@@ -11,6 +11,7 @@ using BITCORNService.Utils.LockUser;
 using BITCORNService.Utils.Models;
 using BITCORNService.Utils.Stats;
 using Microsoft.EntityFrameworkCore;
+using Newtonsoft.Json;
 
 namespace BITCORNService.Utils.Tx
 {
@@ -138,7 +139,7 @@ namespace BITCORNService.Utils.Tx
             }
             catch(Exception e)
             {
-                await BITCORNLogger.LogError(dbContext,e);
+                await BITCORNLogger.LogError(dbContext,e,JsonConvert.SerializeObject(platformId));
                 return 0;
             }
             finally

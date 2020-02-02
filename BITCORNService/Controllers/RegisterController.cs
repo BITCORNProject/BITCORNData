@@ -10,6 +10,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
+using Newtonsoft.Json;
 
 namespace BITCORNService.Controllers
 {
@@ -176,14 +177,14 @@ namespace BITCORNService.Controllers
                         else if (twitchDbUser != null)
                         {
                             var e = new Exception($"A login id already exists for this twitch id {platformId.Id}");
-                            await BITCORNLogger.LogError(_dbContext, e);
+                            await BITCORNLogger.LogError(_dbContext, e,JsonConvert.SerializeObject(registrationData));
                             throw e;
                         }
                         else
                         {
                             var e = new Exception(
                                 $"Failed to register twitch {platformId.Id} {auth0Id}");
-                            await BITCORNLogger.LogError(_dbContext, e);
+                            await BITCORNLogger.LogError(_dbContext, e, JsonConvert.SerializeObject(registrationData));
                             throw e;
                         }
                     case "discord":
@@ -233,7 +234,7 @@ namespace BITCORNService.Controllers
                         }
                         catch (Exception e)
                         {
-                            await BITCORNLogger.LogError(_dbContext,e);
+                            await BITCORNLogger.LogError(_dbContext,e, JsonConvert.SerializeObject(registrationData));
                             throw new Exception($"Failed to add user's discord");
                         }
 
@@ -267,16 +268,16 @@ namespace BITCORNService.Controllers
                             if (twitterDbUser?.UserIdentity.Auth0Id != null)
                             {
                                 var e = new Exception($"Auth0Id already exists for user {platformId.Id}");
-                                await BITCORNLogger.LogError(_dbContext,e);
+                                await BITCORNLogger.LogError(_dbContext,e, JsonConvert.SerializeObject(registrationData));
                                 throw e;
                             }
                             var ex = new Exception($"Failed to register twitter id for user {platformId.Id} {auth0Id}");
-                            await BITCORNLogger.LogError(_dbContext,ex);
+                            await BITCORNLogger.LogError(_dbContext,ex, JsonConvert.SerializeObject(registrationData));
                             throw ex;
                         }
                         catch (Exception e)
                         {
-                            await BITCORNLogger.LogError(_dbContext, e);
+                            await BITCORNLogger.LogError(_dbContext, e, JsonConvert.SerializeObject(registrationData));
                             throw e;
                         }
                         throw new Exception($"HOW THE FUCK DID YOU GET HERE");
@@ -307,19 +308,19 @@ namespace BITCORNService.Controllers
                             else if (redditDbUser?.UserIdentity.Auth0Id != null)
                             {
                                 var e = new Exception($"Auth0Id already exists for user {platformId.Id}");
-                                await BITCORNLogger.LogError(_dbContext, e);
+                                await BITCORNLogger.LogError(_dbContext, e, JsonConvert.SerializeObject(registrationData));
                                 throw e;
                             }
                             else
                             {
                                 var e = new Exception($"Failed to register reddit id for user {platformId.Id} {platformId.Id}");
-                                await BITCORNLogger.LogError(_dbContext, e);
+                                await BITCORNLogger.LogError(_dbContext, e, JsonConvert.SerializeObject(registrationData));
                                 throw e;
                             }
                         }
                         catch (Exception e)
                         {
-                            await BITCORNLogger.LogError(_dbContext, e);
+                            await BITCORNLogger.LogError(_dbContext, e, JsonConvert.SerializeObject(registrationData));
                             throw e;
                         }
 

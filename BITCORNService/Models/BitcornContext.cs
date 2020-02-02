@@ -77,8 +77,10 @@ namespace BITCORNService.Models
                     .IsUnicode(false);
 
                 entity.Property(e => e.Timestamp)
-                    .HasColumnName("TImestamp")
                     .HasColumnType("datetime");
+
+                entity.Property(e=>e.RequestBody)
+                    .HasMaxLength(1000);
             });
 
             modelBuilder.Entity<UnclaimedTx>(entity =>

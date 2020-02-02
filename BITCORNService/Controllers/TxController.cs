@@ -19,6 +19,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
+using Newtonsoft.Json;
 
 namespace BITCORNService.Controllers
 {
@@ -83,7 +84,7 @@ namespace BITCORNService.Controllers
             }
             catch(Exception e)
             {
-                await BITCORNLogger.LogError(_dbContext, e);
+                await BITCORNLogger.LogError(_dbContext, e, JsonConvert.SerializeObject(rainRequest));
                 throw e;
             }
         }
@@ -140,7 +141,7 @@ namespace BITCORNService.Controllers
             }
             catch(Exception e)
             {
-                await BITCORNLogger.LogError(_dbContext, e);
+                await BITCORNLogger.LogError(_dbContext, e, JsonConvert.SerializeObject(request));
                 throw e;
             }
         }
@@ -223,7 +224,7 @@ namespace BITCORNService.Controllers
             }
             catch (Exception e)
             {
-                await BITCORNLogger.LogError(_dbContext,e);
+                await BITCORNLogger.LogError(_dbContext,e, JsonConvert.SerializeObject(tipRequest));
                 throw e;
             }
 

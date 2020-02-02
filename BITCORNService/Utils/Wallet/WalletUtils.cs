@@ -299,7 +299,7 @@ namespace BITCORNService.Utils.Wallet
             }
             catch (Exception e)
             {
-                await BITCORNLogger.LogError(dbContext, e);
+                await BITCORNLogger.LogError(dbContext, e,JsonConvert.SerializeObject(request));
             }
             return receipts.ToArray();
         }

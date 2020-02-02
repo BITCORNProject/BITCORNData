@@ -10,5 +10,6 @@ namespace BITCORNService.Models
         public string StackTrace { get; set; }
         public string Code { get; set; }
         public DateTime? Timestamp { get; set; }
+        public string RequestBody { get; set; }
     }
 }

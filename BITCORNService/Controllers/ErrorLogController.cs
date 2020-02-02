@@ -32,7 +32,7 @@ namespace BITCORNService.Controllers
             }
             catch (Exception e)
             {
-                await BITCORNLogger.LogError(_dbContext,e);
+                await BITCORNLogger.LogError(_dbContext,e,null);
                 return false;
             }
         }
