@@ -1,12 +1,15 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Security.Claims;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using BITCORNService.Models;
 using BITCORNService.Utils.DbActions;
 using BITCORNService.Utils.Models;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using RestSharp;
@@ -49,6 +52,14 @@ namespace BITCORNService.Utils
                 default:
                     throw new Exception($"User {platformId.Platform}|{platformId.Id} could not be found");
             }
+        }
+        public static User GetCachedUser(this ControllerBase controller)
+        {
+            if(controller.HttpContext.Items.TryGetValue("user",out object val))
+            {
+                return (User)val;
+            }
+            return null;
         }
 
         public static async Task<Dictionary<string,User>> ToPlatformDictionary(PlatformId[] platformId,BitcornContext dbContext)

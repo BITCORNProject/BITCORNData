@@ -18,25 +18,25 @@ namespace BITCORNService.Utils.LockUser
             return new PlatformHeaders {Id = id, Platform = platform};
         }
 
-        public static async Task<int> GetUserId(ActionExecutingContext context, BitcornContext dbContext)
+        public static IQueryable<User> GetUserFromHeader(ActionExecutingContext context, BitcornContext dbContext)
         {
             var platformHeaders = LockUserAttributeUtils.GetPlatformHeaders(context);
 
             switch (platformHeaders.Platform)
             {
                 case "auth0":
-                    return await dbContext.Auth0Query(platformHeaders.Id).Select(u=>u.UserId).FirstOrDefaultAsync();
+                    return dbContext.Auth0Query(platformHeaders.Id);
                   
                 case "twitch":
-                    return await dbContext.TwitchQuery(platformHeaders.Id).Select(u => u.UserId).FirstOrDefaultAsync();
+                    return dbContext.TwitchQuery(platformHeaders.Id);
                 case "discord":
-                    return await dbContext.DiscordQuery(platformHeaders.Id).Select(u => u.UserId).FirstOrDefaultAsync();
+                    return dbContext.DiscordQuery(platformHeaders.Id);
                 case "twitter":
-                    return await dbContext.TwitterQuery(platformHeaders.Id).Select(u => u.UserId).FirstOrDefaultAsync();
+                    return dbContext.TwitterQuery(platformHeaders.Id);
                 case "reddit":
-                    return await dbContext.RedditQuery(platformHeaders.Id).Select(u => u.UserId).FirstOrDefaultAsync();
+                    return dbContext.RedditQuery(platformHeaders.Id);
                 default:
-                    return 0;
+                    return null;
             }
         }
     }

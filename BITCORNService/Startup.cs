@@ -39,6 +39,7 @@ namespace BITCORNService
                 options.Audience = audience;
             });
             services.AddScoped<LockUserAttribute>();
+            services.AddScoped<CacheUserAttribute>();
             services.AddSingleton(Configuration);
             
             services.AddDbContext<BitcornContext>(options =>

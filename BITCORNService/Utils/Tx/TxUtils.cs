@@ -10,6 +10,7 @@ using BITCORNService.Utils.DbActions;
 using BITCORNService.Utils.LockUser;
 using BITCORNService.Utils.Models;
 using BITCORNService.Utils.Stats;
+using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
 
@@ -153,7 +154,7 @@ namespace BITCORNService.Utils.Tx
                 }
             }
         }
-        public static async Task<TxProcessInfo> ProcessRequest(ITxRequest req, BitcornContext dbContext)
+        public static async Task<TxProcessInfo> ProcessRequest(ITxRequest req,User fromUser, BitcornContext dbContext)
         {
             if (req.Amount <= 0)
             {
@@ -162,11 +163,12 @@ namespace BITCORNService.Utils.Tx
 
             var info = new TxProcessInfo();
             var platformIds = new HashSet<PlatformId>();
-
+            //var fromUser = (User)httpContext.Items["user"];
+            /*
             var fromPlatformId = BitcornUtils.GetPlatformId(req.From);
          
             var fromUser = await BitcornUtils.GetUserForPlatform(fromPlatformId,dbContext).AsNoTracking().FirstOrDefaultAsync();
-
+            */
             info.From = fromUser;
             
             var toArray = req.To.ToArray();

@@ -32,11 +32,14 @@ namespace BITCORNService.Controllers
             this._dbContext = dbContext;
         }
         //API: /api/wallet/createcornaddy/{id}
+        [ServiceFilter(typeof(CacheUserAttribute))]
         [HttpPost("CreateCornaddy")]
         public async Task<ActionResult<FullUser>> CreateCornaddy([FromBody] CreateCornaddyRequest request)
         {
             try
             {
+                if (this.GetCachedUser() != null)
+                    throw new InvalidOperationException();
                 if (string.IsNullOrWhiteSpace(request.Id)) throw new ArgumentNullException("id");
 
                 var platformId = BitcornUtils.GetPlatformId(request.Id);
@@ -72,11 +75,14 @@ namespace BITCORNService.Controllers
         }
         //API: /api/wallet/deposit
         //called by the wallet servers only
+        [ServiceFilter(typeof(CacheUserAttribute))]
         [HttpPost("deposit")]
         public async Task<ActionResult> Deposit([FromBody] WalletDepositRequest request)
         {
             try
             {
+                if (this.GetCachedUser() != null)
+                    throw new InvalidOperationException();
                 var receipts = await WalletUtils.Deposit(_dbContext, request);
                 foreach (var receipt in receipts)
                 {
@@ -106,12 +112,14 @@ namespace BITCORNService.Controllers
         //API: /api/wallet/withdraw
         [ServiceFilter(typeof(LockUserAttribute))]
         [HttpPost("withdraw")]
-        public async Task<object> Withdraw([FromBody] WithdrawRequest request)
+        public async Task<ActionResult<object>> Withdraw([FromBody] WithdrawRequest request)
         {
+            
             try
             {
                 var platformId = BitcornUtils.GetPlatformId(request.Id);
-                var user = await BitcornUtils.GetUserForPlatform(platformId, _dbContext).FirstOrDefaultAsync();
+                var user = this.GetCachedUser();//await BitcornUtils.GetUserForPlatform(platformId, _dbContext).FirstOrDefaultAsync();
+                
                 var response = new Dictionary<string, object>();
                 if (user != null)
                 {

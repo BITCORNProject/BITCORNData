@@ -20,7 +20,6 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Newtonsoft.Json;
-
 namespace BITCORNService.Controllers
 {
     [Authorize]
@@ -29,7 +28,7 @@ namespace BITCORNService.Controllers
     [ApiController]
     public class TxController : ControllerBase
     {
-        const int BitcornHubPK = 196;
+        public const int BitcornHubPK = 196;
         public int TimeToClaimTipMinutes { get; set; } = 60 * 24;
         private readonly BitcornContext _dbContext;
         IConfiguration _configuration;
@@ -48,7 +47,7 @@ namespace BITCORNService.Controllers
                 if (rainRequest.To == null) throw new ArgumentNullException();
                 if (rainRequest.Amount <= 0) return StatusCode((int)HttpStatusCode.BadRequest);
 
-                var processInfo = await TxUtils.ProcessRequest(rainRequest, _dbContext);
+                var processInfo = await TxUtils.ProcessRequest(rainRequest,this.GetCachedUser(), _dbContext);
                 var transactions = processInfo.Transactions;
                 if (transactions != null && transactions.Length > 0)
                 {
@@ -157,7 +156,7 @@ namespace BITCORNService.Controllers
 
             try
             {
-                var processInfo = await TxUtils.ProcessRequest(tipRequest, _dbContext);
+                var processInfo = await TxUtils.ProcessRequest(tipRequest,this.GetCachedUser(), _dbContext);
                 var transactions = processInfo.Transactions;
                 if (transactions != null && transactions.Length > 0)
                 {

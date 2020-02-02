@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using BITCORNService.Models;
 using BITCORNService.Utils;
 using BITCORNService.Utils.DbActions;
+using BITCORNService.Utils.LockUser;
 using BITCORNService.Utils.Models;
 using BITCORNService.Utils.Tx;
 using Microsoft.AspNetCore.Authorization;
@@ -26,11 +27,13 @@ namespace BITCORNService.Controllers
             _dbContext = dbContext;
             _configuration = configuration;
         }
-
+        [ServiceFilter(typeof(CacheUserAttribute))]
         [HttpPost("newuser")]
         public async Task<FullUser> RegisterNewUser([FromBody]Auth0User auth0User)
         {
-            if(auth0User == null) throw new ArgumentNullException();
+            if (this.GetCachedUser() != null)
+                throw new InvalidOperationException();
+            if (auth0User == null) throw new ArgumentNullException();
 
             var existingUserIdentity = await _dbContext.Auth0Query(auth0User.Auth0Id).Select(u=>u.UserIdentity).FirstOrDefaultAsync();
             
@@ -131,13 +134,15 @@ namespace BITCORNService.Controllers
                 to.TwitterUsername = from.TwitterUsername;
             }
         }
+        [ServiceFilter(typeof(CacheUserAttribute))]
         [HttpPost]
         public async Task<object> Register([FromBody] RegistrationData registrationData)
         { 
             if (registrationData == null) throw new ArgumentNullException("registrationData");
             if (registrationData.Auth0Id == null) throw new ArgumentNullException("registrationData.Auth0Id");
             if (registrationData.PlatformId == null) throw new ArgumentNullException("registrationData.PlatformId");
-
+            if (this.GetCachedUser() != null)
+                throw new InvalidOperationException();
             try
             {
                 string auth0Id = registrationData.Auth0Id;

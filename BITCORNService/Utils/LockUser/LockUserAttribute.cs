@@ -1,10 +1,14 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Net;
 using System.Threading.Tasks;
 using BITCORNService.Models;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Newtonsoft.Json;
 
 namespace BITCORNService.Utils.LockUser
@@ -13,50 +17,68 @@ namespace BITCORNService.Utils.LockUser
     {
         public static HashSet<int> LockedUsers = new HashSet<int>();
         private readonly BitcornContext _dbContext;
-
-        public LockUserAttribute(BitcornContext dbContext)
+        IConfiguration _config;
+        public LockUserAttribute(IConfiguration config, BitcornContext dbContext)
         {
+            this._config = config;
             _dbContext = dbContext;
         }
-
         public async Task OnActionExecutionAsync(ActionExecutingContext context, ActionExecutionDelegate next)
         {
-            int userId = 0;
+            User user = await CacheUserAttribute.ReadUser(_config, _dbContext, context);
             try
             {
-                userId = await LockUserAttributeUtils.GetUserId(context, _dbContext);
+                if (user == null)
+                {
+                    var query = LockUserAttributeUtils.GetUserFromHeader(context, _dbContext);
+                    if (query == null)
+                    {
+                        context.Result = new ContentResult()
+                        {
+                            StatusCode = (int)HttpStatusCode.BadRequest,
+                            Content = JsonConvert.SerializeObject(new
+                            {
+                                refused = "Server refuses to serve this request: invalid headers"
+                            })
+                        };
+                        return;
+                    }
+                    user = await query.FirstOrDefaultAsync();
+                }
             }
             catch (Exception e)
             {
-                Console.WriteLine(e);
+                await BITCORNLogger.LogError(_dbContext, e, null);
                 throw;
             }
-            
-            if (userId == 0)
+
+            if (user == null)
             {
+              
                 //let the api deal with unregistered sender
                 await next();
                 return;
             }
-
-            var userLocked = LockedUsers.Contains(userId);
-            
-            if (userLocked)
-            {
-                context.Result = new ContentResult()
-                {
-                    StatusCode = 420,
-                    Content = JsonConvert.SerializeObject(new
-                    {
-                        refused = "Server refuses to serve this request: User is locked"
-                    })
-                };
-                return;
-            }
             lock (LockedUsers)
             {
-                LockedUsers.Add(userId);
+                var userLocked = LockedUsers.Contains(user.UserId);
+
+                if (userLocked)
+                {
+                    context.Result = new ContentResult()
+                    {
+                        StatusCode = 420,
+                        Content = JsonConvert.SerializeObject(new
+                        {
+                            refused = "Server refuses to serve this request: User is locked"
+                        })
+                    };
+                    return;
+                }
+
+                LockedUsers.Add(user.UserId);
             }
+
             try
             {
                 await next();
@@ -65,10 +87,9 @@ namespace BITCORNService.Utils.LockUser
             {
                 lock (LockedUsers)
                 {
-                    LockedUsers.Remove(userId);
+                    LockedUsers.Remove(user.UserId);
                 }
             }
         }
     }
-
 }

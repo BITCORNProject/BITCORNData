@@ -6,6 +6,7 @@ using BITCORNService.Utils.Tx;
 using BITCORNService.Utils.Wallet;
 using BITCORNServiceTests.Models;
 using BITCORNServiceTests.Utils;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 using System;
@@ -107,7 +108,11 @@ namespace BITCORNServiceTests
             var dbContext = TestUtils.CreateDatabase();
             try
             {
+
                 var txController = new TxController(_configuration, dbContext);
+                var context = txController.ControllerContext.HttpContext = new DefaultHttpContext();
+                context.Items.Add("user", dbContext.JoinUserModels().FirstOrDefault(u=>u.UserId==TxController.BitcornHubPK));
+
                 int changeCount = await txController.Payout(new PayoutRequest()
                 {
                     Chatters = new HashSet<string>() { _configuration["Config:TestFromUserId"], _configuration["Config:TestToUserId"] },
@@ -152,6 +157,9 @@ namespace BITCORNServiceTests
                 }
                
                 var txController = new TxController(_configuration, dbContext);
+                var context = txController.ControllerContext.HttpContext = new DefaultHttpContext();
+                context.Items.Add("user",fromUser);
+    
                 var request = new RainRequest();
                 request.Columns = new string[] {"twitchid" };
                 request.Amount = amount;
@@ -197,6 +205,9 @@ namespace BITCORNServiceTests
                 tipResult.FromUserId = fromUser.UserId;
 
                 var txController = new TxController(_configuration, dbContext);
+                var context = txController.ControllerContext.HttpContext = new DefaultHttpContext();
+                context.Items.Add("user", fromUser);
+
                 var request = new TipRequest();
                 request.Columns = new string[] { };
 
@@ -392,6 +403,8 @@ namespace BITCORNServiceTests
             {
                 var startToUser = dbContext.TwitchQuery(_configuration["Config:TestToUserId"]).FirstOrDefault().UserWallet.Balance;
                 var txController = new TxController(_configuration, dbContext);
+                var context = txController.ControllerContext.HttpContext = new DefaultHttpContext();
+                context.Items.Add("user", null);
                 var request = new TipRequest();
                 request.Columns = new string[] { };
                 request.To = "twitch|" + _configuration["Config:TestToUserId"];
@@ -417,10 +430,14 @@ namespace BITCORNServiceTests
             var dbContext = TestUtils.CreateDatabase();
             try
             {
-                var startFromUser = dbContext.TwitchQuery(_configuration["Config:TestFromUserId"]).FirstOrDefault().UserWallet.Balance;
+                var fromUser = dbContext.TwitchQuery(_configuration["Config:TestFromUserId"]).FirstOrDefault();
+                var startFromUser = fromUser.UserWallet.Balance;
                 var txController = new TxController(_configuration, dbContext);
                 txController.TimeToClaimTipMinutes = -1;
                 var request = new TipRequest();
+                var context = txController.ControllerContext.HttpContext = new DefaultHttpContext();
+                context.Items.Add("user", fromUser);
+
                 request.Columns = new string[] { };
                 string toTwitchId = "123123";
                 request.To = "twitch|" + toTwitchId;
@@ -479,9 +496,12 @@ namespace BITCORNServiceTests
             var dbContext = TestUtils.CreateDatabase();
             try
             {
-                var startFromUser = dbContext.TwitchQuery(_configuration["Config:TestFromUserId"]).FirstOrDefault().UserWallet.Balance;
+                var fromUser = dbContext.TwitchQuery(_configuration["Config:TestFromUserId"]).FirstOrDefault();
+                var startFromUser = fromUser.UserWallet.Balance;
                 var txController = new TxController(_configuration, dbContext);
- 
+                var context = txController.ControllerContext.HttpContext = new DefaultHttpContext();
+                context.Items.Add("user", fromUser);
+
                 var request = new TipRequest();
                 request.Columns = new string[] { };
                 string toTwitchId = "123123";

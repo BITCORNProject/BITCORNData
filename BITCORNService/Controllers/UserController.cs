@@ -9,6 +9,7 @@ using BITCORNService.Models;
 using BITCORNService.Reflection;
 using BITCORNService.Utils;
 using BITCORNService.Utils.DbActions;
+using BITCORNService.Utils.LockUser;
 using BITCORNService.Utils.Models;
 using BITCORNService.Utils.Twitch;
 using Microsoft.AspNetCore.Authorization;
@@ -32,10 +33,13 @@ namespace BITCORNService.Controllers
             _dbContext = dbContext;
             _config = config;
         }
-        // POST: api/User
+        // POST: api/User   
+        [ServiceFilter(typeof(CacheUserAttribute))]
         [HttpPost("{id}")]
         public async Task<ActionResult<FullUser>> Post([FromRoute] string id)
         {
+            if (this.GetCachedUser() != null)
+                throw new InvalidOperationException();
             if (string.IsNullOrWhiteSpace(id)) throw new ArgumentNullException("id");
 
             var platformId = BitcornUtils.GetPlatformId(id);
@@ -49,9 +53,12 @@ namespace BITCORNService.Controllers
                 return StatusCode(404);
             }
         }
+        [ServiceFilter(typeof(CacheUserAttribute))]
         [HttpPost("ban")]
         public async Task<ActionResult<object>> Ban([FromBody] BanUserRequest request)
         {
+            if (this.GetCachedUser() != null)
+                throw new InvalidOperationException();
             if (string.IsNullOrWhiteSpace(request.Sender)) throw new ArgumentNullException("Sender");
 
             if (string.IsNullOrWhiteSpace(request.BanUser)) throw new ArgumentNullException("BanUser");
@@ -82,15 +89,20 @@ namespace BITCORNService.Controllers
                 return StatusCode((int)HttpStatusCode.Forbidden);
             }
         }
+        [ServiceFilter(typeof(CacheUserAttribute))]
         [HttpGet("{name}/[action]")]
-        public bool Check(string name)
+        public async Task<bool> Check(string name)
         {
-            return _dbContext.User.Any(u => u.Username == name);
+            if (this.GetCachedUser() != null)
+                throw new InvalidOperationException();
+            return await _dbContext.User.AnyAsync(u => u.Username == name);
         }
-
+        [ServiceFilter(typeof(CacheUserAttribute))]
         [HttpPut("[action]")]
         public async Task<bool> Update([FromBody] Auth0IdUsername auth0IdUsername)
         {
+            if (this.GetCachedUser() != null)
+                throw new InvalidOperationException();
             if (_dbContext.User.Any(u => u.Username == auth0IdUsername.Username))
             {
                 return false;
@@ -102,31 +114,6 @@ namespace BITCORNService.Controllers
             user.Username = auth0IdUsername.Username;
             await _dbContext.SaveAsync();
             return true;
-        }
-       
-        [HttpPost]
-        public async Task<HttpStatusCode> Post([FromBody] Sub[] subs)
-        {
-            try
-            {
-                var t1 = subs.Where(s => s.Tier == "1000").ToList();
-                var t2 = subs.Where(s => s.Tier == "2000").ToList();
-                var t3 = subs.Where(s => s.Tier == "3000").ToList();
-
-                await _dbContext.Database.ExecuteSqlRawAsync("UPDATE [user] SET [subtier] = 0");
-                if(t1.Count>0)
-                    await _dbContext.Database.ExecuteSqlRawAsync(BitcornUtils.BuildSubtierUpdateString(t1,1));
-                if(t2.Count>0)
-                    await _dbContext.Database.ExecuteSqlRawAsync(BitcornUtils.BuildSubtierUpdateString(t2, 2));
-                if (t3.Count > 0)
-                    await _dbContext.Database.ExecuteSqlRawAsync(BitcornUtils.BuildSubtierUpdateString(t3, 3));
-                return HttpStatusCode.OK;
-            }
-            catch (Exception e)
-            {
-                //_logger.LogError(e, $"Failed to update subtiers {data}");
-                return HttpStatusCode.InternalServerError;
-            }
         }
     }
 }

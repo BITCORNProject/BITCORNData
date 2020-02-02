@@ -8,6 +8,7 @@ using BITCORNService.Utils.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authorization;
+using BITCORNService.Utils.LockUser;
 
 namespace BITCORNService.Controllers
 {
@@ -30,9 +31,12 @@ namespace BITCORNService.Controllers
             return await BitcornUtils.GetUserForPlatform(platformId, _dbContext).Select(u => u.UserIdentity).FirstOrDefaultAsync();
         }
 
+        [ServiceFilter(typeof(CacheUserAttribute))]
         [HttpDelete]
         public async Task<IActionResult> Delete([FromBody] RegistrationData registrationData)
         {
+            if (this.GetCachedUser() != null)
+                throw new InvalidOperationException();
             var platformId = BitcornUtils.GetPlatformId(registrationData.PlatformId);
             var userIdentity = await BitcornUtils.GetUserIdentityForPlatform(platformId, _dbContext);
             if (registrationData.Auth0Id == userIdentity.Auth0Id)
