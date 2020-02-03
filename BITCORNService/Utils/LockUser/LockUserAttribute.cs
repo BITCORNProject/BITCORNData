@@ -44,6 +44,8 @@ namespace BITCORNService.Utils.LockUser
                         return;
                     }
                     user = await query.FirstOrDefaultAsync();
+                    if (user != null)
+                        context.HttpContext.Items.Add("user", user);
                 }
             }
             catch (Exception e)

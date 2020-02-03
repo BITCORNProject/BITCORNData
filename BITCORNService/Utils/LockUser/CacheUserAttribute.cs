@@ -33,7 +33,7 @@ namespace BITCORNService.Utils.LockUser
                 await BITCORNLogger.LogError(_dbContext, e, null);
             }
         }
-
+        
         public static async Task<User> ReadUser(IConfiguration config, BitcornContext dbContext, ActionExecutingContext context)
         {
             var identity = context.HttpContext.User.Identities.First();
@@ -43,7 +43,8 @@ namespace BITCORNService.Utils.LockUser
             if (split.Length == 1)
             {
                 var user= await dbContext.Auth0Query(claim.Value).FirstOrDefaultAsync();
-                context.HttpContext.Items.Add("user", user);
+                if(user!=null)
+                    context.HttpContext.Items.Add("user", user);
                 return user;
             }
             else
