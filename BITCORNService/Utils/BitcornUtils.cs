@@ -164,7 +164,7 @@ namespace BITCORNService.Utils
                          "FROM [userIdentity] " +
                          "inner join [user]" +
                          "  on [useridentity].userid = [user].userid" +
-                         " where [useridentity].twitchid in (";
+                         " where [user].isbanned = 0 and [useridentity].twitchid in (";
             sb.Append(prefix);
 
             foreach (var sub in subs)

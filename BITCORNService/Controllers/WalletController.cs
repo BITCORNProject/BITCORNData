@@ -86,18 +86,21 @@ namespace BITCORNService.Controllers
                 var receipts = await WalletUtils.Deposit(_dbContext, request);
                 foreach (var receipt in receipts)
                 {
-                    var identity = await _dbContext.UserIdentity.FirstOrDefaultAsync(u => u.UserId == receipt.ReceiverId);
-                    await BitcornUtils.TxTracking(_configuration, new
+                    if (receipt.Amount >= 100000)
                     {
-                        txid = receipt.BlockchainTxId,
-                        time = DateTime.Now,
-                        method = "deposit",
-                        platform = "wallet-server",
-                        amount = receipt.Amount,
-                        userid = receipt.ReceiverId,
-                        twitchUsername = identity.TwitchUsername,
-                        discordUsername = identity.DiscordUsername
-                    });
+                        var identity = await _dbContext.UserIdentity.FirstOrDefaultAsync(u => u.UserId == receipt.ReceiverId);
+                        await BitcornUtils.TxTracking(_configuration, new
+                        {
+                            txid = receipt.BlockchainTxId,
+                            time = DateTime.Now,
+                            method = "deposit",
+                            platform = "wallet-server",
+                            amount = receipt.Amount,
+                            userid = receipt.ReceiverId,
+                            twitchUsername = identity.TwitchUsername,
+                            discordUsername = identity.DiscordUsername
+                        });
+                    }
                 }
                 return Ok();
             }
