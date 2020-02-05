@@ -15,9 +15,10 @@ namespace BITCORNService.Models
         public string TxType { get; set; }
         public decimal? Amount { get; set; }
         public int? SenderId { get; set; }
-        public int ReceiverId { get; set; }
+        public int? ReceiverId { get; set; }
         public DateTime? Timestamp { get; set; }
         public string BlockchainTxId { get; set; }
+        public string CornAddy { get; set; }
         public string TxGroupId { get; set; }
 
         public virtual ICollection<UnclaimedTx> UnclaimedTx { get; set; }

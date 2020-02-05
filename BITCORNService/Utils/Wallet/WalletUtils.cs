@@ -149,7 +149,7 @@ namespace BITCORNService.Utils.Wallet
         {
             return !string.IsNullOrEmpty(accessToken);
         }
-        public static async Task<CornTx> DebitWithdrawTx(string txId, User user, WalletServer server, decimal amount, BitcornContext dbContext, string platform)
+        public static async Task<CornTx> DebitWithdrawTx(string cornaddy,string txId, User user, WalletServer server, decimal amount, BitcornContext dbContext, string platform)
         {
             if (user.UserWallet.Balance >= amount)
             {
@@ -165,7 +165,9 @@ namespace BITCORNService.Utils.Wallet
                 log.TxType = "$withdraw";
                 log.TxGroupId = Guid.NewGuid().ToString();
                 log.Platform = platform;
-                log.ReceiverId = user.UserId;
+                log.ReceiverId = null;
+                log.SenderId = user.UserId;
+                log.CornAddy = cornaddy;
                 dbContext.CornTx.Add(log);
                 await dbContext.SaveAsync();
                 return log;
@@ -208,7 +210,7 @@ namespace BITCORNService.Utils.Wallet
                     if (!response.IsError)
                     {
                         string txId = response.GetParsedContent();
-                        await DebitWithdrawTx(txId,user,server,amount,dbContext,platform);
+                        await DebitWithdrawTx(cornAddy, txId, user, server, amount, dbContext, platform);
                         cornResponse.WalletObject = txId;
 
                     }
@@ -272,6 +274,7 @@ namespace BITCORNService.Utils.Wallet
                             cornTx.BlockchainTxId = txid;
                             cornTx.ReceiverId = wallet.UserId;
                             cornTx.SenderId = null;
+                            cornTx.CornAddy = address;
                             cornTx.Timestamp = DateTime.Now;
                             cornTx.TxType = TransactionType.receive.ToString();
                             cornTx.Platform = "wallet-server";

@@ -56,6 +56,9 @@ namespace BITCORNService.Models
                 entity.Property(e=>e.TxGroupId)
                     .HasMaxLength(50)
                     .IsUnicode(false);
+                entity.Property(e => e.CornAddy)
+                    .HasMaxLength(50)
+                    .IsUnicode(false);
             });
 
             modelBuilder.Entity<ErrorLogs>(entity =>
