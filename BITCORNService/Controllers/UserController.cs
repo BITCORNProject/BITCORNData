@@ -53,6 +53,17 @@ namespace BITCORNService.Controllers
                 return StatusCode(404);
             }
         }
+
+        [ServiceFilter(typeof(CacheUserAttribute))]
+        [HttpGet("me")]
+        public ActionResult<FullUser> Me()
+        {
+            User user = null;
+            if ((user = this.GetCachedUser()) == null)
+                return StatusCode(404);
+            return BitcornUtils.GetFullUser(user, user.UserIdentity, user.UserWallet, user.UserStat);
+        }
+
         [ServiceFilter(typeof(CacheUserAttribute))]
         [HttpPost("ban")]
         public async Task<ActionResult<object>> Ban([FromBody] BanUserRequest request)
