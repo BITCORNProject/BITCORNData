@@ -40,21 +40,24 @@ namespace BITCORNService.Reflection
                             property.PropertyType == typeof(decimal?))
                         {
                             string name;
+                            string nameLowerCase;
                             var attribute = property.GetCustomAttribute<UserPropertyRouteAttribute>();
                             if (attribute != null)
                             {
+                                nameLowerCase = attribute.RouteTo;
                                 name = attribute.RouteTo;
                             }
                             else
                             {
-                                name = property.Name.ToLower();
+                                nameLowerCase = property.Name.ToLower();
+                                name = property.Name;
                             }
                             
-                            if (!closedColumns.Contains(name))
+                            if (!closedColumns.Contains(nameLowerCase))
                             {
-                                ColumnToTable.Add(name, model);
-                                columns.Add(name);
-                                closedColumns.Add(name);
+                                ColumnToTable.Add(nameLowerCase, model);
+                                columns.Add(Char.ToLowerInvariant(name[0]) + name.Substring(1));
+                                closedColumns.Add(nameLowerCase);
                             }
                         }
                     }
@@ -69,13 +72,13 @@ namespace BITCORNService.Reflection
             string[] validColumns;
             if (columns.Length == 1 && columns[0] == "*")
             {
-                validColumns = TableColumns.SelectMany(u => u.Value).ToArray();
+                validColumns = TableColumns.SelectMany(u => u.Value).Distinct().ToArray();
             }
             else
             {
-                var list = columns.Select(c=>c.ToLower()).Where(c => ColumnToTable.ContainsKey(c)).Distinct().ToList();
+                var list = columns.Where(c => ColumnToTable.ContainsKey(c.ToLower())).Distinct().ToList();
                 string userIdKey = nameof(User.UserId).ToLower();
-                if (!list.Contains(userIdKey))
+                if (!list.Select(c=>c.ToLower()).Contains(userIdKey))
                 {
                     list.Add(userIdKey);
                 }
@@ -100,7 +103,7 @@ namespace BITCORNService.Reflection
                     sql.Append(',');
                 }
                 string column = columns[i];
-                string table = ColumnToTable[column].Name;
+                string table = ColumnToTable[column.ToLower()].Name;
                 if (!uniqueTables.Contains(table))
                 {
                     uniqueTables.Add(table);
@@ -170,18 +173,24 @@ namespace BITCORNService.Reflection
                     while (result.Read())
                     {
                         var table = new Dictionary<string, object>();
+                        string key = null;
+                        string expectedKey = nameof(User.UserId).ToLower();
                         for (int i = 0; i < result.FieldCount; i++)
                         {
                             var name = result.GetName(i);
+                            if (key == null && name.ToLower() == expectedKey)
+                            {
+                                key = name;
+                            }
                             var value = result.GetValue(i);
-                            if(value is DBNull)
+                            if (value is DBNull)
                             {
                                 value = null;
                             }
                             table.Add(name, value);
                         }
                     
-                        output.Add((int)table[nameof(User.UserId).ToLower()], table);
+                        output.Add((int)table[key], table);
                     }
                 }
                 dbContext.Database.CloseConnection();
