@@ -23,6 +23,8 @@ namespace BITCORNService.Models
         public virtual DbSet<WalletIndex> WalletIndex { get; set; }
         public virtual DbSet<WalletServer> WalletServer { get; set; }
         public virtual DbSet<CornDeposit> CornDeposit { get; set; }
+        public virtual DbSet<WalletDownload> WalletDownload { get; set; }
+        public virtual DbSet<Referrer> Referrer { get; set; }
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {
         }

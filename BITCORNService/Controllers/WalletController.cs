@@ -6,7 +6,6 @@ using System.Threading.Tasks;
 using BITCORNService.Models;
 using BITCORNService.Reflection;
 using BITCORNService.Utils;
-using BITCORNService.Utils.DbActions;
 using BITCORNService.Utils.LockUser;
 using BITCORNService.Utils.Models;
 using BITCORNService.Utils.Wallet;
