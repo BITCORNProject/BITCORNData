@@ -18,6 +18,8 @@ namespace BITCORNService.Games.Models
         {
 
         }
+        public virtual DbSet<ItemPrefab> ItemPrefab { get; set; }
+        public virtual DbSet<UserAvatar> UserAvatar { get; set; }
         public virtual DbSet<BattlegroundsUserStats> BattlegroundsGameStats { get; set; }
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {
@@ -28,10 +30,22 @@ namespace BITCORNService.Games.Models
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
+            modelBuilder.Entity<ItemPrefab>(entity => {
+                entity.HasKey(e => e.Id);
+
+                entity.Property(e => e.AddressablePath).HasMaxLength(100);
+            });
+            modelBuilder.Entity<UserAvatar>(entity=> {
+                entity.HasKey(e => e.UserId)
+                        .HasName("PK__UserAvatar__1788CC4C85ECFC41");
+
+                entity.Property(e => e.UserId).ValueGeneratedNever();
+                entity.Property(e => e.AvatarAddress).HasMaxLength(100);
+            });
             modelBuilder.Entity<BattlegroundsUserStats>(entity =>
             {
                 entity.HasKey(e => e.UserId)
-                    .HasName("PK__BitcornBattlegroundsGameStats__1788CC4C85ECFC41");
+                    .HasName("PK__BattlegroundsGameStats__1788CC4C85ECFC41");
 
                 entity.Property(e => e.UserId).ValueGeneratedNever();
 
