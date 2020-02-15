@@ -76,7 +76,7 @@ namespace BITCORNService.Controllers
 
             var senderPlatformId = BitcornUtils.GetPlatformId(request.Sender);
             var senderUser = await BitcornUtils.GetUserForPlatform(senderPlatformId, _dbContext).FirstOrDefaultAsync();
-            if (senderUser!=null&&senderUser.Level == "5000")
+            if (senderUser!=null && senderUser.IsAdmin())
             {
                 var banPlatformId = BitcornUtils.GetPlatformId(request.BanUser);
                 var primaryKey = -1;
