@@ -5,8 +5,10 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Remove="Migrations\20200209222216_test.cs" />
-    <Compile Remove="Migrations\20200209222216_test.Designer.cs" />
+    <Compile Remove="Migrations\20200216182317_referrer.cs" />
+    <Compile Remove="Migrations\20200216182317_referrer.Designer.cs" />
+    <Compile Remove="Migrations\20200216185827_referrerReward.cs" />
+    <Compile Remove="Migrations\20200216185827_referrerReward.Designer.cs" />
   </ItemGroup>
 
   <ItemGroup>

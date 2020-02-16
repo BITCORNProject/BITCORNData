@@ -116,11 +116,10 @@ namespace BITCORNService.Migrations
 
             modelBuilder.Entity("BITCORNService.Models.Referrer", b =>
                 {
-                    b.Property<string>("ReferralId")
-                        .HasColumnType("nvarchar(450)");
-
-                    b.Property<decimal>("Amount")
-                        .HasColumnType("decimal(18,2)");
+                    b.Property<int>("ReferralId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasAnnotation("SqlServer:ValueGenerationStrategy", SqlServerValueGenerationStrategy.IdentityColumn);
 
                     b.Property<string>("Email")
                         .HasColumnType("nvarchar(max)");
@@ -133,6 +132,9 @@ namespace BITCORNService.Migrations
 
                     b.Property<int>("UserId")
                         .HasColumnType("int");
+
+                    b.Property<decimal>("amount")
+                        .HasColumnType("decimal(18,2)");
 
                     b.HasKey("ReferralId");
 
@@ -265,46 +267,10 @@ namespace BITCORNService.Migrations
                         .HasMaxLength(50)
                         .IsUnicode(false);
 
-                    b.Property<string>("FacebookId")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("FacebookName")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("InstagramId")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("InstagramName")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("LinkedInId")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("LinkedInName")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("PinterestId")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("PinterestName")
-                        .HasColumnType("nvarchar(max)");
-
                     b.Property<string>("RedditId")
                         .HasColumnType("varchar(100)")
                         .HasMaxLength(100)
                         .IsUnicode(false);
-
-                    b.Property<string>("SnapchatId")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("SnapchatName")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("TikTokId")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("TikTokName")
-                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("TwitchId")
                         .HasColumnType("varchar(100)")
@@ -325,12 +291,6 @@ namespace BITCORNService.Migrations
                         .HasColumnType("varchar(50)")
                         .HasMaxLength(50)
                         .IsUnicode(false);
-
-                    b.Property<string>("YouTubeId")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("YouTubeName")
-                        .HasColumnType("nvarchar(max)");
 
                     b.HasKey("UserId")
                         .HasName("PK__tmp_ms_x__1788CC4C32CEDA3C");
@@ -367,6 +327,9 @@ namespace BITCORNService.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("numeric(19, 8)")
                         .HasDefaultValueSql("((0))");
+
+                    b.Property<decimal?>("ReferralReward")
+                        .HasColumnType("decimal(18,2)");
 
                     b.Property<int?>("Tip")
                         .ValueGeneratedOnAdd()
