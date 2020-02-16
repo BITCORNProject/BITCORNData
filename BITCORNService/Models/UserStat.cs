@@ -16,6 +16,7 @@
         public decimal? RainedOnTotal { get; set; }
         public decimal? TopRainedOn { get; set; }
         public decimal? EarnedIdle { get; set; }
+        public decimal? ReferralReward { get; set; }
 
         public virtual User User { get; set; }
     }

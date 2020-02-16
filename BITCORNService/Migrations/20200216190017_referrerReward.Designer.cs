@@ -10,8 +10,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace BITCORNService.Migrations
 {
     [DbContext(typeof(BitcornContext))]
-    [Migration("20200110023356_subtier")]
-    partial class subtier
+    [Migration("20200216190017_referrerReward")]
+    partial class referrerReward
     {
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
@@ -116,6 +116,33 @@ namespace BITCORNService.Migrations
                     b.ToTable("ErrorLogs");
                 });
 
+            modelBuilder.Entity("BITCORNService.Models.Referrer", b =>
+                {
+                    b.Property<int>("ReferralId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasAnnotation("SqlServer:ValueGenerationStrategy", SqlServerValueGenerationStrategy.IdentityColumn);
+
+                    b.Property<string>("Email")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("FirstName")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("LastName")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("amount")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.HasKey("ReferralId");
+
+                    b.ToTable("Referrer");
+                });
+
             modelBuilder.Entity("BITCORNService.Models.UnclaimedTx", b =>
                 {
                     b.Property<int>("Id")
@@ -203,7 +230,9 @@ namespace BITCORNService.Migrations
                         .IsUnicode(false);
 
                     b.Property<int>("SubTier")
-                        .HasColumnType("int");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValueSql("((0))");
 
                     b.Property<string>("Username")
                         .HasColumnType("varchar(50)")
@@ -301,6 +330,9 @@ namespace BITCORNService.Migrations
                         .HasColumnType("numeric(19, 8)")
                         .HasDefaultValueSql("((0))");
 
+                    b.Property<decimal?>("ReferralReward")
+                        .HasColumnType("decimal(18,2)");
+
                     b.Property<int?>("Tip")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("int")
@@ -370,6 +402,48 @@ namespace BITCORNService.Migrations
                         .HasName("PK__UserWall__1788CC4C85ECFC41");
 
                     b.ToTable("UserWallet");
+                });
+
+            modelBuilder.Entity("BITCORNService.Models.WalletDownload", b =>
+                {
+                    b.Property<int>("DownloadId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasAnnotation("SqlServer:ValueGenerationStrategy", SqlServerValueGenerationStrategy.IdentityColumn);
+
+                    b.Property<string>("Country")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("IPAddress")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("IncomingUrl")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Platform")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ReferralCode")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("ReferralId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("ReferralUserId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("TimeStamp")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int?>("UserId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("WalletVersion")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("DownloadId");
+
+                    b.ToTable("WalletDownload");
                 });
 
             modelBuilder.Entity("BITCORNService.Models.WalletIndex", b =>
