@@ -129,9 +129,12 @@ namespace BITCORNService.Migrations
                         .HasColumnType("int")
                         .HasAnnotation("SqlServer:ValueGenerationStrategy", SqlServerValueGenerationStrategy.IdentityColumn);
 
+<<<<<<< HEAD
                     b.Property<decimal>("Amount")
                         .HasColumnType("decimal(18,2)");
 
+=======
+>>>>>>> 9016a62390c1843050fb4078be2075b1ce7eeecb
                     b.Property<string>("Email")
                         .HasColumnType("nvarchar(max)");
 
@@ -144,6 +147,12 @@ namespace BITCORNService.Migrations
                     b.Property<int>("UserId")
                         .HasColumnType("int");
 
+<<<<<<< HEAD
+=======
+                    b.Property<decimal>("amount")
+                        .HasColumnType("decimal(18,2)");
+
+>>>>>>> 9016a62390c1843050fb4078be2075b1ce7eeecb
                     b.HasKey("ReferralId");
 
                     b.ToTable("Referrer");
@@ -336,7 +345,14 @@ namespace BITCORNService.Migrations
                         .HasColumnType("numeric(19, 8)")
                         .HasDefaultValueSql("((0))");
 
+<<<<<<< HEAD
                     b.Property<decimal?>("LargestReceivedBitcornRain")
+=======
+                    b.Property<decimal?>("ReferralReward")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<int?>("Tip")
+>>>>>>> 9016a62390c1843050fb4078be2075b1ce7eeecb
                         .ValueGeneratedOnAdd()
                         .HasColumnType("numeric(19, 8)")
                         .HasDefaultValueSql("((0))");
