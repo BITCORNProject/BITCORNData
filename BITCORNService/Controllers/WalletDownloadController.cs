@@ -42,13 +42,14 @@ namespace BITCORNService.Controllers
                     if (referrerWallet != null)
                     {
                         var amount = _dbContext.Referrer
-                            .FirstOrDefault(w => w.UserId == walletDownload.ReferralUserId)?.amount;
+                            .FirstOrDefault(w => w.UserId == walletDownload.ReferralUserId)?.Amount;
                         referrerWallet.Balance += amount;
                         var botWallet = _dbContext.UserWallet.FirstOrDefault(w => w.UserId == 196);
                         if (botWallet != null)
                         {
                             botWallet.Balance -= amount;
                             await _dbContext.SaveAsync();
+                            _dbContext.UserStat.FirstOrDefault(s => s.UserId == walletDownload.ReferralUserId);
                         }
                     }
                 }
