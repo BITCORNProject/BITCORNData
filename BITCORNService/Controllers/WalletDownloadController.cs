@@ -1,13 +1,12 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 using System.Threading.Tasks;
 using BITCORNService.Models;
 using BITCORNService.Utils;
 using BITCORNService.Utils.DbActions;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Newtonsoft.Json;
 
 namespace BITCORNService.Controllers
 {
@@ -27,6 +26,8 @@ namespace BITCORNService.Controllers
         {
             try
             {
+                var previousDownload =
+                    _dbContext.WalletDownload.Where(d => d.IPAddress == walletDownload.IPAddress);
                 if (walletDownload.ReferralUserId != 0)
                 {
                     try
@@ -39,7 +40,7 @@ namespace BITCORNService.Controllers
                         throw new Exception($"could not convert referral code: {walletDownload.ReferralCode} to an integer");
                     }
                     var referrerWallet = _dbContext.UserWallet.FirstOrDefault(w => w.UserId == walletDownload.ReferralUserId);
-                    if (referrerWallet != null)
+                    if (referrerWallet != null  && !previousDownload.Any())
                     {
                         var amount = _dbContext.Referrer
                             .FirstOrDefault(w => w.UserId == walletDownload.ReferralUserId)?.Amount;
@@ -49,7 +50,9 @@ namespace BITCORNService.Controllers
                         {
                             botWallet.Balance -= amount;
                             await _dbContext.SaveAsync();
-                            _dbContext.UserStat.FirstOrDefault(s => s.UserId == walletDownload.ReferralUserId);
+                            var stats = _dbContext.UserStat.FirstOrDefault(s => s.UserId == walletDownload.ReferralUserId);
+                            stats.TotalReferrals += 1;
+                            stats.TotalReferralRewards += amount;
                         }
                     }
                 }
@@ -61,7 +64,7 @@ namespace BITCORNService.Controllers
             }
             catch (Exception e)
             {
-                await BITCORNLogger.LogError(_dbContext, e);
+                await BITCORNLogger.LogError(_dbContext, e, JsonConvert.SerializeObject(walletDownload));
                 return HttpStatusCode.InternalServerError;
             }
         }
