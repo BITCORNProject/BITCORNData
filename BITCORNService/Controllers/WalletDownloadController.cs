@@ -28,7 +28,7 @@ namespace BITCORNService.Controllers
             try
             {
                 var previousDownload =
-                    _dbContext.WalletDownload.Where(d => d.IPAddress == walletDownload.IPAddress);
+                    _dbContext.WalletDownload.Where(d => d.UserId == walletDownload.UserId).ToArray();
 
                 if (walletDownload.ReferralUserId != 0)
                 {

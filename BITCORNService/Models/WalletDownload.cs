@@ -3,7 +3,7 @@ using System.ComponentModel.DataAnnotations;
 
 namespace BITCORNService.Models
 {
-    public partial class WalletDownload
+    public class WalletDownload
     {
         [Key]
         public int DownloadId { get; set; }
