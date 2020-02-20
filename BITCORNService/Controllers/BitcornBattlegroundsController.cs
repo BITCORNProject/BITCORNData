@@ -32,14 +32,14 @@ namespace BITCORNService.Controllers
 			var properties = typeof(BattlegroundsUserStats)
 				.GetProperties(BindingFlags.GetProperty|BindingFlags.Instance)
 				.Select(p=>p.Name.ToLower());
-
+			/*
 			if (properties.Contains(orderby.ToLower()))
 			{
 				return await _dbContext.BattlegroundsGameStats
 					.FromSqlRaw($"select * from {nameof(BattlegroundsUserStats)} order by {orderby}")
 					.Take(100)
 					.ToArrayAsync();
-			}
+			}*/
 			return StatusCode((int)HttpStatusCode.BadRequest);
 		}
 
@@ -47,7 +47,7 @@ namespace BITCORNService.Controllers
 		[HttpPost("processgame")]
 		public async Task<ActionResult> ProcessGame([FromBody] BitcornBattlegroundsProcessGameRequest request)
 		{
-			
+			/*
 			var user = this.GetCachedUser();
 			if (user != null && user.IsAdmin())
 			{
@@ -66,6 +66,8 @@ namespace BITCORNService.Controllers
 				return StatusCode(200);
 			}
 			return StatusCode(403);
+		*/
+			throw new NotImplementedException();
 		}
 	}
 }

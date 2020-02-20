@@ -20,7 +20,9 @@ namespace BITCORNService.Games.Models
         }
         public virtual DbSet<ItemPrefab> ItemPrefab { get; set; }
         public virtual DbSet<UserAvatar> UserAvatar { get; set; }
-        public virtual DbSet<BattlegroundsUserStats> BattlegroundsGameStats { get; set; }
+        public virtual DbSet<UserInventoryItem> UserInventoryItem { get; set; }
+        public virtual DbSet<AvatarConfig> AvatarConfig { get; set; }
+        //public virtual DbSet<BattlegroundsUserStats> BattlegroundsGameStats { get; set; }
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {
             base.OnConfiguring(optionsBuilder);
@@ -35,6 +37,12 @@ namespace BITCORNService.Games.Models
 
                 entity.Property(e => e.AddressablePath).HasMaxLength(100);
             });
+            modelBuilder.Entity<UserInventoryItem>(entity => {
+                entity.HasKey(e => e.ItemInstanceId);
+                entity.Property(e => e.ItemPrefabId);
+                entity.Property(e => e.UserId);
+                entity.Property(e=>e.Type).HasMaxLength(50);
+            });
             modelBuilder.Entity<UserAvatar>(entity=> {
                 entity.HasKey(e => e.UserId)
                         .HasName("PK__UserAvatar__1788CC4C85ECFC41");
@@ -42,6 +50,11 @@ namespace BITCORNService.Games.Models
                 entity.Property(e => e.UserId).ValueGeneratedNever();
                 entity.Property(e => e.AvatarAddress).HasMaxLength(100);
             });
+            modelBuilder.Entity<AvatarConfig>(entity => {
+                entity.Property(e=>e.Id);
+                entity.Property(e=>e.Catalog).HasMaxLength(100);
+            });
+            /*
             modelBuilder.Entity<BattlegroundsUserStats>(entity =>
             {
                 entity.HasKey(e => e.UserId)
@@ -86,6 +99,7 @@ namespace BITCORNService.Games.Models
                     .HasDefaultValueSql("((0))");
                 
             });
+            */    
         }
     }
 }

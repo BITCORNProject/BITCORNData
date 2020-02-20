@@ -10,5 +10,6 @@ namespace BITCORNService.Games.Models
         public int ItemInstanceId { get; set; }
         public int UserId { get; set; }
         public int ItemPrefabId { get; set; }
+        public string Type { get; set; }
     }
 }

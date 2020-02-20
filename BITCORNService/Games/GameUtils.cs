@@ -11,6 +11,7 @@ namespace BITCORNService.Games
     {
         public static void MigrateUser(BitcornGameContext dbContext, User user, User delete)
         {
+            /*
             var oldStats = dbContext.BattlegroundsGameStats.FirstOrDefault(s => s.UserId == delete.UserId);
             if (oldStats != null)
             {
@@ -25,7 +26,7 @@ namespace BITCORNService.Games
                 newStats.GamesPlayed += oldStats.GamesPlayed;
                 newStats.Wins += oldStats.Wins;
                 dbContext.BattlegroundsGameStats.Remove(oldStats);
-            }
+            }*/
         }
     }
 }
