@@ -22,7 +22,7 @@ namespace BITCORNService.Games.Models
         public virtual DbSet<UserAvatar> UserAvatar { get; set; }
         public virtual DbSet<UserInventoryItem> UserInventoryItem { get; set; }
         public virtual DbSet<AvatarConfig> AvatarConfig { get; set; }
-        //public virtual DbSet<BattlegroundsUserStats> BattlegroundsGameStats { get; set; }
+        public virtual DbSet<BattlegroundsUserStats> BattlegroundsUserStats { get; set; }
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {
             base.OnConfiguring(optionsBuilder);
@@ -54,11 +54,11 @@ namespace BITCORNService.Games.Models
                 entity.Property(e=>e.Id);
                 entity.Property(e=>e.Catalog).HasMaxLength(100);
             });
-            /*
+            
             modelBuilder.Entity<BattlegroundsUserStats>(entity =>
             {
                 entity.HasKey(e => e.UserId)
-                    .HasName("PK__BattlegroundsGameStats__1788CC4C85ECFC41");
+                    .HasName("PK__BattlegroundsUserStats__1788CC4C85ECFC41");
 
                 entity.Property(e => e.UserId).ValueGeneratedNever();
 
@@ -85,8 +85,7 @@ namespace BITCORNService.Games.Models
 
                 entity.Property(e => e.TimeSpentInAir)
                     .HasDefaultValueSql("((0))");
-                entity.Property(e => e.TotalAttacks)
-                    .HasDefaultValueSql("((0))");
+
                 entity.Property(e => e.TotalCritDamageDealt)
                     .HasDefaultValueSql("((0))");
                 entity.Property(e => e.TotalDamageDealt)
@@ -97,9 +96,12 @@ namespace BITCORNService.Games.Models
                     .HasDefaultValueSql("((0))");
                 entity.Property(e => e.TotalPickedUpWeapons)
                     .HasDefaultValueSql("((0))");
-                
+
+                entity.Property(e => e.Wins)
+                  .HasDefaultValueSql("((0))");
+
             });
-            */    
+             
         }
     }
 }

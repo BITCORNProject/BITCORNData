@@ -53,6 +53,18 @@ namespace BITCORNService.Controllers
                 return StatusCode(404);
             }
         }
+        
+        [HttpGet("userid/{id}")]
+        public async Task<ActionResult<int>> UserId(string id)
+        {
+            var platformId = BitcornUtils.GetPlatformId(id);
+            var user = await BitcornUtils.GetUserForPlatform(platformId,_dbContext).FirstOrDefaultAsync();
+            if (user != null)
+            {
+                return user.UserId;
+            }
+            return StatusCode(404);
+        }
 
         [ServiceFilter(typeof(CacheUserAttribute))]
         [HttpGet("me")]
