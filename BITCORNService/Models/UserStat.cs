@@ -60,11 +60,11 @@
         /// <summary>
         /// Total amount received from referrals
         /// </summary>
-        public decimal? TotalReferralRewards { get; set; }
+        public decimal TotalReferralRewards { get; set; }
         /// <summary>
         /// Total number of referrals
         /// </summary>
-        public decimal? TotalReferrals { get; set; }
+        public int TotalReferrals { get; set; }
 
 
         public virtual User User { get; set; }

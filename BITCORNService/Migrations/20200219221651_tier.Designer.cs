@@ -4,14 +4,16 @@ using BITCORNService.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 namespace BITCORNService.Migrations
 {
     [DbContext(typeof(BitcornContext))]
-    partial class BitcornContextModelSnapshot : ModelSnapshot
+    [Migration("20200219221651_tier")]
+    partial class tier
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -120,24 +122,6 @@ namespace BITCORNService.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("ErrorLogs");
-                });
-
-            modelBuilder.Entity("BITCORNService.Models.ReferralTier", b =>
-                {
-                    b.Property<int>("TierId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
-                        .HasAnnotation("SqlServer:ValueGenerationStrategy", SqlServerValueGenerationStrategy.IdentityColumn);
-
-                    b.Property<int>("Bonus")
-                        .HasColumnType("int");
-
-                    b.Property<int>("Tier")
-                        .HasColumnType("int");
-
-                    b.HasKey("TierId");
-
-                    b.ToTable("ReferralTier");
                 });
 
             modelBuilder.Entity("BITCORNService.Models.Referrer", b =>
@@ -352,12 +336,6 @@ namespace BITCORNService.Migrations
                     b.Property<bool>("SignupReward")
                         .HasColumnType("bit");
 
-                    b.Property<DateTime?>("SyncDate")
-                        .HasColumnType("datetime2");
-
-                    b.Property<DateTime?>("TweetDate")
-                        .HasColumnType("datetime2");
-
                     b.Property<int>("UserId")
                         .HasColumnType("int");
 
@@ -432,11 +410,11 @@ namespace BITCORNService.Migrations
                         .HasColumnType("numeric(19, 8)")
                         .HasDefaultValueSql("((0))");
 
-                    b.Property<decimal>("TotalReferralRewards")
+                    b.Property<decimal?>("TotalReferralRewards")
                         .HasColumnType("decimal(18,2)");
 
-                    b.Property<int>("TotalReferrals")
-                        .HasColumnType("int");
+                    b.Property<decimal?>("TotalReferrals")
+                        .HasColumnType("decimal(18,2)");
 
                     b.Property<decimal?>("TotalSentBitcornViaRains")
                         .ValueGeneratedOnAdd()

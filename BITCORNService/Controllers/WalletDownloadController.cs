@@ -27,8 +27,7 @@ namespace BITCORNService.Controllers
         {
             try
             {
-                var previousDownload =
-                    _dbContext.WalletDownload.Where(d => d.UserId == walletDownload.UserId).ToArray();
+                var userReferral = _dbContext.UserReferral.FirstOrDefault(r => r.UserId == walletDownload.UserId);
 
                 if (walletDownload.ReferralUserId != 0)
                 {
@@ -43,27 +42,49 @@ namespace BITCORNService.Controllers
                     }
                     var referrerWallet = _dbContext.UserWallet.FirstOrDefault(w => w.UserId == walletDownload.ReferralUserId);
 
-                    if (referrerWallet != null  && !previousDownload.Any())
+                    if (referrerWallet != null && userReferral != null && userReferral?.WalletDownloadDate == null)
 
                     {
-                        var amount = _dbContext.Referrer
-                            .FirstOrDefault(w => w.UserId == walletDownload.ReferralUserId)?.Amount;
+                        decimal amount = _dbContext.Referrer
+                            .FirstOrDefault(w => w.UserId == walletDownload.ReferralUserId).Amount;
                         referrerWallet.Balance += amount;
                         var botWallet = _dbContext.UserWallet.FirstOrDefault(w => w.UserId == 196);
                         if (botWallet != null)
                         {
                             botWallet.Balance -= amount;
-                            await _dbContext.SaveAsync();
                             var stats = _dbContext.UserStat.FirstOrDefault(s => s.UserId == walletDownload.ReferralUserId);
-                            stats.TotalReferrals += 1;
-                            stats.TotalReferralRewards += amount;
+                            if (stats != null)
+                            {
+                                stats.TotalReferralRewards += amount + 10;
+                            }
                         }
+
+                        if (userReferral.MinimumBalanceDate != null
+                            && userReferral.WalletDownloadDate == null)
+                        {
+                            var referrer = _dbContext.Referrer.FirstOrDefault(r => r.ReferralId == walletDownload.ReferralUserId);
+                            var userWallet = _dbContext.UserWallet.FirstOrDefault(w => w.UserId == walletDownload.UserId);
+                            if (userWallet != null)
+                            {
+                                userWallet.Balance += 100;
+                            }
+                            if (referrer != null)
+                            { 
+                                referrerWallet.Balance += referrer.Amount *
+                                                          _dbContext.ReferralTier
+                                                              .FirstOrDefault(r => r.Tier == referrer.Tier)?
+                                                              .Bonus;
+
+                            }
+                        }
+
+                        userReferral.WalletDownloadDate = DateTime.Now;
                     }
                 }
 
                 walletDownload.TimeStamp = DateTime.Now;
                 _dbContext.WalletDownload.Add(walletDownload);
-                await _dbContext.SaveChangesAsync();
+                await _dbContext.SaveAsync();
                 return HttpStatusCode.OK;
             }
             catch (Exception e)

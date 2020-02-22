@@ -15,11 +15,11 @@ namespace BITCORNService.Models
         public int UserId { get; set; }
         public decimal Amount { get; set; }
 
-
+        public int Tier { get; set; }
         public string FirstName { get; set; }
         public string LastName { get; set; }
         public string Email { get; set; }
-
+        public virtual User User { get; set; }
     }
 }
 

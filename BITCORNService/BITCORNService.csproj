@@ -11,6 +11,8 @@
     <Compile Remove="Migrations\20200216185827_referrerReward.Designer.cs" />
     <Compile Remove="Migrations\20200217173114_referralstats.cs" />
     <Compile Remove="Migrations\20200217173114_referralstats.Designer.cs" />
+    <Compile Remove="Migrations\20200219222110_tiers.cs" />
+    <Compile Remove="Migrations\20200219222110_tiers.Designer.cs" />
 
   </ItemGroup>
 
