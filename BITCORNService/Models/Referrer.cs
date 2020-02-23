@@ -16,10 +16,8 @@ namespace BITCORNService.Models
         public decimal Amount { get; set; }
 
         public int Tier { get; set; }
-        public string FirstName { get; set; }
-        public string LastName { get; set; }
-        public string Email { get; set; }
-        public string W9Url { get; set; }
+        public string ETag { get; set; }
+        public string Key { get; set; }
         public virtual User User { get; set; }
     }
 }
