@@ -13,37 +13,45 @@ namespace BITCORNService.Utils
     {
         public static async Task UpdateReferralSync(BitcornContext dbContext, PlatformId platformId)
         {
-            int? userId = BitcornUtils.GetUserForPlatform(platformId, dbContext).Select(u => u.UserId).FirstOrDefault();
-
-            if (userId != 0 && userId != null)
+            try
             {
-                var userReferral = await dbContext.UserReferral.FirstOrDefaultAsync(u => u.UserId == userId);
-                if (userReferral != null && userReferral.SyncDate == null)
-                {
-                    var referrer = await 
-                        dbContext.Referrer.FirstOrDefaultAsync(r => r.ReferralId == userReferral.ReferralId);
-                    var referrerWallet = await dbContext.UserWallet.FirstOrDefaultAsync(w => w.UserId == referrer.UserId);
-                    if (referrer != null)
-                        if (referrerWallet != null)
-                            referrerWallet.Balance += referrer.Amount;
+                int? userId = BitcornUtils.GetUserForPlatform(platformId, dbContext).Select(u => u.UserId).FirstOrDefault();
 
-                    var botWallet = await dbContext.UserWallet.FirstOrDefaultAsync(w => w.UserId == 196);
-                    if (botWallet != null)
+                if (userId != 0 && userId != null)
+                {
+                    var userReferral = await dbContext.UserReferral.FirstOrDefaultAsync(u => u.UserId == userId);
+                    if (userReferral != null && userReferral.SyncDate == null)
                     {
+                        var referrer = await 
+                            dbContext.Referrer.FirstOrDefaultAsync(r => r.ReferralId == userReferral.ReferralId);
+                        var referrerWallet = await dbContext.UserWallet.FirstOrDefaultAsync(w => w.UserId == referrer.UserId);
                         if (referrer != null)
+                            if (referrerWallet != null)
+                                referrerWallet.Balance += referrer.Amount;
+
+                        var botWallet = await dbContext.UserWallet.FirstOrDefaultAsync(w => w.UserId == 196);
+                        if (botWallet != null)
                         {
-                            botWallet.Balance -= referrer.Amount;
-                            var stats = await dbContext.UserStat.FirstOrDefaultAsync(s => s.UserId == referrer.UserId);
-                            if (stats != null)
+                            if (referrer != null)
                             {
-                                stats.TotalReferralRewards += referrer.Amount;
+                                botWallet.Balance -= referrer.Amount;
+                                var stats = await dbContext.UserStat.FirstOrDefaultAsync(s => s.UserId == referrer.UserId);
+                                if (stats != null)
+                                {
+                                    stats.TotalReferralRewards += referrer.Amount;
+                                }
                             }
                         }
+                        userReferral.SyncDate = DateTime.Now;
                     }
-                    userReferral.SyncDate = DateTime.Now;
-                }
 
-                await dbContext.SaveAsync();
+                    await dbContext.SaveAsync();
+                }
+            }
+            catch (Exception e)
+            {
+                await BITCORNLogger.LogError(dbContext, e, null);
+                throw;
             }
         }
     }

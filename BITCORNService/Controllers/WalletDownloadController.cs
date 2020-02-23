@@ -45,8 +45,14 @@ namespace BITCORNService.Controllers
                     if (referrerWallet != null && userReferral != null && userReferral?.WalletDownloadDate == null)
 
                     {
-                        decimal amount = _dbContext.Referrer
-                            .FirstOrDefault(w => w.UserId == walletDownload.ReferralUserId).Amount;
+                        decimal amount =0 ;
+                        var referrer = _dbContext.Referrer
+                            .FirstOrDefault(w => w.UserId == walletDownload.ReferralUserId);
+                        if (referrer != null)
+                        {
+                            amount = referrer.Amount;
+                        }
+
                         referrerWallet.Balance += amount;
                         var botWallet = _dbContext.UserWallet.FirstOrDefault(w => w.UserId == 196);
                         if (botWallet != null)
@@ -62,7 +68,6 @@ namespace BITCORNService.Controllers
                         if (userReferral.MinimumBalanceDate != null
                             && userReferral.WalletDownloadDate == null)
                         {
-                            var referrer = _dbContext.Referrer.FirstOrDefault(r => r.ReferralId == walletDownload.ReferralUserId);
                             var userWallet = _dbContext.UserWallet.FirstOrDefault(w => w.UserId == walletDownload.UserId);
                             if (userWallet != null)
                             {

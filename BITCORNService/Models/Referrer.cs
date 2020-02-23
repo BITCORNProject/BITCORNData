@@ -19,6 +19,7 @@ namespace BITCORNService.Models
         public string FirstName { get; set; }
         public string LastName { get; set; }
         public string Email { get; set; }
+        public string W9Url { get; set; }
         public virtual User User { get; set; }
     }
 }
