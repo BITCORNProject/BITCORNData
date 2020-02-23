@@ -1,28 +1,23 @@
-﻿using System;
-using Microsoft.EntityFrameworkCore.Migrations;
+﻿using Microsoft.EntityFrameworkCore.Migrations;
 
 namespace BITCORNService.Migrations
 {
-    public partial class subtier : Migration
+    public partial class tier : Migration
     {
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-
-
             migrationBuilder.AddColumn<int>(
-                name: "SubTier",
-                table: "User",
+                name: "Tier",
+                table: "Referrer",
                 nullable: false,
-                defaultValue: 0000);
+                defaultValue: 0);
         }
 
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-
             migrationBuilder.DropColumn(
-                name: "SubTier",
-                table: "User");
-
+                name: "Tier",
+                table: "Referrer");
         }
     }
 }

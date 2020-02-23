@@ -4,14 +4,16 @@ using BITCORNService.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 namespace BITCORNService.Migrations
 {
     [DbContext(typeof(BitcornContext))]
-    partial class BitcornContextModelSnapshot : ModelSnapshot
+    [Migration("20200216182629_referrer")]
+    partial class referrer
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -49,17 +51,12 @@ namespace BITCORNService.Migrations
                         .HasColumnType("nvarchar(100)")
                         .HasMaxLength(100);
 
-                    b.Property<string>("CornAddy")
-                        .HasColumnType("varchar(50)")
-                        .HasMaxLength(50)
-                        .IsUnicode(false);
-
                     b.Property<string>("Platform")
                         .HasColumnType("varchar(50)")
                         .HasMaxLength(50)
                         .IsUnicode(false);
 
-                    b.Property<int?>("ReceiverId")
+                    b.Property<int>("ReceiverId")
                         .HasColumnType("int");
 
                     b.Property<int?>("SenderId")
@@ -105,39 +102,18 @@ namespace BITCORNService.Migrations
                         .HasMaxLength(1000)
                         .IsUnicode(false);
 
-                    b.Property<string>("RequestBody")
-                        .HasColumnType("nvarchar(1000)")
-                        .HasMaxLength(1000);
-
                     b.Property<string>("StackTrace")
                         .HasColumnType("varchar(5000)")
                         .HasMaxLength(5000)
                         .IsUnicode(false);
 
                     b.Property<DateTime?>("Timestamp")
+                        .HasColumnName("TImestamp")
                         .HasColumnType("datetime");
 
                     b.HasKey("Id");
 
                     b.ToTable("ErrorLogs");
-                });
-
-            modelBuilder.Entity("BITCORNService.Models.ReferralTier", b =>
-                {
-                    b.Property<int>("TierId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
-                        .HasAnnotation("SqlServer:ValueGenerationStrategy", SqlServerValueGenerationStrategy.IdentityColumn);
-
-                    b.Property<int>("Bonus")
-                        .HasColumnType("int");
-
-                    b.Property<int>("Tier")
-                        .HasColumnType("int");
-
-                    b.HasKey("TierId");
-
-                    b.ToTable("ReferralTier");
                 });
 
             modelBuilder.Entity("BITCORNService.Models.Referrer", b =>
@@ -146,9 +122,6 @@ namespace BITCORNService.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("int")
                         .HasAnnotation("SqlServer:ValueGenerationStrategy", SqlServerValueGenerationStrategy.IdentityColumn);
-
-                    b.Property<decimal>("Amount")
-                        .HasColumnType("decimal(18,2)");
 
                     b.Property<string>("Email")
                         .HasColumnType("nvarchar(max)");
@@ -159,19 +132,13 @@ namespace BITCORNService.Migrations
                     b.Property<string>("LastName")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<int>("Tier")
-                        .HasColumnType("int");
-
                     b.Property<int>("UserId")
                         .HasColumnType("int");
 
-                    b.Property<string>("W9Url")
-                        .HasColumnType("nvarchar(max)");
+                    b.Property<decimal>("amount")
+                        .HasColumnType("decimal(18,2)");
 
                     b.HasKey("ReferralId");
-
-                    b.HasIndex("UserId")
-                        .IsUnique();
 
                     b.ToTable("Referrer");
                 });
@@ -333,120 +300,73 @@ namespace BITCORNService.Migrations
                     b.ToTable("UserIdentity");
                 });
 
-            modelBuilder.Entity("BITCORNService.Models.UserReferral", b =>
-                {
-                    b.Property<int>("UserReferralId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
-                        .HasAnnotation("SqlServer:ValueGenerationStrategy", SqlServerValueGenerationStrategy.IdentityColumn);
-
-                    b.Property<bool>("Bonus")
-                        .HasColumnType("bit");
-
-                    b.Property<DateTime?>("MinimumBalanceDate")
-                        .HasColumnType("datetime2");
-
-                    b.Property<int>("ReferralId")
-                        .HasColumnType("int");
-
-                    b.Property<bool>("ReferrerBonus")
-                        .HasColumnType("bit");
-
-                    b.Property<bool>("SignupReward")
-                        .HasColumnType("bit");
-
-                    b.Property<DateTime?>("SyncDate")
-                        .HasColumnType("datetime2");
-
-                    b.Property<DateTime?>("TweetDate")
-                        .HasColumnType("datetime2");
-
-                    b.Property<int>("UserId")
-                        .HasColumnType("int");
-
-                    b.Property<DateTime?>("WalletDownloadDate")
-                        .HasColumnType("datetime2");
-
-                    b.HasKey("UserReferralId");
-
-                    b.HasIndex("UserId")
-                        .IsUnique();
-
-                    b.ToTable("UserReferral");
-                });
-
             modelBuilder.Entity("BITCORNService.Models.UserStat", b =>
                 {
                     b.Property<int>("UserId")
                         .HasColumnType("int");
-
-                    b.Property<int?>("AmountOfRainsReceived")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
-                        .HasDefaultValueSql("((0))");
-
-                    b.Property<int?>("AmountOfRainsSent")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
-                        .HasDefaultValueSql("((0))");
-
-                    b.Property<int?>("AmountOfTipsReceived")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
-                        .HasDefaultValueSql("((0))");
-
-                    b.Property<int?>("AmountOfTipsSent")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
-                        .HasDefaultValueSql("((0))");
 
                     b.Property<decimal?>("EarnedIdle")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("numeric(19, 8)")
                         .HasDefaultValueSql("((0))");
 
-                    b.Property<decimal?>("LargestReceivedBitcornRain")
+                    b.Property<decimal?>("RainTotal")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("numeric(19, 8)")
                         .HasDefaultValueSql("((0))");
 
-                    b.Property<decimal?>("LargestReceivedBitcornTip")
+                    b.Property<int?>("Rained")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValueSql("((0))");
+
+                    b.Property<int?>("RainedOn")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValueSql("((0))");
+
+                    b.Property<decimal?>("RainedOnTotal")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("numeric(19, 8)")
                         .HasDefaultValueSql("((0))");
 
-                    b.Property<decimal?>("LargestSentBitcornRain")
+                    b.Property<int?>("Tip")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValueSql("((0))");
+
+                    b.Property<decimal?>("TipTotal")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("numeric(19, 8)")
                         .HasDefaultValueSql("((0))");
 
-                    b.Property<decimal?>("LargestSentBitcornTip")
+                    b.Property<int?>("Tipped")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValueSql("((0))");
+
+                    b.Property<decimal?>("TippedTotal")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnName("TIppedTotal")
+                        .HasColumnType("numeric(19, 8)")
+                        .HasDefaultValueSql("((0))");
+
+                    b.Property<decimal?>("TopRain")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("numeric(19, 8)")
                         .HasDefaultValueSql("((0))");
 
-                    b.Property<decimal?>("TotalReceivedBitcornRains")
+                    b.Property<decimal?>("TopRainedOn")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("numeric(19, 8)")
                         .HasDefaultValueSql("((0))");
 
-                    b.Property<decimal?>("TotalReceivedBitcornTips")
+                    b.Property<decimal?>("TopTip")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("numeric(19, 8)")
                         .HasDefaultValueSql("((0))");
 
-                    b.Property<decimal>("TotalReferralRewards")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<int>("TotalReferrals")
-                        .HasColumnType("int");
-
-                    b.Property<decimal?>("TotalSentBitcornViaRains")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("numeric(19, 8)")
-                        .HasDefaultValueSql("((0))");
-
-                    b.Property<decimal?>("TotalSentBitcornViaTips")
+                    b.Property<decimal?>("TopTipped")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("numeric(19, 8)")
                         .HasDefaultValueSql("((0))");
@@ -583,15 +503,6 @@ namespace BITCORNService.Migrations
                     b.ToTable("WalletServer");
                 });
 
-            modelBuilder.Entity("BITCORNService.Models.Referrer", b =>
-                {
-                    b.HasOne("BITCORNService.Models.User", "User")
-                        .WithOne("Referral")
-                        .HasForeignKey("BITCORNService.Models.Referrer", "UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-                });
-
             modelBuilder.Entity("BITCORNService.Models.UnclaimedTx", b =>
                 {
                     b.HasOne("BITCORNService.Models.CornTx", "CornTx")
@@ -618,15 +529,6 @@ namespace BITCORNService.Migrations
                         .WithOne("UserIdentity")
                         .HasForeignKey("BITCORNService.Models.UserIdentity", "UserId")
                         .HasConstraintName("FK_UserIdentity_User")
-                        .IsRequired();
-                });
-
-            modelBuilder.Entity("BITCORNService.Models.UserReferral", b =>
-                {
-                    b.HasOne("BITCORNService.Models.User", "User")
-                        .WithOne("UserReferral")
-                        .HasForeignKey("BITCORNService.Models.UserReferral", "UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
 
