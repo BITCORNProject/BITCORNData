@@ -13,3 +13,5 @@ update userwallet set balance = 1000 where userId = 2755
 update userwallet set balance = 0 where userId = 2081
 
 select * from ErrorLogs
+
+select * from referrer where userId = 2478

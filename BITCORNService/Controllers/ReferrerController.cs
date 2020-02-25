@@ -29,26 +29,30 @@ namespace BITCORNService.Controllers
         [HttpPost]
         public async Task<HttpStatusCode> Post([FromBody] ReferralUpload referralUpload)
         {
-            try
+            if (!_dbContext.Referrer.Any(r =>r.UserId == referralUpload.UserId))
             {
-                if(referralUpload == null) throw new ArgumentNullException(nameof(referralUpload));
+                try
+                {
+                    if(referralUpload == null) throw new ArgumentNullException(nameof(referralUpload));
 
-                var referrer = new Referrer();
-                referrer.Amount = 10;
-                referrer.UserId = referralUpload.UserId;
-                referrer.Tier = 1;
-                referrer.ETag = referralUpload.W9.ETag;
-                referrer.Key = referralUpload.W9.Key;
-                _dbContext.Referrer.Add(referrer);
+                    var referrer = new Referrer();
+                    referrer.Amount = 10;
+                    referrer.UserId = referralUpload.UserId;
+                    referrer.Tier = 1;
+                    referrer.ETag = referralUpload.W9.ETag;
+                    referrer.Key = referralUpload.W9.Key;
+                    _dbContext.Referrer.Add(referrer);
 
-                await _dbContext.SaveAsync();
-                return HttpStatusCode.OK;
+                    await _dbContext.SaveAsync();
+                    return HttpStatusCode.OK;
+                }
+                catch (Exception e)
+                {
+                    await BITCORNLogger.LogError(_dbContext, e, JsonConvert.SerializeObject(referralUpload));
+                    throw;
+                }
             }
-            catch (Exception e)
-            {
-                await BITCORNLogger.LogError(_dbContext, e, JsonConvert.SerializeObject(referralUpload));
-                throw;
-            }
+            return HttpStatusCode.OK;
         }
     }
 }
