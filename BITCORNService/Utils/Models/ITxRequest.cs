@@ -1,10 +1,11 @@
-﻿using System.Collections.Generic;
+﻿using BITCORNService.Models;
+using System.Collections.Generic;
 
 namespace BITCORNService.Utils.Models
 {
     public interface ITxRequest
     {
-        string From { get; }
+        User FromUser { get; set; }
         decimal Amount { get; }
         string Platform { get; }
         string TxType { get; }

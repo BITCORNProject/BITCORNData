@@ -49,6 +49,8 @@ namespace BITCORNService.Utils
                     return dbContext.TwitterQuery(platformId.Id);
                 case "reddit":
                     return dbContext.RedditQuery(platformId.Id);
+                case "userid":
+                    return dbContext.UserIdQuery(int.Parse(platformId.Id));
                 default:
                     throw new Exception($"User {platformId.Platform}|{platformId.Id} could not be found");
             }
@@ -81,6 +83,8 @@ namespace BITCORNService.Utils
                     return await query.ToDictionaryAsync(u => u.UserIdentity.TwitterId, u => u);
                 case "reddit":
                     return await query.ToDictionaryAsync(u => u.UserIdentity.RedditId, u => u);
+                case "userid":
+                    return await query.ToDictionaryAsync(u => u.UserId.ToString(), u => u);
                 default:
                     throw new Exception($"Platform {platformId[0].Platform} could not be found");
             }
@@ -101,6 +105,8 @@ namespace BITCORNService.Utils
                     return dbContext.TwitterManyQuery(ids);
                 case "reddit":
                     return dbContext.RedditManyQuery(ids);
+                case "userid":
+                    return dbContext.UserIdManyQuery(ids.Select(i=>int.Parse(i)).ToHashSet());
                 default:
                     throw new Exception($"Platform {platformId[0].Platform} could not be found");
             }

@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Net;
 using System.Threading.Tasks;
 using BITCORNService.Models;
@@ -13,7 +12,7 @@ namespace BITCORNService.Utils.LockUser
 {
     public class LockUserAttribute : IAsyncActionFilter
     {
-        public static HashSet<int> LockedUsers = new HashSet<int>();
+        
         private readonly BitcornContext _dbContext;
         IConfiguration _config;
         public LockUserAttribute(IConfiguration config, BitcornContext dbContext)
@@ -59,36 +58,25 @@ namespace BITCORNService.Utils.LockUser
                 await next();
                 return;
             }
-            lock (LockedUsers)
+            if (!UserLockCollection.Lock(user))
             {
-                var userLocked = LockedUsers.Contains(user.UserId);
-
-                if (userLocked)
+                context.Result = new ContentResult()
                 {
-                    context.Result = new ContentResult()
+                    StatusCode = UserLockCollection.UserLockedReturnCode,
+                    Content = JsonConvert.SerializeObject(new
                     {
-                        StatusCode = 420,
-                        Content = JsonConvert.SerializeObject(new
-                        {
-                            refused = "Server refuses to serve this request: User is locked"
-                        })
-                    };
-                    return;
-                }
-
-                LockedUsers.Add(user.UserId);
+                        refused = "Server refuses to serve this request: User is locked"
+                    })
+                };
+                return;
             }
-
             try
             {
                 await next();
             }
             finally
             {
-                lock (LockedUsers)
-                {
-                    LockedUsers.Remove(user.UserId);
-                }
+                UserLockCollection.Release(user);
             }
         }
     }

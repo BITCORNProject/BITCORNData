@@ -18,6 +18,7 @@ namespace BITCORNService.Utils.Tx
 {
     public static class TxUtils
     {
+        public const int BitcornHubPK = 196;
         public static async Task AppendTxs(TxReceipt[] transactions, BitcornContext dbContext, string[] appendColumns)
         {
             if (appendColumns.Length > 0)
@@ -76,6 +77,7 @@ namespace BITCORNService.Utils.Tx
             await dbContext.Database.ExecuteSqlRawAsync(sql.ToString());
             await dbContext.SaveAsync();
         }
+
         public static async Task<int> TryClaimTx(PlatformId platformId, User user, BitcornContext dbContext)
         {
             if (user == null)
@@ -88,11 +90,13 @@ namespace BITCORNService.Utils.Tx
             bool lockApplied = false;
             try
             {
-                lock (LockUserAttribute.LockedUsers)
+                if (UserLockCollection.Lock(user))
                 {
-                    if (LockUserAttribute.LockedUsers.Contains(user.UserId))
-                        return 0;
-                    lockApplied = LockUserAttribute.LockedUsers.Add(user.UserId);
+                    lockApplied = true;
+                }
+                else
+                {
+                    return 0;
                 }
 
                 var now = DateTime.Now;
@@ -147,14 +151,44 @@ namespace BITCORNService.Utils.Tx
             {
                 if (lockApplied)
                 {
-                    lock (LockUserAttribute.LockedUsers)
-                    {
-                        LockUserAttribute.LockedUsers.Remove(user.UserId);
-                    }
+                    UserLockCollection.Release(user);
                 }
             }
         }
-        public static async Task<TxProcessInfo> ProcessRequest(ITxRequest req,User fromUser, BitcornContext dbContext)
+
+        public static async Task<User> GetBitcornhub(BitcornContext dbContext)
+        {
+            return await dbContext.JoinUserModels().FirstOrDefaultAsync(u => u.UserId == BitcornHubPK);            
+        }
+
+        public static async Task<bool> SendFromBitcornhub(User to, decimal amount, string platform, string txType, BitcornContext dbContext)
+        {
+            var processInfo = await PrepareTransaction(await GetBitcornhub(dbContext), to, amount, platform, txType, dbContext);
+            return await processInfo.ExecuteTransaction(dbContext);
+        }
+        
+        public static async Task<bool> ExecuteTransaction(this TxProcessInfo processInfo,BitcornContext dbContext)
+        {
+            var sql = new StringBuilder();
+            if (processInfo.WriteTransactionOutput(sql))
+            {
+                var rows = await dbContext.Database.ExecuteSqlRawAsync(sql.ToString());
+                return rows > 0;
+            }
+            return false;
+        }
+
+        public static async Task<TxProcessInfo> PrepareTransaction(User from, User to, decimal amount, string platform, string txType, BitcornContext dbContext)
+        {
+            var request = new TxRequest(from, amount, platform, txType, $"userid|{to.UserId}");
+            return await ProcessRequest(request,dbContext);
+        }
+        public static async Task<bool> SendFrom(User from, User to, decimal amount, string platform, string txType, BitcornContext dbContext)
+        {
+            var processInfo = await PrepareTransaction(from, to, amount, platform, txType, dbContext);
+            return await processInfo.ExecuteTransaction(dbContext);
+        }
+        public static async Task<TxProcessInfo> ProcessRequest(ITxRequest req, BitcornContext dbContext)
         {
             if (req.Amount <= 0)
             {
@@ -163,19 +197,14 @@ namespace BITCORNService.Utils.Tx
 
             var info = new TxProcessInfo();
             var platformIds = new HashSet<PlatformId>();
-            //var fromUser = (User)httpContext.Items["user"];
-            /*
-            var fromPlatformId = BitcornUtils.GetPlatformId(req.From);
-         
-            var fromUser = await BitcornUtils.GetUserForPlatform(fromPlatformId,dbContext).AsNoTracking().FirstOrDefaultAsync();
-            */
-            info.From = fromUser;
+            
+            info.From = req.FromUser;
             
             var toArray = req.To.ToArray();
          
             var totalAmountRequired = toArray.Length * req.Amount;
             bool canExecuteAll = false;
-            if (fromUser != null && fromUser.UserWallet.Balance >= totalAmountRequired)
+            if (info.From!= null && info.From.UserWallet.Balance >= totalAmountRequired)
                 canExecuteAll = true;
             
             foreach (var to in toArray)
@@ -196,9 +225,9 @@ namespace BITCORNService.Utils.Tx
             foreach (var to in platformIdArray)
             {
                 var receipt = new TxReceipt();
-                if (fromUser != null)
+                if (info.From != null)
                 {
-                    receipt.From = new SelectableUser(fromUser);
+                    receipt.From = new SelectableUser(info.From);
                 }
                 
                 if (users.TryGetValue(to.Id, out User user))
@@ -206,7 +235,7 @@ namespace BITCORNService.Utils.Tx
                     receipt.To = new SelectableUser(user);
                     if (canExecuteAll)
                     {
-                        receipt.Tx = VerifyTx(fromUser, user, req.Amount, req.Platform, req.TxType, txid);
+                        receipt.Tx = VerifyTx(info.From, user, req.Amount, req.Platform, req.TxType, txid);
                     }
                     if (receipt.Tx != null)
                     {

@@ -111,7 +111,7 @@ namespace BITCORNServiceTests
 
                 var txController = new TxController(_configuration, dbContext);
                 var context = txController.ControllerContext.HttpContext = new DefaultHttpContext();
-                context.Items.Add("user", dbContext.JoinUserModels().FirstOrDefault(u=>u.UserId==TxController.BitcornHubPK));
+                context.Items.Add("user", dbContext.JoinUserModels().FirstOrDefault(u=>u.UserId==TxUtils.BitcornHubPK));
 
                 int changeCount = await txController.Payout(new PayoutRequest()
                 {
@@ -697,7 +697,7 @@ namespace BITCORNServiceTests
                 var amount = 10;
                 var user = dbContext.TwitchQuery(_configuration["Config:TestFromUserId"]).FirstOrDefault();
                 var server = dbContext.WalletServer.FirstOrDefault(u=>u.Index==user.UserWallet.WalletServer);
-                //await WalletUtils.DebitWithdrawTx("test",user,server,amount,dbContext,"test", "test");
+                await WalletUtils.DebitWithdrawTx("testaddr","test",user,server,amount,dbContext, "test");
                 using (var dbContext2 = TestUtils.CreateDatabase())
                 {
                     var user2 = dbContext2.TwitchQuery(_configuration["Config:TestFromUserId"]).FirstOrDefault();
@@ -722,7 +722,7 @@ namespace BITCORNServiceTests
 
                 var amount = user.UserWallet.Balance.Value+10;
                 var server = dbContext.WalletServer.FirstOrDefault(u => u.Index == user.UserWallet.WalletServer);
-                //await WalletUtils.DebitWithdrawTx("test", user, server, amount, dbContext, "test");
+                await WalletUtils.DebitWithdrawTx("test addr","test", user, server, amount, dbContext, "test");
                 using (var dbContext2 = TestUtils.CreateDatabase())
                 {
                     var user2 = dbContext2.TwitchQuery(_configuration["Config:TestFromUserId"]).FirstOrDefault();

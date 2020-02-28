@@ -5,7 +5,10 @@ using System.Threading.Tasks;
 using BITCORNService.Models;
 using BITCORNService.Utils;
 using BITCORNService.Utils.DbActions;
+using BITCORNService.Utils.LockUser;
+using BITCORNService.Utils.Tx;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
 
 
@@ -23,11 +26,18 @@ namespace BITCORNService.Controllers
         }
         // POST: api/WalletDownload
         [HttpPost]
-        public async Task<HttpStatusCode> Post([FromBody] WalletDownload walletDownload)
-        {try
-            {
-                var userReferral = _dbContext.UserReferral.FirstOrDefault(r => r.UserId == walletDownload.UserId);
 
+        public async Task<ActionResult> Post([FromBody] WalletDownload walletDownload)
+        {
+            var userReferral = _dbContext.UserReferral.FirstOrDefault(r => r.UserId == walletDownload.UserId);
+            if (!UserLockCollection.Lock(userReferral.UserId))
+            {
+                return StatusCode(UserLockCollection.UserLockedReturnCode);
+            }
+
+            try
+            {
+                
                 if (walletDownload.ReferralUserId != 0)
                 {
                     try
@@ -39,45 +49,48 @@ namespace BITCORNService.Controllers
                     {
                         throw new Exception($"could not convert referral code: {walletDownload.ReferralCode} to an integer");
                     }
-                    var referrerWallet = _dbContext.UserWallet.FirstOrDefault(w => w.UserId == walletDownload.ReferralUserId);
-
-                    if (referrerWallet != null && userReferral != null && userReferral?.WalletDownloadDate == null)
+                    var referrerUser = await _dbContext.JoinUserModels().FirstOrDefaultAsync(u=>u.UserId==walletDownload.ReferralUserId);
+                   
+                    if (referrerUser != null && userReferral != null && userReferral?.WalletDownloadDate == null)
 
                     {
-                        decimal amount =0 ;
-                        var referrer = _dbContext.Referrer
-                            .FirstOrDefault(w => w.UserId == walletDownload.ReferralUserId);
+                        var referrerWallet = referrerUser.UserWallet;
+
+                        var referrer = await _dbContext.Referrer
+                            .FirstOrDefaultAsync(w => w.UserId == walletDownload.ReferralUserId);
+                        
                         if (referrer != null)
                         {
-                            amount = referrer.Amount;
-                        }
-
-                        referrerWallet.Balance += amount;
-                        var botWallet = _dbContext.UserWallet.FirstOrDefault(w => w.UserId == 196);
-                        if (botWallet != null)
-                        {
-                            botWallet.Balance -= amount;
-                            var stats = _dbContext.UserStat.FirstOrDefault(s => s.UserId == walletDownload.ReferralUserId);
-                            if (stats != null)
+                            var referrerReward = await TxUtils.SendFromBitcornhub(referrerUser, referrer.Amount, "BITCORNFarms", "Referral", _dbContext);
+                            if (referrerReward)
                             {
-                                stats.TotalReferralRewards += amount + 10;
+                                referrerUser.UserStat.TotalReferralRewards += referrer.Amount + 10;
                             }
                         }
 
                         if (userReferral.MinimumBalanceDate != null
                             && userReferral.WalletDownloadDate == null)
                         {
-                            var userWallet = _dbContext.UserWallet.FirstOrDefault(w => w.UserId == walletDownload.UserId);
+                            var userWallet = _dbContext.JoinUserModels().FirstOrDefault(w => w.UserId == walletDownload.UserId);
                             if (userWallet != null)
                             {
-                                userWallet.Balance += 100;
+                                var downloadReward = await TxUtils.SendFromBitcornhub(userWallet, 100, "BITCORNFarms", "Wallet download", _dbContext);
+                                if (downloadReward)
+                                {
+
+                                }
                             }
                             if (referrer != null)
-                            { 
-                                referrerWallet.Balance += referrer.Amount *
-                                                          _dbContext.ReferralTier
-                                                              .FirstOrDefault(r => r.Tier == referrer.Tier)?
-                                                              .Bonus;
+                            {
+                                var referralTier = _dbContext.ReferralTier.FirstOrDefault(r => r.Tier == referrer.Tier);
+                                var amount = referrer.Amount;
+                                if (referralTier != null) amount *= referralTier.Bonus;
+
+                                var referrerReward = await TxUtils.SendFromBitcornhub(referrerUser, amount, "BITCORNFarms", "Referral", _dbContext);
+                                if (referrerReward)
+                                {
+                                
+                                }
 
                             }
                         }
@@ -89,12 +102,16 @@ namespace BITCORNService.Controllers
                 walletDownload.TimeStamp = DateTime.Now;
                 _dbContext.WalletDownload.Add(walletDownload);
                 await _dbContext.SaveAsync();
-                return HttpStatusCode.OK;
+                return StatusCode((int)HttpStatusCode.OK);
             }
             catch (Exception e)
             {
                 await BITCORNLogger.LogError(_dbContext, e, JsonConvert.SerializeObject(walletDownload));
-                return HttpStatusCode.InternalServerError;
+                return StatusCode((int)HttpStatusCode.InternalServerError);
+            }
+            finally
+            {
+                UserLockCollection.Release(userReferral.UserId);
             }
         }
 

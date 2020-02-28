@@ -265,10 +265,11 @@ namespace BITCORNService.Utils.Wallet
 
                     if (!isLogged)
                     {
-                        newDeposits++;
+                       
                         var wallet = await dbContext.WalletByAddress(address);
                         if (wallet != null)
                         {
+                            newDeposits++;
                             var cornTx = new CornTx();
                             cornTx.Amount = amount;
                             cornTx.BlockchainTxId = txid;
