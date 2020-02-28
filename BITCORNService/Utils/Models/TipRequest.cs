@@ -1,4 +1,6 @@
-﻿using System.Collections;
+﻿using BITCORNService.Models;
+using Newtonsoft.Json;
+using System.Collections;
 using System.Collections.Generic;
 
 namespace BITCORNService.Utils.Models
@@ -18,6 +20,8 @@ namespace BITCORNService.Utils.Models
                 yield return this.To;
             }
         }
+        [JsonIgnore]
+        public User FromUser { get; set; }
 
     }
 }
