@@ -21,6 +21,8 @@ namespace BITCORNService.Models
         public virtual UserWallet UserWallet { get; set; }
         public virtual UserReferral UserReferral { get; set; }
         public virtual Referrer Referral { get; set; }
+        public virtual UserSubscription UserSubscription { get; set; }
+        
         public virtual ICollection<UnclaimedTx> UnclaimedTxReceiverUser { get; set; }
         public virtual ICollection<UnclaimedTx> UnclaimedTxSenderUser { get; set; }
     }
