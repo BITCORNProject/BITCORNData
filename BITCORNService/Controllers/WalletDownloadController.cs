@@ -24,8 +24,7 @@ namespace BITCORNService.Controllers
         // POST: api/WalletDownload
         [HttpPost]
         public async Task<HttpStatusCode> Post([FromBody] WalletDownload walletDownload)
-        {
-            try
+        {try
             {
                 var userReferral = _dbContext.UserReferral.FirstOrDefault(r => r.UserId == walletDownload.UserId);
 
