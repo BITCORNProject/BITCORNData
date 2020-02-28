@@ -89,6 +89,10 @@ namespace BITCORNService.Controllers
                 {
                     await BITCORNLogger.LogError(_dbContext, e, id);
                 }
+                finally
+                {
+                    UserLockCollection.Release(userWallet.UserId);
+                }
                 return user.UserWallet;
             }
             else
