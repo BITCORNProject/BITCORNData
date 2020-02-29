@@ -47,7 +47,6 @@ namespace BITCORNService.Controllers
         {
             try
             {
-                var nachos = await ProbitApi.GetCornPrice();
                 return HttpStatusCode.OK;
             }
             catch (Exception e)

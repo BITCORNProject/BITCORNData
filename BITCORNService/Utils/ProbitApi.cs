@@ -11,7 +11,7 @@ namespace BITCORNService.Utils
 {
     public static class ProbitApi
     {
-        public static async Task<string> GetCornPrice()
+        public static async Task<string> GetCornPriceAsync()
         {
             var client = new RestClient("https://api.probit.com");
             var request = new RestRequest("/api/exchange/v1/ticker", Method.POST);

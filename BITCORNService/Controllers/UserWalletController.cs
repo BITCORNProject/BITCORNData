@@ -55,6 +55,7 @@ namespace BITCORNService.Controllers
                            && referrer != null)
                         {
                             var miniumBalanceReward = await TxUtils.SendFromBitcornhub(referrerUser, referrer.Amount, "BITCORNFarms", "Minium balance reward", _dbContext);
+                            //todo log referral tx
                             if (miniumBalanceReward)
                             {
                                 referrerStat.TotalReferralRewards += referrer.Amount;
@@ -70,15 +71,17 @@ namespace BITCORNService.Controllers
                             && userWallet.Balance >= 1000)
                         {
                             var bonus = _dbContext.ReferralTier.FirstOrDefault(r => r.Tier == referrer.Tier).Bonus;
-                          
-                            var miniumBalanceReward = await TxUtils.SendFromBitcornhub(user, 100, "BITCORNFarms", "Minium balance reward", _dbContext);
-                            if (miniumBalanceReward)
+
+
+                            var minimumBalanceReward = await TxUtils.SendFromBitcornhub(user, 100, "BITCORNFarms", "Referral bonus reward", _dbContext);
+                            //todo log referral tx
+                            if (minimumBalanceReward)
                             {
                                 userReferral.MinimumBalanceDate = DateTime.Now;
                                 userReferral.Bonus = true;
                                 
-                                await TxUtils.SendFromBitcornhub(referrerUser, referrer.Amount * bonus, "BITCORNFarms", "Minium balance reward", _dbContext);
-
+                                await TxUtils.SendFromBitcornhub(referrerUser, referrer.Amount * bonus, "BITCORNFarms", "Minimum balance reward", _dbContext);
+                                //todo log referral tx
                                 referrerStat.TotalReferralRewards += referrer.Amount * bonus;
                             }
                         }

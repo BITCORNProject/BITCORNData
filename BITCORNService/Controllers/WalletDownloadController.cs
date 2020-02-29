@@ -62,6 +62,7 @@ namespace BITCORNService.Controllers
                         if (referrer != null)
                         {
                             var referrerReward = await TxUtils.SendFromBitcornhub(referrerUser, referrer.Amount, "BITCORNFarms", "Referral", _dbContext);
+                            //todo log referral tx
                             if (referrerReward)
                             {
                                 referrerUser.UserStat.TotalReferralRewards += referrer.Amount + 10;
@@ -75,9 +76,10 @@ namespace BITCORNService.Controllers
                             if (userWallet != null)
                             {
                                 var downloadReward = await TxUtils.SendFromBitcornhub(userWallet, 100, "BITCORNFarms", "Wallet download", _dbContext);
+                                await ReferralUtils.LogReferralTx(_dbContext, (int) walletDownload.ReferralUserId, 100, walletDownload.ReferralId );
                                 if (downloadReward)
                                 {
-
+                                    userReferral.Bonus = true;
                                 }
                             }
                             if (referrer != null)
@@ -87,15 +89,16 @@ namespace BITCORNService.Controllers
                                 if (referralTier != null) amount *= referralTier.Bonus;
 
                                 var referrerReward = await TxUtils.SendFromBitcornhub(referrerUser, amount, "BITCORNFarms", "Referral", _dbContext);
+                                //todo log referral tx
                                 if (referrerReward)
                                 {
-                                
+                                    userReferral.WalletDownloadDate = DateTime.Now;
                                 }
 
                             }
                         }
 
-                        userReferral.WalletDownloadDate = DateTime.Now;
+                        
                     }
                 }
 
