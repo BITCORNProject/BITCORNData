@@ -36,6 +36,7 @@ namespace BITCORNService.Utils
                         {
                             var referrerReward = await TxUtils.SendFromBitcornhub(user, referrer.Amount, "BITCORNfarms",
                                 "Referral", dbContext);
+                            await LogReferralTx(dbContext, user.UserId, referrer.Amount);
                             if (referrerReward)
                             {
                                 userReferral.SyncDate = DateTime.Now;
@@ -57,8 +58,7 @@ namespace BITCORNService.Utils
             }
         }
 
-        public static async Task LogReferralTx(BitcornContext dbContext, int referrerUserId, decimal amount,
-            int referralId)
+        public static async Task LogReferralTx(BitcornContext dbContext, int referrerUserId, decimal amount)
         {
             var referralTx = new ReferralTx();
             referralTx.UserId = referrerUserId;
