@@ -89,6 +89,7 @@ namespace BITCORNService.Controllers
                                 if (referralTier != null) amount *= referralTier.Bonus;
 
                                 var referrerReward = await TxUtils.SendFromBitcornhub(referrerUser, amount, "BITCORNFarms", "Referral", _dbContext);
+                                await ReferralUtils.UpdateYtdTotal(_dbContext, referrer, referrer.Amount);
                                 await ReferralUtils.LogReferralTx(_dbContext, referrer.UserId, amount);
                                 if (referrerReward)
                                 {

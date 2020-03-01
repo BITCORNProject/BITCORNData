@@ -14,6 +14,7 @@ namespace BITCORNService.Models
         [ForeignKey("UserIdFK")]
         public int UserId { get; set; }
         public decimal Amount { get; set; }
+        public decimal YtdTotal { get; set; }
 
         public int Tier { get; set; }
         public string ETag { get; set; }

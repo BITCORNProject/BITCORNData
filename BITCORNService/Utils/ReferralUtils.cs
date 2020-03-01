@@ -36,10 +36,14 @@ namespace BITCORNService.Utils
                         {
                             var referrerReward = await TxUtils.SendFromBitcornhub(user, referrer.Amount, "BITCORNfarms",
                                 "Referral", dbContext);
+                            await UpdateYtdTotal(dbContext, referrer, referrer.Amount);
                             await LogReferralTx(dbContext, user.UserId, referrer.Amount);
                             if (referrerReward)
                             {
                                 userReferral.SyncDate = DateTime.Now;
+                                var userStats =
+                                    await dbContext.UserStat.FirstOrDefaultAsync(s => s.UserId == userReferral.UserId);
+                                userStats.TotalReferrals += 1;
                             }
                         }
                     }
@@ -94,8 +98,12 @@ namespace BITCORNService.Utils
                 await BITCORNLogger.LogError(dbContext,e,null);
             }
             return cornPrice.LatestPrice;
+        }
 
-
+        public static async Task UpdateYtdTotal(BitcornContext dbContext, Referrer referrer, decimal amount)
+        {
+            referrer.YtdTotal += amount;
+            await dbContext.SaveAsync();
         }
     }
 }
