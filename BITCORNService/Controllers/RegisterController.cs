@@ -60,8 +60,7 @@ namespace BITCORNService.Controllers
 
             try
             {
-                var user = CreateUser(auth0User);
-
+                var user = CreateUser(auth0User,referralId);
                 if (referral != null)
                 {
                     var refererId = _dbContext.Referrer
@@ -137,7 +136,7 @@ namespace BITCORNService.Controllers
             throw new Exception("HOW THE FUCK DID YOU GET HERE");
         }
 
-        public static User CreateUser(Auth0User auth0User)
+        public static User CreateUser(Auth0User auth0User,int referralId)
         {
             var user = new User
             {
@@ -148,7 +147,7 @@ namespace BITCORNService.Controllers
                 },
                 UserWallet = new UserWallet(),
                 UserStat = new UserStat(),
-                UserReferral = new UserReferral { ReferralId = 0 }
+                UserReferral = new UserReferral { ReferralId = referralId }
             };
 
             return user;
