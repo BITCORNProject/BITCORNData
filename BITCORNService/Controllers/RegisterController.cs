@@ -46,6 +46,16 @@ namespace BITCORNService.Controllers
                 return BitcornUtils.GetFullUser(user, existingUserIdentity, userWallet, userStat);
             }
 
+            int referralId;
+            try
+            {
+                referralId = Convert.ToInt32(referral);
+            }
+            catch (Exception e)
+            {
+                referralId = 0;
+            }
+
             try
             {
                 var user = new User
@@ -56,7 +66,7 @@ namespace BITCORNService.Controllers
                     },
                     UserWallet = new UserWallet(),
                     UserStat = new UserStat(),
-                    UserReferral = new UserReferral {ReferralId = 0}
+                    UserReferral = new UserReferral {ReferralId = referralId }
 
 
                 };

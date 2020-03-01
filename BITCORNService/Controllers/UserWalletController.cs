@@ -62,7 +62,7 @@ namespace BITCORNService.Controllers
                                 userReferral.Bonus = true;
                                 userReferral.ReferrerBonus = true;
                                 await ReferralUtils.UpdateYtdTotal(_dbContext, referrer, referrer.Amount);
-                                await ReferralUtils.LogReferralTx(_dbContext, referrerUser.UserId, referrer.Amount);
+                                await ReferralUtils.LogReferralTx(_dbContext, referrerUser.UserId, referrer.Amount, "Minimum balance Reward"); 
                             }
                         }
 
@@ -82,7 +82,7 @@ namespace BITCORNService.Controllers
                                 
                                 await TxUtils.SendFromBitcornhub(referrerUser, referrer.Amount * bonus, "BITCORNFarms", "Minimum balance reward", _dbContext);
                                 await ReferralUtils.UpdateYtdTotal(_dbContext, referrer, referrer.Amount * bonus);
-                                await ReferralUtils.LogReferralTx(_dbContext, referrerUser.UserId, referrer.Amount * bonus);
+                                await ReferralUtils.LogReferralTx(_dbContext, referrerUser.UserId, referrer.Amount * bonus, "Minimum balance Reward");
                                 referrerStat.TotalReferralRewards += referrer.Amount * bonus;
                             }
                         }

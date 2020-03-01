@@ -34,15 +34,16 @@ namespace BITCORNService.Utils
                             dbContext.Referrer.FirstOrDefaultAsync(r => r.ReferralId == userReferral.ReferralId);
                         if (referrer != null)
                         {
-                            var referrerReward = await TxUtils.SendFromBitcornhub(user, referrer.Amount, "BITCORNfarms",
+                            var referrerUser= await dbContext.User.FirstOrDefaultAsync( u => u.UserId == referrer.UserId);
+                            var referrerReward = await TxUtils.SendFromBitcornhub(referrerUser, referrer.Amount, "BITCORNfarms",
                                 "Referral", dbContext);
                             await UpdateYtdTotal(dbContext, referrer, referrer.Amount);
-                            await LogReferralTx(dbContext, user.UserId, referrer.Amount);
+                            await LogReferralTx(dbContext, referrer.UserId, referrer.Amount, "Social Sync");
                             if (referrerReward)
                             {
                                 userReferral.SyncDate = DateTime.Now;
                                 var userStats =
-                                    await dbContext.UserStat.FirstOrDefaultAsync(s => s.UserId == userReferral.UserId);
+                                    await dbContext.UserStat.FirstOrDefaultAsync(s => s.UserId == referrer.UserId);
                                 userStats.TotalReferrals += 1;
                             }
                         }
@@ -62,7 +63,7 @@ namespace BITCORNService.Utils
             }
         }
 
-        public static async Task LogReferralTx(BitcornContext dbContext, int referrerUserId, decimal amount)
+        public static async Task LogReferralTx(BitcornContext dbContext, int referrerUserId, decimal amount, string type)
         {
             var referralTx = new ReferralTx();
             referralTx.UserId = referrerUserId;

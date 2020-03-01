@@ -10,8 +10,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace BITCORNService.Migrations
 {
     [DbContext(typeof(BitcornContext))]
-    [Migration("20200301001712_ytd")]
-    partial class ytd
+    [Migration("20200301075644_sd")]
+    partial class sd
     {
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
@@ -175,6 +175,9 @@ namespace BITCORNService.Migrations
 
                     b.Property<decimal>("TotalUsdtValue")
                         .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("Type")
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<decimal>("UsdtPrice")
                         .HasColumnType("decimal(18,2)");

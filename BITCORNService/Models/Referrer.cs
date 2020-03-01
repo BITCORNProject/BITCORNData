@@ -13,6 +13,7 @@ namespace BITCORNService.Models
         public int ReferralId { get; set; }
         [ForeignKey("UserIdFK")]
         public int UserId { get; set; }
+
         public decimal Amount { get; set; }
         public decimal YtdTotal { get; set; }
 

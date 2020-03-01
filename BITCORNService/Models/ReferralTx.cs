@@ -18,7 +18,7 @@ namespace BITCORNService.Models
         public decimal UsdtPrice { get; set; }
         public decimal TotalUsdtValue { get; set; }
         public DateTime TimeStamp { get; set; }
-
+        public string Type { get; set; }
         public virtual User User { get; set; }
     }
 }

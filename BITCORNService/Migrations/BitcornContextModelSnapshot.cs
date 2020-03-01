@@ -174,6 +174,9 @@ namespace BITCORNService.Migrations
                     b.Property<decimal>("TotalUsdtValue")
                         .HasColumnType("decimal(18,2)");
 
+                    b.Property<string>("Type")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<decimal>("UsdtPrice")
                         .HasColumnType("decimal(18,2)");
 

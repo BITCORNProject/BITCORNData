@@ -3,29 +3,30 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 namespace BITCORNService.Migrations
 {
-    public partial class nachos : Migration
+    public partial class sd : Migration
     {
         protected override void Up(MigrationBuilder migrationBuilder)
         {
 
 
             migrationBuilder.CreateTable(
-                name: "ReferralTx",
+                name: "Referrer",
                 columns: table => new
                 {
-                    ReferralTxId = table.Column<int>(nullable: false)
+                    ReferralId = table.Column<int>(nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
                     UserId = table.Column<int>(nullable: false),
                     Amount = table.Column<decimal>(nullable: false),
-                    UsdtPrice = table.Column<decimal>(nullable: false),
-                    TotalUsdtValue = table.Column<decimal>(nullable: false),
-                    TimeStamp = table.Column<DateTime>(nullable: false)
+                    YtdTotal = table.Column<decimal>(nullable: false),
+                    Tier = table.Column<int>(nullable: false),
+                    ETag = table.Column<string>(nullable: true),
+                    Key = table.Column<string>(nullable: true)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_ReferralTx", x => x.ReferralTxId);
+                    table.PrimaryKey("PK_Referrer", x => x.ReferralId);
                     table.ForeignKey(
-                        name: "FK_ReferralTx_User_UserId",
+                        name: "FK_Referrer_User_UserId",
                         column: x => x.UserId,
                         principalTable: "User",
                         principalColumn: "UserId",
@@ -35,16 +36,19 @@ namespace BITCORNService.Migrations
 
 
             migrationBuilder.CreateIndex(
-                name: "IX_ReferralTx_UserId",
-                table: "ReferralTx",
-                column: "UserId");
+                name: "IX_Referrer_UserId",
+                table: "Referrer",
+                column: "UserId",
+                unique: true);
         }
+
 
 
         protected override void Down(MigrationBuilder migrationBuilder)
         {
+
             migrationBuilder.DropTable(
-                name: "ReferralTx");
+                name: "Referrer");
         }
     }
 }

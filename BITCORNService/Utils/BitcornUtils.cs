@@ -224,7 +224,7 @@ namespace BITCORNService.Utils
             //call for discord username
             return fullUser;
         }
-        public static FullUserAndReferrer GetFullUserAndReferer(User user, UserIdentity userIdentity, UserWallet userWallet, UserStat userStats,UserReferral userReferral ,Referrer referrer = null)
+        public static FullUserAndReferrer GetFullUserAndReferer(User user, UserIdentity userIdentity, UserWallet userWallet, UserStat userStats,UserReferral userReferral = null ,Referrer referrer = null)
         {
             var fullUser = new FullUserAndReferrer()
             {
@@ -256,23 +256,27 @@ namespace BITCORNService.Utils
                 LargestSentBitcornRain = userStats.LargestSentBitcornRain,
                 AmountOfRainsReceived = userStats.AmountOfRainsReceived,
                 TotalReceivedBitcornRains = userStats.TotalReceivedBitcornRains,
-                SubTier = user.SubTier,
                 LargestReceivedBitcornRain = userStats.LargestReceivedBitcornRain,
-                ReferralId = referrer.ReferralId,
-                WalletDownloadDate  = userReferral.WalletDownloadDate,
-                MinimumBalanceDate = userReferral.MinimumBalanceDate,
-                TweetDate = userReferral.TweetDate,
-                SyncDate = userReferral.SyncDate,
-                SignupReward = userReferral.SignupReward,
-                Bonus = userReferral.Bonus,
-                ReferrerBonus = userReferral.ReferrerBonus
+                SubTier = user.SubTier
     };
             if (referrer != null)
             {
+                fullUser.ReferralId = referrer.ReferralId;
                 fullUser.Amount = referrer.Amount;
                 fullUser.Tier = referrer.Tier;
                 fullUser.ETag = referrer.ETag;
                 fullUser.Key = referrer.Key;
+            }
+
+            if (userReferral != null)
+            {
+                fullUser.WalletDownloadDate = userReferral.WalletDownloadDate;
+                fullUser.MinimumBalanceDate = userReferral.MinimumBalanceDate;
+                fullUser.TweetDate = userReferral.TweetDate;
+                fullUser.SyncDate = userReferral.SyncDate;
+                fullUser.SignupReward = userReferral.SignupReward;
+                fullUser.Bonus = userReferral.Bonus;
+                fullUser.ReferrerBonus = userReferral.ReferrerBonus;
             }
 
             return fullUser;
