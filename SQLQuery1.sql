@@ -6,14 +6,14 @@ update UserReferral set WalletDownloadDate = null where UserId = 2771
 update UserReferral set MinimumBalanceDate = null where UserId = 2771
 select * from UserReferral where userid = 2771
 
-select * from [userwallet] where UserId >= 2740
-select * from [userwallet] where UserId = 2081
+select * from [user] where UserId >= 2770
+select * from UserIdentity where UserId = 5292
 
 update userwallet set balance = 1000 where userId = 2771
 
 update userwallet set balance = 0 where userId = 2081
 
-select * from UserReferral where UserId = 2772
+select * from UserReferral where UserId = 5292
 
 select * from ErrorLogs
 
