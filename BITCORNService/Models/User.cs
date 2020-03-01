@@ -1,15 +1,16 @@
 ﻿using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
 
 namespace BITCORNService.Models
 {
-    public partial class User
+    public partial class User 
     {
         public User()
         {
             UnclaimedTxReceiverUser = new HashSet<UnclaimedTx>();
             UnclaimedTxSenderUser = new HashSet<UnclaimedTx>();
         }
-
+        [Key]
         public int UserId { get; set; }
         public string Level { get; set; }
         public int SubTier { get; set; }
