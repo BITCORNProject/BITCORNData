@@ -57,6 +57,15 @@
         /// how much earned idling
         /// </summary>
         public decimal? EarnedIdle { get; set; }
+        /// <summary>
+        /// Total amount received from referrals
+        /// </summary>
+        public decimal TotalReferralRewards { get; set; }
+        /// <summary>
+        /// Total number of referrals
+        /// </summary>
+        public int TotalReferrals { get; set; }
+
 
         public virtual User User { get; set; }
     }

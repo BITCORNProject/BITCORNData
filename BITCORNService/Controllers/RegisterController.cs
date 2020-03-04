@@ -10,6 +10,7 @@ using BITCORNService.Utils.LockUser;
 using BITCORNService.Utils.Models;
 using BITCORNService.Utils.Tx;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -31,7 +32,7 @@ namespace BITCORNService.Controllers
         }
         [ServiceFilter(typeof(CacheUserAttribute))]
         [HttpPost("newuser")]
-        public async Task<FullUser> RegisterNewUser([FromBody]Auth0User auth0User)
+        public async Task<FullUser> RegisterNewUser([FromBody]Auth0User auth0User,[FromQuery] string referral = null)
         {
             if (this.GetCachedUser() != null)
                 throw new InvalidOperationException();
@@ -56,8 +57,37 @@ namespace BITCORNService.Controllers
                         Auth0Id = auth0User.Auth0Id, Auth0Nickname = auth0User.Auth0Nickname
                     },
                     UserWallet = new UserWallet(),
-                    UserStat = new UserStat()
+                    UserStat = new UserStat(),
+                    UserReferral = new UserReferral {ReferralId = 0}
+
+
                 };
+                if (referral != null)
+                {
+                    var refererId = _dbContext.Referrer
+                        .FirstOrDefault(r => r.ReferralId == Convert.ToInt32(referral))?.UserId;
+                    var referrerStat = _dbContext.UserStat.FirstOrDefault(s => s.UserId == refererId);
+                    user.UserReferral.ReferralId = Convert.ToInt32(referral);
+
+                    var refererWallet = _dbContext.UserWallet.FirstOrDefault(w => w.UserId == refererId);
+                    var referrer = _dbContext.Referrer.FirstOrDefault(r => r.UserId == refererId);
+
+                    if (refererWallet != null && referrer != null)
+                    {
+                        if (referrerStat != null)
+                        {
+                            referrerStat.TotalReferrals++;
+                            referrerStat.TotalReferralRewards += referrer.Amount;
+                        }
+                        var botWallet = _dbContext.UserWallet.FirstOrDefault(w => w.UserId == 196);
+                        if (botWallet != null)
+                        {
+                            botWallet.Balance -= referrer.Amount;
+                        }
+                        user.UserReferral.SignupReward = true;
+                    }
+                }
+
                 _dbContext.User.Add(user);
                 await _dbContext.SaveAsync();
 
@@ -65,8 +95,8 @@ namespace BITCORNService.Controllers
             }
             catch(Exception e)
             {
-                Console.WriteLine(e);
-                throw;
+                await BITCORNLogger.LogError(_dbContext, e, JsonConvert.SerializeObject(auth0User));
+                throw e;
             }
         }
         object GetFullUser(User user,bool isMigration)
@@ -171,6 +201,7 @@ namespace BITCORNService.Controllers
              
 
                             await TxUtils.TryClaimTx(platformId, null, _dbContext);
+                            await ReferralUtils.UpdateReferralSync(_dbContext, platformId);
                             return GetFullUser(twitchDbUser,true);
                         }
                         else if (twitchDbUser == null && auth0DbUser != null)
@@ -180,6 +211,7 @@ namespace BITCORNService.Controllers
                             await _dbContext.SaveAsync();
 
                             await TxUtils.TryClaimTx(platformId, null, _dbContext);
+                            await ReferralUtils.UpdateReferralSync(_dbContext, platformId);
                             return GetFullUser(auth0DbUser,false);
                         }
                         else if (twitchDbUser != null)
@@ -215,6 +247,7 @@ namespace BITCORNService.Controllers
                                 discordDbUser.UserIdentity.Auth0Nickname = auth0DbUser.UserIdentity.Auth0Nickname;
                                 await MigrateUser(auth0DbUser,discordDbUser);
                                 await TxUtils.TryClaimTx(platformId, null, _dbContext);
+                                await ReferralUtils.UpdateReferralSync(_dbContext, platformId);
                                 return GetFullUser(discordDbUser,true);
                             }
                             else if (discordDbUser == null && auth0DbUser != null)
@@ -225,6 +258,7 @@ namespace BITCORNService.Controllers
                                 await _dbContext.SaveAsync();
 
                                 await TxUtils.TryClaimTx(platformId, null, _dbContext);
+                                await ReferralUtils.UpdateReferralSync(_dbContext, platformId);
                                 return GetFullUser(auth0DbUser,false);
                             }
                             else if (discordDbUser?.UserIdentity.Auth0Id != null)
@@ -263,6 +297,7 @@ namespace BITCORNService.Controllers
                                 twitterDbUser.UserIdentity.Auth0Nickname = auth0DbUser.UserIdentity.Auth0Nickname;
                                 await MigrateUser(auth0DbUser,twitterDbUser);
                                 await TxUtils.TryClaimTx(platformId,null,_dbContext);
+                                await ReferralUtils.UpdateReferralSync(_dbContext, platformId);
                                 return GetFullUser(twitterDbUser,true);
                             }
                             if (twitterDbUser == null && auth0DbUser != null)
@@ -271,6 +306,7 @@ namespace BITCORNService.Controllers
                                 auth0DbUser.UserIdentity.TwitterUsername = twitterUser.ScreenName;
                                 await _dbContext.SaveAsync();
                                 await TxUtils.TryClaimTx(platformId, null, _dbContext);
+                                await ReferralUtils.UpdateReferralSync(_dbContext, platformId);
                                 return GetFullUser(auth0DbUser,false);
                             }
                             if (twitterDbUser?.UserIdentity.Auth0Id != null)
@@ -303,6 +339,7 @@ namespace BITCORNService.Controllers
                                 redditDbUser.UserIdentity.Auth0Nickname = auth0DbUser.UserIdentity.Auth0Nickname;
                                 await MigrateUser(auth0DbUser,redditDbUser);
                                 await TxUtils.TryClaimTx(platformId, null, _dbContext);
+                                await ReferralUtils.UpdateReferralSync(_dbContext, platformId);
                                 return GetFullUser(redditDbUser,true);
                             }
                             else if (redditDbUser == null && auth0DbUser != null)
@@ -311,6 +348,7 @@ namespace BITCORNService.Controllers
                                 await _dbContext.SaveAsync();
 
                                 await TxUtils.TryClaimTx(platformId, null, _dbContext);
+                                await ReferralUtils.UpdateReferralSync(_dbContext, platformId);
                                 return GetFullUser(auth0DbUser,false);
                             }
                             else if (redditDbUser?.UserIdentity.Auth0Id != null)

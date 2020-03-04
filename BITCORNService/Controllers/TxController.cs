@@ -28,7 +28,6 @@ namespace BITCORNService.Controllers
     [ApiController]
     public class TxController : ControllerBase
     {
-        public const int BitcornHubPK = 196;
         public int TimeToClaimTipMinutes { get; set; } = 60 * 24;
         private readonly BitcornContext _dbContext;
         IConfiguration _configuration;
@@ -46,8 +45,8 @@ namespace BITCORNService.Controllers
                 if (rainRequest.From == null) throw new ArgumentNullException();
                 if (rainRequest.To == null) throw new ArgumentNullException();
                 if (rainRequest.Amount <= 0) return StatusCode((int)HttpStatusCode.BadRequest);
-
-                var processInfo = await TxUtils.ProcessRequest(rainRequest,this.GetCachedUser(), _dbContext);
+                rainRequest.FromUser = this.GetCachedUser();
+                var processInfo = await TxUtils.ProcessRequest(rainRequest, _dbContext);
                 var transactions = processInfo.Transactions;
                 if (transactions != null && transactions.Length > 0)
                 {
@@ -132,7 +131,7 @@ namespace BITCORNService.Controllers
                 }
                 if (changedRows > 0)
                 {
-                    await _dbContext.Database.ExecuteSqlRawAsync(TxUtils.ModifyNumber(nameof(UserWallet), nameof(UserWallet.Balance), total, '-', pk, BitcornHubPK));
+                    await _dbContext.Database.ExecuteSqlRawAsync(TxUtils.ModifyNumber(nameof(UserWallet), nameof(UserWallet.Balance), total, '-', pk, TxUtils.BitcornHubPK));
                 }
                 //this endpoint is called frequently so can use this to check if there are tx's that need to be refunded
                 await TxUtils.RefundUnclaimed(_dbContext);
@@ -156,7 +155,8 @@ namespace BITCORNService.Controllers
 
             try
             {
-                var processInfo = await TxUtils.ProcessRequest(tipRequest,this.GetCachedUser(), _dbContext);
+                tipRequest.FromUser = this.GetCachedUser();
+                var processInfo = await TxUtils.ProcessRequest(tipRequest, _dbContext);
                 var transactions = processInfo.Transactions;
                 if (transactions != null && transactions.Length > 0)
                 {

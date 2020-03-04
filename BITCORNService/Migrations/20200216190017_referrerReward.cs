@@ -2,22 +2,21 @@
 
 namespace BITCORNService.Migrations
 {
-    public partial class rename : Migration
+    public partial class referrerReward : Migration
     {
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.RenameColumn(
-                name: "TopTiped",
+            migrationBuilder.AddColumn<decimal>(
+                name: "ReferralReward",
                 table: "UserStat",
-                newName: "TopTipped");
+                nullable: true);
         }
 
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.RenameColumn(
-                name: "TopTipped",
-                table: "UserStat",
-                newName: "TopTiped");
+            migrationBuilder.DropColumn(
+                name: "ReferralReward",
+                table: "UserStat");
         }
     }
 }

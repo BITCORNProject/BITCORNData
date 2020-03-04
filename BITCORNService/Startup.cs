@@ -28,8 +28,8 @@ namespace BITCORNService
         public void ConfigureServices(IServiceCollection services)
         {
             var connection = Configuration["Config:ConnectionString"];
-            var auth0Domain = $"https://{Configuration["Auth0:Domain"]}/";
-            var audience = Configuration["Auth0:ApiIdentifier"];
+            var auth0Domain = $"https://{Configuration["Config:Auth0:Domain"]}/";
+            var audience = Configuration["Config:Auth0:ApiIdentifier"];
             services.AddAuthentication(options =>
             {
                 options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;

@@ -59,6 +59,14 @@ namespace BITCORNService.Utils.DbActions
         {
             return JoinUserModels(dbContext).Where(u => ids.Contains(u.UserIdentity.RedditId));
         }
+        public static IQueryable<User> UserIdManyQuery(this BitcornContext dbContext, HashSet<int> ids)
+        {
+            return JoinUserModels(dbContext).Where(u => ids.Contains(u.UserId));
+        }
+        public static IQueryable<User> UserIdQuery(this BitcornContext dbContext, int userId)
+        {
+            return JoinUserModels(dbContext).Where(u => u.UserId == userId);
+        }
         public static IQueryable<User> Auth0Query(this BitcornContext dbContext, string auth0Id)
         {
             return JoinUserModels(dbContext).Where(u => u.UserIdentity.Auth0Id == auth0Id);
