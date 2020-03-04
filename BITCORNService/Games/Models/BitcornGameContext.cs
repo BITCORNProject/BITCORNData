@@ -22,7 +22,8 @@ namespace BITCORNService.Games.Models
         public virtual DbSet<UserAvatar> UserAvatar { get; set; }
         public virtual DbSet<UserInventoryItem> UserInventoryItem { get; set; }
         public virtual DbSet<AvatarConfig> AvatarConfig { get; set; }
-        public virtual DbSet<BattlegroundsUserStats> BattlegroundsUserStats { get; set; }
+        public virtual DbSet<BattlegroundsUser> BattlegroundsUser { get; set; }
+        public virtual DbSet<GameInstance> GameInstance { get; set; }
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {
             base.OnConfiguring(optionsBuilder);
@@ -32,6 +33,13 @@ namespace BITCORNService.Games.Models
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
+            modelBuilder.Entity<GameInstance>(entity=> {
+                entity.HasKey(e=>e.GameId);
+                entity.Property(e=>e.HostId);
+                entity.Property(e=>e.Payin);
+                entity.Property(e=>e.Reward);
+                entity.Property(e=>e.Active);
+            });
             modelBuilder.Entity<ItemPrefab>(entity => {
                 entity.HasKey(e => e.Id);
 
@@ -55,7 +63,7 @@ namespace BITCORNService.Games.Models
                 entity.Property(e=>e.Catalog).HasMaxLength(100);
             });
             
-            modelBuilder.Entity<BattlegroundsUserStats>(entity =>
+            modelBuilder.Entity<BattlegroundsUser>(entity =>
             {
                 entity.HasKey(e => e.UserId)
                     .HasName("PK__BattlegroundsUserStats__1788CC4C85ECFC41");
@@ -95,6 +103,10 @@ namespace BITCORNService.Games.Models
                 entity.Property(e => e.TotalPickedUpPowerups)
                     .HasDefaultValueSql("((0))");
                 entity.Property(e => e.TotalPickedUpWeapons)
+                    .HasDefaultValueSql("((0))");
+                entity.Property(e => e.TimeSpentStunned)
+                    .HasDefaultValueSql("((0))");
+                entity.Property(e => e.LargestKillstreak)
                     .HasDefaultValueSql("((0))");
 
                 entity.Property(e => e.Wins)

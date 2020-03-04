@@ -6,9 +6,10 @@ using System.Threading.Tasks;
 
 namespace BITCORNService.Games.Models
 {
-	public class BattlegroundsUserStats : BattlegroundsGameStats
+	public class BattlegroundsUser : BattlegroundsGameStats
 	{
 		public int GamesPlayed { get; set; }
 		public int Wins { get; set; }
+		public int CurrentGameId { get; set; }
 	}
 }

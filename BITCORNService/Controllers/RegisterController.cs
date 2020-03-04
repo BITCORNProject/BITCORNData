@@ -106,7 +106,7 @@ namespace BITCORNService.Controllers
             _dbContext.Remove(delete.UserWallet);
             _dbContext.Remove(delete.UserIdentity);
             _dbContext.Remove(delete.UserStat);
-            GameUtils.MigrateUser(_dbContext,user,delete);
+            
             _dbContext.User.Remove(delete);
             await _dbContext.Database.ExecuteSqlRawAsync($" UPDATE [{nameof(CornTx)}] SET [{nameof(CornTx.SenderId)}] = {user.UserId} WHERE [{nameof(CornTx.SenderId)}] = {delete.UserId}");
             await _dbContext.Database.ExecuteSqlRawAsync($" UPDATE [{nameof(CornTx)}] SET [{nameof(CornTx.ReceiverId)}] = {user.UserId} WHERE [{nameof(CornTx.ReceiverId)}] = {delete.UserId}");

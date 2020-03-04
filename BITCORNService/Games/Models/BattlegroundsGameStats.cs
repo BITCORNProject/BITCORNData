@@ -18,23 +18,31 @@
 		public int TotalPickedUpPowerups { get; set; }
 		public int TotalPickedUpWeapons { get; set; }
 		public float TimeSpentInAir { get; set; }
+		public float TimeSpentStunned { get; set; }
+		public int LargestKillstreak { get; set; }
 
 		public void Add(BattlegroundsGameStats other)
 		{
-			this.Assists += other.Assists;
-			this.ConnectedHits += other.ConnectedHits;
-			this.Deaths += other.Deaths;
-			this.DistanceTravelled += other.DistanceTravelled;
-	
-			this.HealingDone += other.HealingDone;
 			this.Kills += other.Kills;
-			this.MissedHits += other.MissedHits;
-			this.TimeSpentInAir += other.TimeSpentInAir;
-			this.TotalCritDamageDealt += other.TotalCritDamageDealt;
+			this.Deaths += other.Deaths;
+			this.Assists += other.Assists;
 			this.TotalDamageDealt += other.TotalDamageDealt;
 			this.TotalDamageTaken += other.TotalDamageTaken;
+			this.TotalCritDamageDealt += other.TotalCritDamageDealt;
+			this.HealingDone += other.HealingDone;
+			this.DistanceTravelled += other.DistanceTravelled;
+			this.MissedHits += other.MissedHits;
+
+			this.ConnectedHits += other.ConnectedHits;
+
 			this.TotalPickedUpPowerups += other.TotalPickedUpPowerups;
 			this.TotalPickedUpWeapons += other.TotalPickedUpWeapons;
+			this.TimeSpentInAir += other.TimeSpentInAir;
+			this.TimeSpentStunned += other.TimeSpentStunned;
+			if (other.LargestKillstreak > this.LargestKillstreak)
+			{
+				this.LargestKillstreak = LargestKillstreak;
+			}
 		}
 	}
 }

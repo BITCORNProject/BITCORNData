@@ -30,14 +30,14 @@ namespace BITCORNService.Controllers
 		[HttpGet("leaderboard/{orderby}")]
 		public async Task<ActionResult<object>> Leaderboard([FromRoute] string orderby)
 		{
-			var properties = typeof(BattlegroundsUserStats)
+			var properties = typeof(BattlegroundsUser)
 				.GetProperties()
 				.Select(p=>p.Name.ToLower())
 				.ToArray();
 			
 			if (properties.Contains(orderby.ToLower()))
 			{
-				return await _dbContext.BattlegroundsUserStats.OrderByDescending(orderby).Join(_dbContext.UserIdentity,
+				return await _dbContext.BattlegroundsUser.OrderByDescending(orderby).Join(_dbContext.UserIdentity,
 					(stats)=>stats.UserId,
 					(identity)=>identity.UserId,
 					(s,i)=> new { 
@@ -48,7 +48,29 @@ namespace BITCORNService.Controllers
 			}
 			return StatusCode((int)HttpStatusCode.BadRequest);
 		}
+		[ServiceFilter(typeof(LockUserAttribute))]
+		[HttpPost("creategame")]
+		public async Task<ActionResult> CreateGame([FromBody] BattlegroundsCreateGameRequest request)
+		{
+			var sender = this.GetCachedUser();
+			if (sender != null && sender.IsAdmin())
+			{
+				var activeGame = await _dbContext.GameInstance.FirstOrDefaultAsync(g => g.HostId == sender.UserId && g.Active);
+				if (activeGame == null)
+				{
 
+					activeGame = new GameInstance();
+					activeGame.Active = true;
+					activeGame.HostId = sender.UserId;
+					activeGame.Payin = request.Payin;
+					activeGame.Reward = request.Reward;
+				}
+				else
+				{
+					StatusCode((int)HttpStatusCode.Created);
+				}
+			}
+		}
 		[ServiceFilter(typeof(CacheUserAttribute))]
 		[HttpPost("processgame")]
 		public async Task<ActionResult> ProcessGame([FromBody] BattlegroundsProcessGameRequest request)
@@ -64,16 +86,16 @@ namespace BITCORNService.Controllers
 					//select registered users from database
 					var users = await _dbContext.User.Where(p => ids.Contains(p.UserId)).Select(u => u.UserId).ToArrayAsync();
 					//select stats from database (there can be user registered without battlegrounds profile)
-					var allStats = _dbContext.BattlegroundsUserStats.Where(p => users.Contains(p.UserId)).ToDictionary(u => u.UserId, u => u);
+					var allStats = _dbContext.BattlegroundsUser.Where(p => users.Contains(p.UserId)).ToDictionary(u => u.UserId, u => u);
 					int newProfiles = 0;
 					foreach (var user in users)
 					{
 						//no battlegrounds profile found for this user, create profile
 						if (!allStats.ContainsKey(user))
 						{
-							var stats = new BattlegroundsUserStats();
+							var stats = new BattlegroundsUser();
 							stats.UserId = user;
-							_dbContext.BattlegroundsUserStats.Add(stats);
+							_dbContext.BattlegroundsUser.Add(stats);
 							allStats.Add(user, stats);
 							newProfiles++;
 						}
@@ -83,7 +105,7 @@ namespace BITCORNService.Controllers
 					{
 						int winnerId = request.Players[request.WinnerIndex].UserId;
 
-						if (allStats.TryGetValue(winnerId, out BattlegroundsUserStats stats))
+						if (allStats.TryGetValue(winnerId, out BattlegroundsUser stats))
 						{
 							stats.Wins++;
 						}
