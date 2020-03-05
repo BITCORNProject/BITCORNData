@@ -32,19 +32,20 @@ namespace BITCORNService.Utils
                     {
                         var referrer = await
                             dbContext.Referrer.FirstOrDefaultAsync(r => r.ReferralId == userReferral.ReferralId);
-                        if (referrer != null)
+                        if (referrer != null && (referrer.YtdTotal < 600 || (referrer.ETag != null && referrer.Key != null)))
                         {
+                            var referralPayoutTotal = await ReferralUtils.TotalReward(dbContext, referrer);
                             var referrerUser= await dbContext.User.FirstOrDefaultAsync( u => u.UserId == referrer.UserId);
-                            var referrerReward = await TxUtils.SendFromBitcornhub(referrerUser, referrer.Amount, "BITCORNfarms",
-                                "Referral", dbContext);
-                            await UpdateYtdTotal(dbContext, referrer, referrer.Amount);
-                            await LogReferralTx(dbContext, referrer.UserId, referrer.Amount, "Social Sync");
-                            if (referrerReward)
+                            var referreeReward = await TxUtils.SendFromBitcornhub(user, referrer.Amount, "BITCORNfarms","Social sync", dbContext);
+                            var referrerReward = await TxUtils.SendFromBitcornhub(referrerUser, referralPayoutTotal, "BITCORNfarms","Social sync", dbContext);
+
+                            if (referrerReward && referreeReward)
                             {
+                                await UpdateYtdTotal(dbContext, referrer, referralPayoutTotal);
+                                await LogReferralTx(dbContext, referrer.UserId, referralPayoutTotal, "Social Sync");
                                 userReferral.SyncDate = DateTime.Now;
-                                var userStats =
-                                    await dbContext.UserStat.FirstOrDefaultAsync(s => s.UserId == referrer.UserId);
-                                userStats.TotalReferrals += 1;
+                                var userStats = await dbContext.UserStat.FirstOrDefaultAsync(s => s.UserId == referrer.UserId);
+                                userStats.TotalReferralRewards += referralPayoutTotal;
                             }
                         }
                     }
@@ -103,8 +104,41 @@ namespace BITCORNService.Utils
 
         public static async Task UpdateYtdTotal(BitcornContext dbContext, Referrer referrer, decimal amount)
         {
-            referrer.YtdTotal += amount;
+            referrer.YtdTotal += (amount * Convert.ToDecimal(await ProbitApi.GetCornPriceAsync()));
             await dbContext.SaveAsync();
         }
+
+        public static async  Task SetTier(BitcornContext dbContext,Referrer referrer)
+        {
+            var stats = await dbContext.UserStat.FirstOrDefaultAsync(s=>s.UserId == referrer.UserId);
+
+            if (stats.TotalReferrals < 50)
+            {
+                referrer.Tier = 0;
+            }
+            if (stats.TotalReferrals >= 50)
+            {
+                referrer.Tier = 1;
+            }
+            if (stats.TotalReferrals >= 500)
+            {
+                referrer.Tier = 2;
+            }
+            if (stats.TotalReferrals >= 20000)
+            {
+                referrer.Tier = 3;
+            }
+
+            await dbContext.SaveAsync();
+        }
+
+        public static async Task<decimal> TotalReward(BitcornContext dbContext, Referrer referrer)
+        {
+            await SetTier(dbContext, referrer);
+            var referralTier = await dbContext.ReferralTier.FirstOrDefaultAsync(r => r.Tier == referrer.Tier);
+            return referrer.Amount * referralTier.Bonus;
+        }
+
+        
     }
 }

@@ -13,6 +13,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Microsoft.Extensions.Configuration;
 using Newtonsoft.Json;
 
@@ -60,34 +61,33 @@ namespace BITCORNService.Controllers
 
             try
             {
-                var user = CreateUser(auth0User,referralId);
+                var user = CreateUser(auth0User, referralId);
+                _dbContext.User.Add(user);
                 if (referral != null)
                 {
-                    var refererId = _dbContext.Referrer
-                        .FirstOrDefault(r => r.ReferralId == Convert.ToInt32(referral))?.UserId;
-                    var referrerStat = _dbContext.UserStat.FirstOrDefault(s => s.UserId == refererId);
-                    user.UserReferral.ReferralId = Convert.ToInt32(referral);
-
-                    var refererWallet = _dbContext.UserWallet.FirstOrDefault(w => w.UserId == refererId);
-                    var referrer = _dbContext.Referrer.FirstOrDefault(r => r.UserId == refererId);
-
-                    if (refererWallet != null && referrer != null)
+                    var referrer = await _dbContext.Referrer.FirstOrDefaultAsync(r => r.ReferralId == referralId);
+                    if (referrer.YtdTotal < 600 || (referrer.ETag != null && referrer.Key != null))
                     {
-                        if (referrerStat != null)
+                        var referrerUser = await _dbContext.User.FirstOrDefaultAsync(u => u.UserId == referrer.UserId);
+                        var referralPayoutTotal = await ReferralUtils.TotalReward(_dbContext, referrer);
+                        var referrerRegistrationReward = await TxUtils.SendFromBitcornhub(referrerUser, referralPayoutTotal, "BITCORNFarms", "Registrations reward", _dbContext);
+                        var userRegistrationReward = await TxUtils.SendFromBitcornhub(user, referrer.Amount, "BITCORNFarms", "Registrations reward", _dbContext);
+
+                        if (referrerRegistrationReward && userRegistrationReward)
                         {
-                            referrerStat.TotalReferrals++;
-                            referrerStat.TotalReferralRewards += referrer.Amount;
+                            await ReferralUtils.UpdateYtdTotal(_dbContext, referrer, referralPayoutTotal);
+                            await ReferralUtils.LogReferralTx(_dbContext, referrer.UserId, referralPayoutTotal, "Registration reward");
+                            var referrerStat = await _dbContext.UserStat.FirstOrDefaultAsync(s => s.UserId == referrer.UserId);
+                            if (referrerStat != null)
+                            {
+                                referrerStat.TotalReferrals++;
+                                referrerStat.TotalReferralRewards += referralPayoutTotal;
+                            }
+                            user.UserReferral.SignupReward = true;
                         }
-                        var botWallet = _dbContext.UserWallet.FirstOrDefault(w => w.UserId == 196);
-                        if (botWallet != null)
-                        {
-                            botWallet.Balance -= referrer.Amount;
-                        }
-                        user.UserReferral.SignupReward = true;
                     }
                 }
 
-                _dbContext.User.Add(user);
                 await _dbContext.SaveAsync();
 
                 return BitcornUtils.GetFullUser(user, user.UserIdentity, user.UserWallet, user.UserStat);

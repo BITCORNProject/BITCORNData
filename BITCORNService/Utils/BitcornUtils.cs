@@ -228,10 +228,15 @@ namespace BITCORNService.Utils
         {
             var fullUser = new FullUserAndReferrer()
             {
+                //user
                 Username = user.Username,
                 UserId = user.UserId,
                 Avatar = user.Avatar,
                 Level = user.Level,
+                IsBanned = user.IsBanned,
+                SubTier = user.SubTier,
+
+                //UserIdentity
                 Auth0Id = userIdentity.Auth0Id,
                 Auth0Nickname = userIdentity.Auth0Nickname,
                 TwitchId = userIdentity.TwitchId,
@@ -241,9 +246,13 @@ namespace BITCORNService.Utils
                 DiscordId = userIdentity.DiscordId,
                 TwitterId = userIdentity.TwitterId,
                 RedditId = userIdentity.RedditId,
+                
+                //UserWallet
                 WalletServer = userWallet.WalletServer,
                 CornAddy = userWallet.CornAddy,
                 Balance = userWallet.Balance,
+                
+                //UserStatus
                 EarnedIdle = userStats.EarnedIdle,
                 AmountOfTipsReceived = userStats.AmountOfTipsReceived,
                 TotalReceivedBitcornTips = userStats.TotalReceivedBitcornTips,
@@ -257,7 +266,8 @@ namespace BITCORNService.Utils
                 AmountOfRainsReceived = userStats.AmountOfRainsReceived,
                 TotalReceivedBitcornRains = userStats.TotalReceivedBitcornRains,
                 LargestReceivedBitcornRain = userStats.LargestReceivedBitcornRain,
-                SubTier = user.SubTier
+                TotalReferralRewards = userStats.TotalReferralRewards,
+                TotalReferrals = userStats.TotalReferrals
     };
             if (referrer != null)
             {
@@ -266,6 +276,7 @@ namespace BITCORNService.Utils
                 fullUser.Tier = referrer.Tier;
                 fullUser.ETag = referrer.ETag;
                 fullUser.Key = referrer.Key;
+                fullUser.YtdTotal = referrer.YtdTotal;
             }
 
             if (userReferral != null)
@@ -277,6 +288,7 @@ namespace BITCORNService.Utils
                 fullUser.SignupReward = userReferral.SignupReward;
                 fullUser.Bonus = userReferral.Bonus;
                 fullUser.ReferrerBonus = userReferral.ReferrerBonus;
+                fullUser.TweetDate = userReferral.TweetDate;
             }
 
             return fullUser;
