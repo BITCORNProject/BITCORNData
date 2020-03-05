@@ -9,5 +9,7 @@ namespace BITCORNService.Games.Models
     {
         public int Id { get; set; }
         public string Catalog { get; set; }
+        public string DefaultAvatar { get; set; }
+        public string Platform { get; set; }
     }
 }

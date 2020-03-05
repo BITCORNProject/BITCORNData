@@ -23,9 +23,9 @@ namespace BITCORNService.Controllers
     [ApiController]
     public class RegisterController : ControllerBase
     {
-        private readonly BitcornGameContext _dbContext;
+        private readonly BitcornContext _dbContext;
         private readonly IConfiguration _configuration;
-        public RegisterController(BitcornGameContext dbContext,IConfiguration configuration)
+        public RegisterController(BitcornContext dbContext,IConfiguration configuration)
         {
             _dbContext = dbContext;
             _configuration = configuration;

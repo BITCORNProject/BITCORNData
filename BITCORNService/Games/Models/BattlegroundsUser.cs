@@ -8,8 +8,11 @@ namespace BITCORNService.Games.Models
 {
 	public class BattlegroundsUser : BattlegroundsGameStats
 	{
+		public int Id { get; set; }
+		public int HostId { get; set; }
 		public int GamesPlayed { get; set; }
 		public int Wins { get; set; }
 		public int CurrentGameId { get; set; }
+		public decimal TotalCornRewards { get; set; }
 	}
 }

@@ -24,6 +24,7 @@ namespace BITCORNService.Games.Models
         public virtual DbSet<AvatarConfig> AvatarConfig { get; set; }
         public virtual DbSet<BattlegroundsUser> BattlegroundsUser { get; set; }
         public virtual DbSet<GameInstance> GameInstance { get; set; }
+        public virtual DbSet<GameInstanceCornReward> GameInstanceCornReward { get; set; }
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {
             base.OnConfiguring(optionsBuilder);
@@ -33,12 +34,19 @@ namespace BITCORNService.Games.Models
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
+            modelBuilder.Entity<GameInstanceCornReward>(entity=> {
+                entity.HasKey(e=>e.Id);
+                entity.Property(e=>e.GameInstanceId);
+                entity.Property(e => e.TxId);
+            });
             modelBuilder.Entity<GameInstance>(entity=> {
                 entity.HasKey(e=>e.GameId);
                 entity.Property(e=>e.HostId);
                 entity.Property(e=>e.Payin);
                 entity.Property(e=>e.Reward);
                 entity.Property(e=>e.Active);
+                entity.Property(e=>e.HostDebitCornTxId);
+               
             });
             modelBuilder.Entity<ItemPrefab>(entity => {
                 entity.HasKey(e => e.Id);
@@ -61,15 +69,17 @@ namespace BITCORNService.Games.Models
             modelBuilder.Entity<AvatarConfig>(entity => {
                 entity.Property(e=>e.Id);
                 entity.Property(e=>e.Catalog).HasMaxLength(100);
+                entity.Property(e=>e.DefaultAvatar).HasMaxLength(100);
+
+                entity.Property(e => e.Platform).HasMaxLength(100);
             });
             
             modelBuilder.Entity<BattlegroundsUser>(entity =>
             {
-                entity.HasKey(e => e.UserId)
-                    .HasName("PK__BattlegroundsUserStats__1788CC4C85ECFC41");
-
-                entity.Property(e => e.UserId).ValueGeneratedNever();
-
+                entity.HasKey(e => e.Id)
+                    .HasName("PK_BattlegroundsUser");
+                
+                entity.Property(e => e.UserId);
                 entity.Property(e => e.ConnectedHits)
                     .HasDefaultValueSql("((0))");
 
@@ -111,7 +121,9 @@ namespace BITCORNService.Games.Models
 
                 entity.Property(e => e.Wins)
                   .HasDefaultValueSql("((0))");
+                entity.Property(e => e.TotalCornRewards).HasDefaultValueSql("((0))");
 
+                entity.Property(e=>e.HostId);
             });
              
         }

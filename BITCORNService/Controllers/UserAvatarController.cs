@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using BITCORNService.Games;
 using BITCORNService.Games.Models;
 using BITCORNService.Models;
 using BITCORNService.Utils;
@@ -44,35 +45,8 @@ namespace BITCORNService.Controllers
 
                 if (user != null)
                 {
-                    var avatarConfig = await _dbContext.AvatarConfig.FirstOrDefaultAsync();
-                    var userAvatar = await _dbContext.UserAvatar.FirstOrDefaultAsync(u=>u.UserId==user.UserId);
-                    if (userAvatar == null)
-                    {
-                        userAvatar = new UserAvatar() {
-                            AvatarAddress = "Assets/BitcornAvatar/Remote Scare Bear.prefab",
-                            UserId = user.UserId
-                        };
-                        _dbContext.Add(userAvatar);
-                        await _dbContext.SaveAsync();
-                    }
-                    /*
-                    var items = await _dbContext.UserInventoryItem.Where(u => u.UserId == userData.user.UserId && u.Type == "avatar")
-                   .Join(_dbContext.ItemPrefab,
-                   (UserInventoryItem item) => item.ItemPrefabId,
-                   (ItemPrefab prefab) => prefab.Id, (inventoryItem, itemPrefab) => new
-                   {
-                       itemPrefab.AddressablePath,
-
-                   })
-                   .ToArrayAsync();*/
-
-
-                    return new
-                    {
-                        catalog = avatarConfig.Catalog,
-                        avatar = userAvatar.AvatarAddress,
-                        availableAvatars = new string[] { }
-                    };
+                    throw new NotImplementedException();
+                    return GameUtils.GetAvatar(_dbContext,user,"");
                 }
                 throw new NotImplementedException();
             }
