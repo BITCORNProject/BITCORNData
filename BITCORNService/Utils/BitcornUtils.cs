@@ -31,6 +31,10 @@ namespace BITCORNService.Utils
 
             return platformId;
         }
+        public static bool IsAdmin(this User user)
+        {
+            return user.Level == "5000";
+        }
         public static async Task<UserIdentity> GetUserIdentityForPlatform(PlatformId platformId, BitcornContext dbContext)
         {
             return await GetUserForPlatform(platformId,dbContext).Select(u=>u.UserIdentity).FirstOrDefaultAsync();

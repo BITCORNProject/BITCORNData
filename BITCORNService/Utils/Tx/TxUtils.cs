@@ -166,13 +166,37 @@ namespace BITCORNService.Utils.Tx
             var processInfo = await PrepareTransaction(await GetBitcornhub(dbContext), to, amount, platform, txType, dbContext);
             return await processInfo.ExecuteTransaction(dbContext);
         }
-        
+        public static async Task<TxReceipt> SendFromBitcornhubGetReceipt(User to, decimal amount, string platform, string txType, BitcornContext dbContext)
+        {
+            var processInfo = await PrepareTransaction(await GetBitcornhub(dbContext), to, amount, platform, txType, dbContext);
+            if(await processInfo.ExecuteTransaction(dbContext))
+            {
+                
+                return processInfo.Transactions[0];
+            }
+            return null;
+        }
+        public static async Task<TxReceipt> SendToBitcornhub(User from, decimal amount, string platform, string txType, BitcornContext dbContext)
+        {
+            var processInfo = await PrepareTransaction(from, await GetBitcornhub(dbContext), amount, platform, txType, dbContext);
+            if(await processInfo.ExecuteTransaction(dbContext))
+            {
+               
+                return processInfo.Transactions[0];
+            }
+            return null;
+        }
+
         public static async Task<bool> ExecuteTransaction(this TxProcessInfo processInfo,BitcornContext dbContext)
         {
             var sql = new StringBuilder();
             if (processInfo.WriteTransactionOutput(sql))
             {
                 var rows = await dbContext.Database.ExecuteSqlRawAsync(sql.ToString());
+                if (rows > 0)
+                {
+                    await dbContext.SaveAsync();
+                }
                 return rows > 0;
             }
             return false;
