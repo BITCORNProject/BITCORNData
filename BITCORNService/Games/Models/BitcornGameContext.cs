@@ -18,9 +18,9 @@ namespace BITCORNService.Games.Models
         {
 
         }
-        public virtual DbSet<ItemPrefab> ItemPrefab { get; set; }
+        //public virtual DbSet<ItemPrefab> ItemPrefab { get; set; }
         public virtual DbSet<UserAvatar> UserAvatar { get; set; }
-        public virtual DbSet<UserInventoryItem> UserInventoryItem { get; set; }
+        //public virtual DbSet<UserInventoryItem> UserInventoryItem { get; set; }
         public virtual DbSet<AvatarConfig> AvatarConfig { get; set; }
         public virtual DbSet<BattlegroundsUser> BattlegroundsUser { get; set; }
         public virtual DbSet<GameInstance> GameInstance { get; set; }
@@ -116,8 +116,8 @@ namespace BITCORNService.Games.Models
                     .HasDefaultValueSql("((0))");
                 entity.Property(e => e.TimeSpentStunned)
                     .HasDefaultValueSql("((0))");
-                entity.Property(e => e.LargestKillstreak)
-                    .HasDefaultValueSql("((0))");
+                entity.Property(e => e.LargestKillstreak);
+                    //.HasDefaultValueSql("((0))");
 
                 entity.Property(e => e.Wins)
                   .HasDefaultValueSql("((0))");

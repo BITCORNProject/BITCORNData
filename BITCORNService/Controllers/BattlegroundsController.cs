@@ -40,7 +40,7 @@ namespace BITCORNService.Controllers
 			{
 				if (properties.Contains(orderby.ToLower()))
 				{
-					return await _dbContext.BattlegroundsUser.Where(u=>u.HostId==userId).OrderByDescending(orderby).Join(_dbContext.UserIdentity,
+					return await _dbContext.BattlegroundsUser.Where(u=>u.HostId== userId).OrderByDescending(orderby).Join(_dbContext.UserIdentity,
 						(stats) => stats.UserId,
 						(identity) => identity.UserId,
 						(s, i) => new
@@ -63,7 +63,8 @@ namespace BITCORNService.Controllers
 			{
 				var platformId = BitcornUtils.GetPlatformId(request.UserPlatformId);
 				var player = await BitcornUtils.GetUserForPlatform(platformId, _dbContext).AsNoTracking().FirstOrDefaultAsync();
-
+				if (player == null)
+					return StatusCode(404);
 				if (player.IsBanned)
 				{
 					return StatusCode(500);
@@ -161,8 +162,12 @@ namespace BITCORNService.Controllers
 						_dbContext.GameInstance.Add(activeGame);
 						await _dbContext.SaveAsync();
 						return new { 
+							IsNewGame = true,
 							Players = new string[0],
-							GameId = activeGame.GameId
+							GameId = activeGame.GameId,
+
+							Payin = activeGame.Payin,
+							Reward = activeGame.Reward
 						};
 					}
 					else
@@ -171,8 +176,12 @@ namespace BITCORNService.Controllers
 						var twitchIds = await _dbContext.JoinUserModels().Where(u=>playerIds.Contains(u.UserId)).Select(u=>u.UserIdentity.TwitchId).ToArrayAsync();
 						return new
 						{
+
+							IsNewGame = false,
 							Players = twitchIds,
-							GameId = activeGame.GameId
+							GameId = activeGame.GameId,
+							Payin = activeGame.Payin,
+							Reward = activeGame.Reward
 						};
 					}
 				}
@@ -223,7 +232,7 @@ namespace BITCORNService.Controllers
 		}
 		[ServiceFilter(typeof(CacheUserAttribute))]
 		[HttpPost("processgame")]
-		public async Task<ActionResult> ProcessGame([FromBody] BattlegroundsProcessGameRequest request)
+		public async Task<ActionResult<decimal[]>> ProcessGame([FromBody] BattlegroundsProcessGameRequest request)
 		{
 			try
 			{
@@ -243,36 +252,53 @@ namespace BITCORNService.Controllers
 						var existingUserIds = users.Keys.ToArray();
 				
 						var allStats = _dbContext.BattlegroundsUser.Where(p => existingUserIds.Contains(p.UserId) && p.HostId == sender.UserId).ToDictionary(u => u.UserId, u => u);
-						
-						var rewards = SplitReward(activeGame.Reward, .5m, request.Players.Length);
+
+						var rewards = new decimal[0];
+						if(activeGame.Reward>0)
+							rewards=SplitReward(activeGame.Reward, .5m, request.Players.Length);
 						for (int i = 0; i < request.Players.Length; i++)
 						{
 							var userId = request.Players[i].UserId;
-							var reward = rewards[i];
+						
 
 							if (users.TryGetValue(userId, out User user))
 							{
-								var receipt = await TxUtils.SendFromBitcornhubGetReceipt(user, reward, "BITCORNBattlegrounds", "Battlegrounds reward", _dbContext);
-								if (receipt != null)
+								if (i < rewards.Length)
 								{
-									if (receipt.TxId != null)
+									var reward = rewards[i];
+									var receipt = await TxUtils.SendFromBitcornhubGetReceipt(user, reward, "BITCORNBattlegrounds", "Battlegrounds reward", _dbContext);
+									if (receipt != null)
 									{
-										var link = new GameInstanceCornReward();
-										link.GameInstanceId = activeGame.GameId;
-										link.TxId = receipt.TxId.Value;
-										_dbContext.GameInstanceCornReward.Add(link);
-
-										if (allStats.TryGetValue(userId, out BattlegroundsUser stats))
+										if (receipt.TxId != null)
 										{
-											stats.TotalCornRewards += reward;
-											if (i == 0)
+											var link = new GameInstanceCornReward();
+											link.GameInstanceId = activeGame.GameId;
+											link.TxId = receipt.TxId.Value;
+											_dbContext.GameInstanceCornReward.Add(link);
+
+											if (allStats.TryGetValue(userId, out BattlegroundsUser stats))
 											{
-												stats.Wins++;
-
+												stats.TotalCornRewards += reward;
+												if (i == 0)
+												{
+													stats.Wins++;
+												}
 											}
-										}
 
+										}
+										else
+										{
+											rewards[i] = 0;
+										}
 									}
+								}
+								else
+								{
+									if (allStats.TryGetValue(userId, out BattlegroundsUser stats)&&i==0)
+									{
+										stats.Wins++;
+									}
+
 								}
 							}
 						}
@@ -283,11 +309,11 @@ namespace BITCORNService.Controllers
 							player.Add(playerUpdates[player.UserId]);
 						}
 
-						if (allStats.Count > 0)
+						if (allStats.Count > 0||!activeGame.Active)
 						{
 							await _dbContext.SaveAsync();
 						}
-						return StatusCode(200);
+						return rewards;
 					}
 					return StatusCode((int)HttpStatusCode.Forbidden);
 
@@ -296,7 +322,7 @@ namespace BITCORNService.Controllers
 			}
 			catch (Exception e)
 			{
-				Console.WriteLine(e.Message);
+				System.Diagnostics.Debug.WriteLine(e.Message+"::"+e.StackTrace);
 				throw e;
 			}
 			throw new NotImplementedException();
