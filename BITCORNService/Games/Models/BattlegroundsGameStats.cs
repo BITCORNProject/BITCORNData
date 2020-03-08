@@ -41,7 +41,7 @@
 			this.TimeSpentStunned += other.TimeSpentStunned;
 			if (other.LargestKillstreak > this.LargestKillstreak)
 			{
-				this.LargestKillstreak = LargestKillstreak;
+				this.LargestKillstreak = other.LargestKillstreak;
 			}
 		}
 	}
