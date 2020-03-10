@@ -4,14 +4,16 @@ using BITCORNService.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 namespace BITCORNService.Migrations
 {
     [DbContext(typeof(BitcornContext))]
-    partial class BitcornContextModelSnapshot : ModelSnapshot
+    [Migration("20200308164006_nachos")]
+    partial class nachos
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -68,9 +70,6 @@ namespace BITCORNService.Migrations
                     b.Property<DateTime?>("Timestamp")
                         .HasColumnType("datetime");
 
-                    b.Property<decimal?>("TotalUsdtValue")
-                        .HasColumnType("decimal(18,2)");
-
                     b.Property<string>("TxGroupId")
                         .HasColumnType("varchar(50)")
                         .HasMaxLength(50)
@@ -80,9 +79,6 @@ namespace BITCORNService.Migrations
                         .HasColumnType("varchar(50)")
                         .HasMaxLength(50)
                         .IsUnicode(false);
-
-                    b.Property<decimal?>("UsdtPrice")
-                        .HasColumnType("decimal(18,2)");
 
                     b.HasKey("CornTxId");
 
@@ -485,10 +481,10 @@ namespace BITCORNService.Migrations
                         .HasColumnType("numeric(19, 8)")
                         .HasDefaultValueSql("((0))");
 
-                    b.Property<decimal?>("TotalReferralRewardsCorn")
+                    b.Property<decimal>("TotalReferralRewardsCorn")
                         .HasColumnType("decimal(18,2)");
 
-                    b.Property<decimal?>("TotalReferralRewardsUsdt")
+                    b.Property<decimal>("TotalReferralRewardsUsdt")
                         .HasColumnType("decimal(18,2)");
 
                     b.Property<int>("TotalReferrals")

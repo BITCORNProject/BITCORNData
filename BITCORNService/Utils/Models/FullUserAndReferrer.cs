@@ -38,7 +38,8 @@ namespace BITCORNService.Utils.Models
         public decimal? TotalReceivedBitcornRains { get; set; }
         public decimal? LargestReceivedBitcornRain { get; set; }
         public decimal? EarnedIdle { get; set; }
-        public decimal TotalReferralRewards { get; set; }
+        public decimal? TotalReferralRewardsCorn { get; set; }
+        public decimal? TotalReferralRewardsUsdt { get; set; }
         public int TotalReferrals { get; set; }
        
         //UserWallet
@@ -57,10 +58,9 @@ namespace BITCORNService.Utils.Models
         //UserReferral
         public DateTime? WalletDownloadDate { get; set; }
         public DateTime? MinimumBalanceDate { get; set; }
-        public DateTime? TweetDate { get; set; }
         public DateTime? SyncDate { get; set; }
-        public bool SignupReward { get; set; }
-        public bool Bonus { get; set; }
-        public bool ReferrerBonus { get; set; }
+        public DateTime? SignupReward { get; set; }
+        public DateTime? Bonus { get; set; }
+        public DateTime? ReferrerBonus { get; set; }
     }
 }

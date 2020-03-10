@@ -322,6 +322,7 @@ namespace BITCORNService.Utils.Tx
             return sql.ToString();
         }
 
+        //TODO: make async
         public static CornTx VerifyTx(User from, User to, decimal amount,string platform,string txType,string txId)
         {
             if (amount <= 0)
@@ -342,6 +343,8 @@ namespace BITCORNService.Utils.Tx
                 tx.SenderId = from.UserId;
                 tx.Timestamp = DateTime.Now;
                 tx.Platform = platform;
+                tx.UsdtPrice = Convert.ToDecimal(ProbitApi.GetCornPriceAsync());
+                tx.TotalUsdtValue = tx.Amount * tx.UsdtPrice; 
                 return tx;
             }
             return null;

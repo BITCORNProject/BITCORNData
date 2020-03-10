@@ -69,34 +69,10 @@ namespace BITCORNService.Controllers
                             {
                                 await ReferralUtils.LogReferralTx(_dbContext, referrerUser.UserId, referralPayoutTotal + 10, "Wallet download");
                                 await ReferralUtils.UpdateYtdTotal(_dbContext, referrer, referralPayoutTotal + 10);
-                                referrerUser.UserStat.TotalReferralRewards += referralPayoutTotal + 10;
+                                referrerUser.UserStat.TotalReferralRewardsCorn += referralPayoutTotal + 10;
+                                referrerUser.UserStat.TotalReferralRewardsUsdt += ((referralPayoutTotal + 10) * Convert.ToDecimal(await ProbitApi.GetCornPriceAsync()));
                                 userReferral.WalletDownloadDate = DateTime.Now;
-                            }
-                        }
-
-                        if (userReferral.MinimumBalanceDate != null
-                            && userReferral.WalletDownloadDate == null)
-                        {
-                            if (user != null)
-                            {
-                                var downloadReward = await TxUtils.SendFromBitcornhub(user, 4200, "BITCORNFarms", "Wallet download", _dbContext);
-                                if (downloadReward)
-                                {
-                                    userReferral.WalletDownloadDate = DateTime.Now;
-                                    userReferral.Bonus = true;
-                                }
-                            }
-                            if (referrer != null && (referrer.YtdTotal < 600 || (referrer.ETag != null && referrer.Key != null)))
-                            {
-                                var referrerReward = await TxUtils.SendFromBitcornhub(referrerUser, 4200, "BITCORNFarms", "Referral Bonus", _dbContext);
-
-                                if (referrerReward)
-                                {
-                                    await ReferralUtils.UpdateYtdTotal(_dbContext, referrer, 4200);
-                                    await ReferralUtils.LogReferralTx(_dbContext, referrer.UserId, 4200, "Referral Bonus");
-                                    userReferral.WalletDownloadDate = DateTime.Now;
-                                }
-
+                                await ReferralUtils.BonusPayout(_dbContext, userReferral, referrer, user, referrerUser, referrerUser.UserStat);
                             }
                         }
                     }

@@ -81,9 +81,10 @@ namespace BITCORNService.Controllers
                             if (referrerStat != null)
                             {
                                 referrerStat.TotalReferrals++;
-                                referrerStat.TotalReferralRewards += referralPayoutTotal;
+                                referrerStat.TotalReferralRewardsCorn += referralPayoutTotal;
+                                referrerStat.TotalReferralRewardsUsdt += (referralPayoutTotal * Convert.ToDecimal(await ProbitApi.GetCornPriceAsync()));
                             }
-                            user.UserReferral.SignupReward = true;
+                            user.UserReferral.SignupReward = DateTime.Now;
                         }
                     }
                 }

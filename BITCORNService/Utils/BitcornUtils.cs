@@ -266,7 +266,8 @@ namespace BITCORNService.Utils
                 AmountOfRainsReceived = userStats.AmountOfRainsReceived,
                 TotalReceivedBitcornRains = userStats.TotalReceivedBitcornRains,
                 LargestReceivedBitcornRain = userStats.LargestReceivedBitcornRain,
-                TotalReferralRewards = userStats.TotalReferralRewards,
+                TotalReferralRewardsCorn = userStats.TotalReferralRewardsCorn,
+                TotalReferralRewardsUsdt = userStats.TotalReferralRewardsUsdt,
                 TotalReferrals = userStats.TotalReferrals
     };
             if (referrer != null)
@@ -283,12 +284,10 @@ namespace BITCORNService.Utils
             {
                 fullUser.WalletDownloadDate = userReferral.WalletDownloadDate;
                 fullUser.MinimumBalanceDate = userReferral.MinimumBalanceDate;
-                fullUser.TweetDate = userReferral.TweetDate;
                 fullUser.SyncDate = userReferral.SyncDate;
                 fullUser.SignupReward = userReferral.SignupReward;
                 fullUser.Bonus = userReferral.Bonus;
                 fullUser.ReferrerBonus = userReferral.ReferrerBonus;
-                fullUser.TweetDate = userReferral.TweetDate;
             }
 
             return fullUser;
