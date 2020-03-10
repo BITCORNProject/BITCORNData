@@ -188,25 +188,32 @@ namespace BITCORNService.Utils.Tx
             var processInfo = await PrepareTransaction(from, to, amount, platform, txType, dbContext);
             return await processInfo.ExecuteTransaction(dbContext);
         }
+        /// <summary>
+        /// method to prepare a transaction, calling this method will not move fund immediately 
+        /// </summary>
+        /// <param name="req">transaction request</param>
+        /// <returns>transaction tracker output</returns>
         public static async Task<TxProcessInfo> ProcessRequest(ITxRequest req, BitcornContext dbContext)
         {
             if (req.Amount <= 0)
             {
                 throw new ArgumentException("Amount");
             }
-
+            //create tx process info that will be tracking this transaction
             var info = new TxProcessInfo();
+            //create hashset of receivers
             var platformIds = new HashSet<PlatformId>();
-            
+            //set sender user
             info.From = req.FromUser;
-            
+            //array of recipient ids
             var toArray = req.To.ToArray();
-         
+            //calculate total amount of corn being sent
             var totalAmountRequired = toArray.Length * req.Amount;
             bool canExecuteAll = false;
-            if (info.From!= null && info.From.UserWallet.Balance >= totalAmountRequired)
+            //check if sender has enough corn to execute all transactions
+            if (info.From != null && info.From.UserWallet.Balance >= totalAmountRequired)
                 canExecuteAll = true;
-            
+            //get platform ids of recipients
             foreach (var to in toArray)
             {
                 var toPlatformId = BitcornUtils.GetPlatformId(to);
@@ -216,35 +223,46 @@ namespace BITCORNService.Utils.Tx
                 }
             }
             var platformIdArray = platformIds.ToArray();
+            //get recipients query
             var userQuery = BitcornUtils.GetUsersForPlatform(platformIdArray,dbContext).AsNoTracking();
+            //convert into dictionary mapped by their platformid
             var users = await BitcornUtils.ToPlatformDictionary(platformIdArray,userQuery,dbContext);
-           
+            //create list for receipts
             var output = new List<TxReceipt>();
+            //create group transaction id
             var txid = Guid.NewGuid().ToString();
+
             var sql = new StringBuilder();
+            //get corn usdt price at this time
+            var cornUsdtPrice = Convert.ToDecimal(await ProbitApi.GetCornPriceAsync());
             foreach (var to in platformIdArray)
             {
                 var receipt = new TxReceipt();
+                //if sender is registered, assign it to the receipt
                 if (info.From != null)
                 {
                     receipt.From = new SelectableUser(info.From);
                 }
-                
+                //if recipient is registered, assign it to the receipt
                 if (users.TryGetValue(to.Id, out User user))
                 {
                     receipt.To = new SelectableUser(user);
+                    //if all transactions can be executed, attempt to validate this transaction
                     if (canExecuteAll)
                     {
-                        receipt.Tx = VerifyTx(info.From, user, req.Amount, req.Platform, req.TxType, txid);
+                        //verifytx returns corntx if this transaction will be made
+                        receipt.Tx = VerifyTx(info.From, user, cornUsdtPrice, req.Amount, req.Platform, req.TxType, txid);
                     }
+                    //if this transaction will be made, log it into corntx table
                     if (receipt.Tx != null)
                     {
                         dbContext.CornTx.Add(receipt.Tx);
                     }
                 }
+                //add receipt to the output
                 output.Add(receipt);
             }
-            
+            //set receipts to the transaction tracker
             info.Transactions = output.ToArray();
             return info;
         }
@@ -322,8 +340,18 @@ namespace BITCORNService.Utils.Tx
             return sql.ToString();
         }
 
-        //TODO: make async
-        public static CornTx VerifyTx(User from, User to, decimal amount,string platform,string txType,string txId)
+        /// <summary>
+        /// used to determine if this transaction should be executed
+        /// </summary>
+        /// <param name="from">send corn from</param>
+        /// <param name="to">send corn to </param>
+        /// <param name="cornUsdt">usdt value at the at this time</param>
+        /// <param name="amount">amount of corn sent</param>
+        /// <param name="platform">which application is making this transaction</param>
+        /// <param name="txType">information about this transaction</param>
+        /// <param name="txId">group transaction id</param>
+        /// <returns>receipt of transaction, returns null if transaction will not be made</returns>
+        public static CornTx VerifyTx(User from, User to, decimal cornUsdt, decimal amount,string platform,string txType,string txId)
         {
             if (amount <= 0)
                 return null;
@@ -343,7 +371,7 @@ namespace BITCORNService.Utils.Tx
                 tx.SenderId = from.UserId;
                 tx.Timestamp = DateTime.Now;
                 tx.Platform = platform;
-                tx.UsdtPrice = Convert.ToDecimal(ProbitApi.GetCornPriceAsync());
+                tx.UsdtPrice = cornUsdt;
                 tx.TotalUsdtValue = tx.Amount * tx.UsdtPrice; 
                 return tx;
             }
