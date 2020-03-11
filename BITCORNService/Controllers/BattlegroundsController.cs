@@ -137,11 +137,16 @@ namespace BITCORNService.Controllers
 					if (activeGame == null)
 					{
 						int? txid = null;
-
+						var totalRewardAmount = (request.Payin * request.RewardMultiplier) * request.MaxPlayerCount;
 						//give corn to bitcornhub to hold for the duration of the game
-						if (request.Reward > 0)
+						if (totalRewardAmount > 100000000)
 						{
-							var tx = await TxUtils.SendToBitcornhub(sender, request.Reward, "BITCORNBattlegrounds", "Battlegrounds Host reward debit", _dbContext);
+							return StatusCode((int)HttpStatusCode.BadRequest);
+						}
+						if (totalRewardAmount > 0)
+						{
+							
+							var tx = await TxUtils.SendToBitcornhub(sender, totalRewardAmount, "BITCORNBattlegrounds", "Battlegrounds Host reward debit", _dbContext);
 							if (tx == null || tx.TxId == null)
 							{
 								return StatusCode((int)HttpStatusCode.PaymentRequired);
@@ -158,16 +163,19 @@ namespace BITCORNService.Controllers
 						activeGame.Payin = request.Payin;
 						activeGame.Reward = request.Reward;
 						activeGame.HostDebitCornTxId = txid;
-			
+						activeGame.RewardMultiplier = request.RewardMultiplier;
+						activeGame.PlayerLimit = request.MaxPlayerCount;
 						_dbContext.GameInstance.Add(activeGame);
 						await _dbContext.SaveAsync();
 						return new { 
 							IsNewGame = true,
 							Players = new string[0],
-							GameId = activeGame.GameId,
+							ActiveGame = activeGame
+							/*GameId = activeGame.GameId,
 
 							Payin = activeGame.Payin,
 							Reward = activeGame.Reward
+						*/
 						};
 					}
 					else
@@ -179,9 +187,12 @@ namespace BITCORNService.Controllers
 
 							IsNewGame = false,
 							Players = twitchIds,
+							ActiveGame = activeGame
+							/*
 							GameId = activeGame.GameId,
 							Payin = activeGame.Payin,
-							Reward = activeGame.Reward
+							Reward = activeGame.Reward,
+							PlayerLimit = activeGame.pl*/
 						};
 					}
 				}
@@ -230,6 +241,24 @@ namespace BITCORNService.Controllers
 			}
 			return output;
 		}
+		async Task<decimal> SendfromBitcornhubTransaction(User user, int gameId, decimal amount, string context)
+		{
+			if (amount <= 0)
+				return 0;
+			var receipt = await TxUtils.SendFromBitcornhubGetReceipt(user, amount, "BITCORNBattlegrounds", context, _dbContext);
+			if (receipt != null)
+			{
+				if (receipt.TxId != null)
+				{
+					var link = new GameInstanceCornReward();
+					link.GameInstanceId = gameId;
+					link.TxId = receipt.TxId.Value;
+					_dbContext.GameInstanceCornReward.Add(link);
+					return amount;
+				}
+			}
+			return 0;
+		}
 		[ServiceFilter(typeof(CacheUserAttribute))]
 		[HttpPost("processgame")]
 		public async Task<ActionResult<decimal[]>> ProcessGame([FromBody] BattlegroundsProcessGameRequest request)
@@ -254,8 +283,33 @@ namespace BITCORNService.Controllers
 						var allStats = _dbContext.BattlegroundsUser.Where(p => existingUserIds.Contains(p.UserId) && p.HostId == sender.UserId).ToDictionary(u => u.UserId, u => u);
 
 						var rewards = new decimal[0];
-						if(activeGame.Reward>0)
-							rewards=SplitReward(activeGame.Reward, .5m, request.Players.Length);
+						/*
+						if (activeGame.Reward > 0)
+						{
+							rewards = SplitReward(activeGame.Reward, .5m, request.Players.Length);
+						}*/
+						if (activeGame.Payin > 0&&activeGame.HostDebitCornTxId!=null)
+						{
+							rewards = new decimal[] { 
+								(activeGame.Payin*activeGame.RewardMultiplier)*users.Count
+							};
+							var tx = await _dbContext.CornTx.Where(u=>u.CornTxId==activeGame.HostDebitCornTxId.Value)
+								.Select(u=>u.Amount).FirstOrDefaultAsync();
+							if (tx != null)
+							{
+								//at the start of the game, the host was debited the max possible reward, refund whats left from the reward
+								var refund = tx.Value - rewards[0];
+								if (refund > 0)
+								{
+									
+									var rewardAmount = await SendfromBitcornhubTransaction(sender,
+										activeGame.GameId,
+										refund,
+										"Battlegrounds host refund");
+
+								}
+							}
+						}
 						for (int i = 0; i < request.Players.Length; i++)
 						{
 							var userId = request.Players[i].UserId;
@@ -266,29 +320,19 @@ namespace BITCORNService.Controllers
 								if (i < rewards.Length)
 								{
 									var reward = rewards[i];
-									var receipt = await TxUtils.SendFromBitcornhubGetReceipt(user, reward, "BITCORNBattlegrounds", "Battlegrounds reward", _dbContext);
-									if (receipt != null)
+									var rewardAmount = await SendfromBitcornhubTransaction(user,activeGame.GameId,reward,"Battlegrounds reward");
+									rewards[i] = rewardAmount;
+
+									if (allStats.TryGetValue(userId, out BattlegroundsUser stats))
 									{
-										if (receipt.TxId != null)
+										if (i == 0)
 										{
-											var link = new GameInstanceCornReward();
-											link.GameInstanceId = activeGame.GameId;
-											link.TxId = receipt.TxId.Value;
-											_dbContext.GameInstanceCornReward.Add(link);
-
-											if (allStats.TryGetValue(userId, out BattlegroundsUser stats))
-											{
-												stats.TotalCornRewards += reward;
-												if (i == 0)
-												{
-													stats.Wins++;
-												}
-											}
-
+											stats.Wins++;
 										}
-										else
+										if (rewardAmount > 0)
 										{
-											rewards[i] = 0;
+											stats.TotalCornRewards += reward;
+										
 										}
 									}
 								}

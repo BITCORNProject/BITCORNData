@@ -46,6 +46,8 @@ namespace BITCORNService.Games.Models
                 entity.Property(e=>e.Reward);
                 entity.Property(e=>e.Active);
                 entity.Property(e=>e.HostDebitCornTxId);
+                entity.Property(e=>e.RewardMultiplier);
+                entity.Property(e=>e.PlayerLimit);
                
             });
             modelBuilder.Entity<ItemPrefab>(entity => {
