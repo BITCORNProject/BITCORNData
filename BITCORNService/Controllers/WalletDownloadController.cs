@@ -54,27 +54,7 @@ namespace BITCORNService.Controllers
 
                     if (referrerUser != null && userReferral != null && userReferral?.WalletDownloadDate == null)
                     {
-                        var referrer = await _dbContext.Referrer
-                            .FirstOrDefaultAsync(w => w.UserId == walletDownload.ReferralUserId);
-
-                        userReferral.WalletDownloadDate = DateTime.Now;
-
-                        if (referrer != null && (referrer.YtdTotal < 600 || (referrer.ETag != null && referrer.Key != null)))
-                        {
-                            var referralPayoutTotal = await ReferralUtils.TotalReward( _dbContext, referrer);
-                            var referrerReward = await TxUtils.SendFromBitcornhub(referrerUser, referralPayoutTotal + 10, "BITCORNFarms", "Referral wallet download", _dbContext);
-                            var referreeReward = await TxUtils.SendFromBitcornhub(user, referrer.Amount + 10, "BITCORNFarms", "Referral wallet download", _dbContext);
-
-                            if (referrerReward && referreeReward)
-                            {
-                                await ReferralUtils.LogReferralTx(_dbContext, referrerUser.UserId, referralPayoutTotal + 10, "Wallet download");
-                                await ReferralUtils.UpdateYtdTotal(_dbContext, referrer, referralPayoutTotal + 10);
-                                referrerUser.UserStat.TotalReferralRewardsCorn += referralPayoutTotal + 10;
-                                referrerUser.UserStat.TotalReferralRewardsUsdt += ((referralPayoutTotal + 10) * Convert.ToDecimal(await ProbitApi.GetCornPriceAsync()));
-                                userReferral.WalletDownloadDate = DateTime.Now;
-                                await ReferralUtils.BonusPayout(_dbContext, userReferral, referrer, user, referrerUser, referrerUser.UserStat);
-                            }
-                        }
+                        await ReferralUtils.ReferralRewards(_dbContext, walletDownload, userReferral, referrerUser, user, "Wallet download");
                     }
                 }
 
@@ -93,6 +73,5 @@ namespace BITCORNService.Controllers
                 if (userReferral != null) UserLockCollection.Release(userReferral.UserId);
             }
         }
-
     }
 }

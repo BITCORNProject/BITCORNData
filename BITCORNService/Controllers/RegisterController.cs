@@ -77,6 +77,7 @@ namespace BITCORNService.Controllers
                         {
                             await ReferralUtils.UpdateYtdTotal(_dbContext, referrer, referralPayoutTotal);
                             await ReferralUtils.LogReferralTx(_dbContext, referrer.UserId, referralPayoutTotal, "Registration reward");
+                            await ReferralUtils.LogReferralTx(_dbContext, user.UserId, referrer.Amount, "Registration reward");
                             var referrerStat = await _dbContext.UserStat.FirstOrDefaultAsync(s => s.UserId == referrer.UserId);
                             if (referrerStat != null)
                             {

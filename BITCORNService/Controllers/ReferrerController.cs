@@ -10,6 +10,7 @@ using BITCORNService.Utils.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
 
 namespace BITCORNService.Controllers
@@ -52,7 +53,13 @@ namespace BITCORNService.Controllers
                     throw;
                 }
             }
+
+            var referrer1 = await _dbContext.Referrer.FirstOrDefaultAsync(r => r.UserId == referralUpload.UserId);
+            referrer1.ETag = referralUpload.W9.ETag;
+            referrer1.Key = referralUpload.W9.Key;
+            await _dbContext.SaveAsync();
             return HttpStatusCode.OK;
+
         }
     }
 }
