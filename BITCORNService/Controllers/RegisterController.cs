@@ -2,6 +2,8 @@
 using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
+using BITCORNService.Games;
+using BITCORNService.Games.Models;
 using BITCORNService.Models;
 using BITCORNService.Platforms;
 using BITCORNService.Utils;
@@ -100,7 +102,7 @@ namespace BITCORNService.Controllers
                 throw e;
             }
         }
-       
+
         [ServiceFilter(typeof(CacheUserAttribute))]
         [HttpPost]
         public async Task<object> Register([FromBody] RegistrationData registrationData)

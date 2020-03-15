@@ -10,7 +10,7 @@ namespace BITCORNService.Utils.Models
             this.FromUser = from;
             this.Amount = amount;
             this.Platform = platform;
-            this.TxType = TxType;
+            this.TxType = txType;
             this.To = to;
         }
         public User FromUser { get; set; }
