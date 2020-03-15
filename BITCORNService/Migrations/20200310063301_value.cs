@@ -2,31 +2,30 @@
 
 namespace BITCORNService.Migrations
 {
-    public partial class referralstats : Migration
+    public partial class value : Migration
     {
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.AddColumn<decimal>(
-                name: "TotalReferralRewards",
-                table: "UserStat",
+                name: "TotalUsdtValue",
+                table: "CornTx",
                 nullable: true);
 
             migrationBuilder.AddColumn<decimal>(
-                name: "TotalReferrals",
-                table: "UserStat",
+                name: "UsdtPrice",
+                table: "CornTx",
                 nullable: true);
-
         }
 
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropColumn(
-                name: "TotalReferralRewards",
-                table: "UserStat");
+                name: "TotalUsdtValue",
+                table: "CornTx");
 
             migrationBuilder.DropColumn(
-                name: "TotalReferrals",
-                table: "UserStat");
+                name: "UsdtPrice",
+                table: "CornTx");
         }
     }
 }

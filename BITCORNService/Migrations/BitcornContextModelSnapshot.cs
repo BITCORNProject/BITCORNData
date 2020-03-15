@@ -68,6 +68,9 @@ namespace BITCORNService.Migrations
                     b.Property<DateTime?>("Timestamp")
                         .HasColumnType("datetime");
 
+                    b.Property<decimal?>("TotalUsdtValue")
+                        .HasColumnType("decimal(18,2)");
+
                     b.Property<string>("TxGroupId")
                         .HasColumnType("varchar(50)")
                         .HasMaxLength(50)
@@ -77,6 +80,9 @@ namespace BITCORNService.Migrations
                         .HasColumnType("varchar(50)")
                         .HasMaxLength(50)
                         .IsUnicode(false);
+
+                    b.Property<decimal?>("UsdtPrice")
+                        .HasColumnType("decimal(18,2)");
 
                     b.HasKey("CornTxId");
 
@@ -122,6 +128,24 @@ namespace BITCORNService.Migrations
                     b.ToTable("ErrorLogs");
                 });
 
+            modelBuilder.Entity("BITCORNService.Models.Price", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasAnnotation("SqlServer:ValueGenerationStrategy", SqlServerValueGenerationStrategy.IdentityColumn);
+
+                    b.Property<decimal>("LatestPrice")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("Symbol")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("Price");
+                });
+
             modelBuilder.Entity("BITCORNService.Models.ReferralTier", b =>
                 {
                     b.Property<int>("TierId")
@@ -140,6 +164,38 @@ namespace BITCORNService.Migrations
                     b.ToTable("ReferralTier");
                 });
 
+            modelBuilder.Entity("BITCORNService.Models.ReferralTx", b =>
+                {
+                    b.Property<int>("ReferralTxId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasAnnotation("SqlServer:ValueGenerationStrategy", SqlServerValueGenerationStrategy.IdentityColumn);
+
+                    b.Property<decimal>("Amount")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<DateTime>("TimeStamp")
+                        .HasColumnType("datetime2");
+
+                    b.Property<decimal>("TotalUsdtValue")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("Type")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<decimal>("UsdtPrice")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("int");
+
+                    b.HasKey("ReferralTxId");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("ReferralTx");
+                });
+
             modelBuilder.Entity("BITCORNService.Models.Referrer", b =>
                 {
                     b.Property<int>("ReferralId")
@@ -150,13 +206,10 @@ namespace BITCORNService.Migrations
                     b.Property<decimal>("Amount")
                         .HasColumnType("decimal(18,2)");
 
-                    b.Property<string>("Email")
+                    b.Property<string>("ETag")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<string>("FirstName")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("LastName")
+                    b.Property<string>("Key")
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<int>("Tier")
@@ -165,8 +218,8 @@ namespace BITCORNService.Migrations
                     b.Property<int>("UserId")
                         .HasColumnType("int");
 
-                    b.Property<string>("W9Url")
-                        .HasColumnType("nvarchar(max)");
+                    b.Property<decimal>("YtdTotal")
+                        .HasColumnType("decimal(18,2)");
 
                     b.HasKey("ReferralId");
 
@@ -340,8 +393,8 @@ namespace BITCORNService.Migrations
                         .HasColumnType("int")
                         .HasAnnotation("SqlServer:ValueGenerationStrategy", SqlServerValueGenerationStrategy.IdentityColumn);
 
-                    b.Property<bool>("Bonus")
-                        .HasColumnType("bit");
+                    b.Property<DateTime?>("Bonus")
+                        .HasColumnType("datetime2");
 
                     b.Property<DateTime?>("MinimumBalanceDate")
                         .HasColumnType("datetime2");
@@ -349,16 +402,13 @@ namespace BITCORNService.Migrations
                     b.Property<int>("ReferralId")
                         .HasColumnType("int");
 
-                    b.Property<bool>("ReferrerBonus")
-                        .HasColumnType("bit");
-
-                    b.Property<bool>("SignupReward")
-                        .HasColumnType("bit");
-
-                    b.Property<DateTime?>("SyncDate")
+                    b.Property<DateTime?>("ReferrerBonus")
                         .HasColumnType("datetime2");
 
-                    b.Property<DateTime?>("TweetDate")
+                    b.Property<DateTime?>("SignupReward")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("SyncDate")
                         .HasColumnType("datetime2");
 
                     b.Property<int>("UserId")
@@ -435,7 +485,10 @@ namespace BITCORNService.Migrations
                         .HasColumnType("numeric(19, 8)")
                         .HasDefaultValueSql("((0))");
 
-                    b.Property<decimal>("TotalReferralRewards")
+                    b.Property<decimal?>("TotalReferralRewardsCorn")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal?>("TotalReferralRewardsUsdt")
                         .HasColumnType("decimal(18,2)");
 
                     b.Property<int>("TotalReferrals")
@@ -455,6 +508,27 @@ namespace BITCORNService.Migrations
                         .HasName("PK__UserStat__3214EC0730174CB5");
 
                     b.ToTable("UserStat");
+                });
+
+            modelBuilder.Entity("BITCORNService.Models.UserSubscription", b =>
+                {
+                    b.Property<int>("UserSubscriptionId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasAnnotation("SqlServer:ValueGenerationStrategy", SqlServerValueGenerationStrategy.IdentityColumn);
+
+                    b.Property<DateTime?>("FarmsSubDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("int");
+
+                    b.HasKey("UserSubscriptionId");
+
+                    b.HasIndex("UserId")
+                        .IsUnique();
+
+                    b.ToTable("UserSubscription");
                 });
 
             modelBuilder.Entity("BITCORNService.Models.UserWallet", b =>
@@ -583,6 +657,15 @@ namespace BITCORNService.Migrations
                     b.ToTable("WalletServer");
                 });
 
+            modelBuilder.Entity("BITCORNService.Models.ReferralTx", b =>
+                {
+                    b.HasOne("BITCORNService.Models.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("BITCORNService.Models.Referrer", b =>
                 {
                     b.HasOne("BITCORNService.Models.User", "User")
@@ -636,6 +719,15 @@ namespace BITCORNService.Migrations
                         .WithOne("UserStat")
                         .HasForeignKey("BITCORNService.Models.UserStat", "UserId")
                         .HasConstraintName("FK_UserStat_Users")
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("BITCORNService.Models.UserSubscription", b =>
+                {
+                    b.HasOne("BITCORNService.Models.User", "User")
+                        .WithOne("UserSubscription")
+                        .HasForeignKey("BITCORNService.Models.UserSubscription", "UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
 

@@ -58,9 +58,13 @@
         /// </summary>
         public decimal? EarnedIdle { get; set; }
         /// <summary>
-        /// Total amount received from referrals
+        /// Total amount of corn received from referrals
         /// </summary>
-        public decimal TotalReferralRewards { get; set; }
+        public decimal? TotalReferralRewardsCorn { get; set; }
+        /// <summary>
+        /// Total amount of corn received from referrals
+        /// </summary>
+        public decimal? TotalReferralRewardsUsdt { get; set; }
         /// <summary>
         /// Total number of referrals
         /// </summary>

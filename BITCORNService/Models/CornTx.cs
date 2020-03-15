@@ -14,6 +14,8 @@ namespace BITCORNService.Models
         public string Platform { get; set; }
         public string TxType { get; set; }
         public decimal? Amount { get; set; }
+        public decimal? UsdtPrice { get; set; }
+        public decimal? TotalUsdtValue { get; set; }
         public int? SenderId { get; set; }
         public int? ReceiverId { get; set; }
         public DateTime? Timestamp { get; set; }

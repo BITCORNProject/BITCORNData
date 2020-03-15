@@ -228,5 +228,73 @@ namespace BITCORNService.Utils
             //call for discord username
             return fullUser;
         }
+        public static FullUserAndReferrer GetFullUserAndReferer(User user, UserIdentity userIdentity, UserWallet userWallet, UserStat userStats,UserReferral userReferral = null ,Referrer referrer = null)
+        {
+            var fullUser = new FullUserAndReferrer()
+            {
+                //user
+                Username = user.Username,
+                UserId = user.UserId,
+                Avatar = user.Avatar,
+                Level = user.Level,
+                IsBanned = user.IsBanned,
+                SubTier = user.SubTier,
+
+                //UserIdentity
+                Auth0Id = userIdentity.Auth0Id,
+                Auth0Nickname = userIdentity.Auth0Nickname,
+                TwitchId = userIdentity.TwitchId,
+                TwitchUsername = userIdentity.TwitchUsername,
+                TwitterUsername = userIdentity.TwitterUsername,
+                DiscordUsername = userIdentity.DiscordUsername,
+                DiscordId = userIdentity.DiscordId,
+                TwitterId = userIdentity.TwitterId,
+                RedditId = userIdentity.RedditId,
+                
+                //UserWallet
+                WalletServer = userWallet.WalletServer,
+                CornAddy = userWallet.CornAddy,
+                Balance = userWallet.Balance,
+                
+                //UserStatus
+                EarnedIdle = userStats.EarnedIdle,
+                AmountOfTipsReceived = userStats.AmountOfTipsReceived,
+                TotalReceivedBitcornTips = userStats.TotalReceivedBitcornTips,
+                LargestReceivedBitcornTip = userStats.LargestReceivedBitcornTip,
+                AmountOfTipsSent = userStats.AmountOfTipsSent,
+                TotalSentBitcornViaTips = userStats.TotalSentBitcornViaTips,
+                LargestSentBitcornTip = userStats.LargestSentBitcornTip,
+                AmountOfRainsSent = userStats.AmountOfRainsSent,
+                TotalSentBitcornViaRains = userStats.TotalSentBitcornViaRains,
+                LargestSentBitcornRain = userStats.LargestSentBitcornRain,
+                AmountOfRainsReceived = userStats.AmountOfRainsReceived,
+                TotalReceivedBitcornRains = userStats.TotalReceivedBitcornRains,
+                LargestReceivedBitcornRain = userStats.LargestReceivedBitcornRain,
+                TotalReferralRewardsCorn = userStats.TotalReferralRewardsCorn,
+                TotalReferralRewardsUsdt = userStats.TotalReferralRewardsUsdt,
+                TotalReferrals = userStats.TotalReferrals
+    };
+            if (referrer != null)
+            {
+                fullUser.ReferralId = referrer.ReferralId;
+                fullUser.Amount = referrer.Amount;
+                fullUser.Tier = referrer.Tier;
+                fullUser.ETag = referrer.ETag;
+                fullUser.Key = referrer.Key;
+                fullUser.YtdTotal = referrer.YtdTotal;
+            }
+
+            if (userReferral != null)
+            {
+                fullUser.WalletDownloadDate = userReferral.WalletDownloadDate;
+                fullUser.MinimumBalanceDate = userReferral.MinimumBalanceDate;
+                fullUser.SyncDate = userReferral.SyncDate;
+                fullUser.SignupReward = userReferral.SignupReward;
+                fullUser.Bonus = userReferral.Bonus;
+                fullUser.ReferrerBonus = userReferral.ReferrerBonus;
+            }
+
+            return fullUser;
+        }
     }
 }

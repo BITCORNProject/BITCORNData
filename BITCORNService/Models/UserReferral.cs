@@ -17,12 +17,10 @@ namespace BITCORNService.Models
         public int ReferralId { get; set; }
         public DateTime? WalletDownloadDate { get; set; }
         public DateTime? MinimumBalanceDate { get; set; }
-        public DateTime? TweetDate { get; set; }
         public DateTime? SyncDate{ get; set; }
-        public bool SignupReward { get; set; }
-
-        public bool Bonus { get; set; }
-        public bool ReferrerBonus { get; set; }
+        public DateTime? SignupReward { get; set; }
+        public DateTime? Bonus { get; set; }
+        public DateTime? ReferrerBonus { get; set; }
         public virtual User User { get; set; }
     }
 }

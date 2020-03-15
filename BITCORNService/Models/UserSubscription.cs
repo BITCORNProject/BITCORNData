@@ -7,20 +7,13 @@ using System.Threading.Tasks;
 
 namespace BITCORNService.Models
 {
-    public class Referrer
+    public class UserSubscription
     {
         [Key]
-        public int ReferralId { get; set; }
-        [ForeignKey("UserIdFK")]
+        public int UserSubscriptionId { get; set; }
+        [ForeignKey("FK_usersubscription_userId")]
         public int UserId { get; set; }
-
-        public decimal Amount { get; set; }
-        public decimal YtdTotal { get; set; }
-
-        public int Tier { get; set; }
-        public string ETag { get; set; }
-        public string Key { get; set; }
+        public DateTime? FarmsSubDate { get; set; }
         public virtual User User { get; set; }
     }
 }
-
