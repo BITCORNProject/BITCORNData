@@ -40,7 +40,7 @@ namespace BITCORNService.Utils.Models
         public decimal? EarnedIdle { get; set; }
         public decimal? TotalReferralRewardsCorn { get; set; }
         public decimal? TotalReferralRewardsUsdt { get; set; }
-        public int TotalReferrals { get; set; }
+        public int? TotalReferrals { get; set; }
        
         //UserWallet
         public int? WalletServer { get; set; }

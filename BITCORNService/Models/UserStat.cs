@@ -68,7 +68,7 @@
         /// <summary>
         /// Total number of referrals
         /// </summary>
-        public int TotalReferrals { get; set; }
+        public int? TotalReferrals { get; set; }
 
 
         public virtual User User { get; set; }
