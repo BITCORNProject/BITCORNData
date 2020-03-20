@@ -66,7 +66,7 @@ namespace BITCORNService.Controllers
                 if (referral != null)
                 {
                     var referrer = await _dbContext.Referrer.FirstOrDefaultAsync(r => r.ReferralId == referralId);
-                    if (referrer.YtdTotal < 600 || (referrer.ETag != null && referrer.Key != null))
+                    if (referrer!= null && (referrer.YtdTotal < 600 || (referrer.ETag != null && referrer.Key != null)))
                     {
                         var referrerUser = await _dbContext.User.FirstOrDefaultAsync(u => u.UserId == referrer.UserId);
                         var referralPayoutTotal = await ReferralUtils.TotalReward(_dbContext, referrer);

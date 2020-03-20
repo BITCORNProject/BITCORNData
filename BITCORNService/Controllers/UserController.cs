@@ -58,20 +58,28 @@ namespace BITCORNService.Controllers
         [HttpPost("{id}/[action]")]
         public async Task<ActionResult<FullUserAndReferrer>> FullUser([FromRoute] string id)
         {
-            if (this.GetCachedUser() != null)
-                throw new InvalidOperationException();
-            if (string.IsNullOrWhiteSpace(id)) throw new ArgumentNullException("id");
+            try
+            {
+                if (this.GetCachedUser() != null)
+                    throw new InvalidOperationException();
+                if (string.IsNullOrWhiteSpace(id)) throw new ArgumentNullException("id");
 
-            var platformId = BitcornUtils.GetPlatformId(id);
-            var user = await BitcornUtils.GetUserForPlatform(platformId, _dbContext).FirstOrDefaultAsync();
-            if (user != null)
-            {
-                var referral = _dbContext.Referrer.FirstOrDefault(r => r.UserId == user.UserId);
-                return BitcornUtils.GetFullUserAndReferer(user, user.UserIdentity, user.UserWallet, user.UserStat, user.UserReferral, referral);
+                var platformId = BitcornUtils.GetPlatformId(id);
+                var user = await BitcornUtils.GetUserForPlatform(platformId, _dbContext).FirstOrDefaultAsync();
+                if (user != null)
+                {
+                    var referral = _dbContext.Referrer.FirstOrDefault(r => r.UserId == user.UserId);
+                    return BitcornUtils.GetFullUserAndReferer(user, user.UserIdentity, user.UserWallet, user.UserStat, user.UserReferral, referral);
+                }
+                else
+                {
+                    return StatusCode(404);
+                }
             }
-            else
+            catch (Exception e)
             {
-                return StatusCode(404);
+                await BITCORNLogger.LogError(_dbContext, e, null);
+                throw;
             }
         }
 

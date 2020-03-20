@@ -116,11 +116,11 @@ namespace BITCORNService.Utils
         {
             var stats = await dbContext.UserStat.FirstOrDefaultAsync(s=>s.UserId == referrer.UserId);
 
-            if (stats.TotalReferrals < 50)
+            if (stats.TotalReferrals < 100)
             {
                 referrer.Tier = 0;
             }
-            if (stats.TotalReferrals >= 50)
+            if (stats.TotalReferrals >= 100)
             {
                 referrer.Tier = 1;
             }
@@ -177,7 +177,7 @@ namespace BITCORNService.Utils
             }
         }
 
-        public static async Task ReferralRewards(BitcornContext dbContext, WalletDownload walletDownload, UserReferral userReferral, User referrerUser,
+        public static async Task WalletDOwnloadRewards(BitcornContext dbContext, WalletDownload walletDownload, UserReferral userReferral, User referrerUser,
     User user, string type)
         {
             var referrer = await dbContext.Referrer
@@ -209,7 +209,27 @@ namespace BITCORNService.Utils
                 }
             }
         }
+        public static async Task MinimumBalanceRewards(BitcornContext dbContext, Referrer referrer, User user, User referrerUser, UserStat referrerStat,
+            UserReferral userReferral)
+        {
+            var referralPayoutTotal = await ReferralUtils.TotalReward(dbContext, referrer);
+            var miniumBalanceRewardUser =
+                await TxUtils.SendFromBitcornhub(user, referrer.Amount, "BITCORNFarms", "Minium balance reward", dbContext);
+            var miniumBalanceReward = await TxUtils.SendFromBitcornhub(referrerUser, referralPayoutTotal, "BITCORNFarms",
+                "Minium balance reward", dbContext);
 
-
+            if (miniumBalanceReward && miniumBalanceRewardUser)
+            {
+                referrerStat.TotalReferralRewardsCorn += referralPayoutTotal;
+                referrerStat.TotalReferralRewardsUsdt +=
+                    (referralPayoutTotal * Convert.ToDecimal(await ProbitApi.GetCornPriceAsync()));
+                userReferral.MinimumBalanceDate = DateTime.Now;
+                await ReferralUtils.UpdateYtdTotal(dbContext, referrer, referralPayoutTotal);
+                await ReferralUtils.LogReferralTx(dbContext, user.UserId, referrer.Amount, "Recruit minimum balance Reward");
+                await ReferralUtils.LogReferralTx(dbContext, referrerUser.UserId, referralPayoutTotal,
+                    "Minimum balance Reward");
+                await ReferralUtils.BonusPayout(dbContext, userReferral, referrer, user, referrerUser, referrerStat);
+            }
+        }
     }
 }

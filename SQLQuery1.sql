@@ -3,9 +3,9 @@
 select * from UserReferral where userid = 2771
 
 select * from [UserIdentity] where UserId >= 5320
-select * from UserIdentity where UserId = 5294
+select * from UserIdentity where UserId = 5355
 
-update userwallet set balance = 1010 where userId = 5329
+update userwallet set balance = 0 where userId = 5355
 update UserReferral set MinimumBalanceDate = null
 
 select * from UserReferral where userid = 5322
@@ -39,7 +39,7 @@ update Referrer set YtdTotal  = 0 where userid = 2081
 delete from referraltx
 select * from ReferralTx
 
-select YtdTotal, UserStat.TotalReferrals, UserStat.TotalReferralRewardsUSdt, UserStat.TotalReferralRewardsCorn, UserWallet.Balance
+select userstat.userid,  YtdTotal, UserStat.TotalReferrals, UserStat.TotalReferralRewardsUSdt, UserStat.TotalReferralRewardsCorn, UserWallet.Balance
 from [Referrer] 
 join userStat on UserStat.UserId = Referrer.UserId
 join UserWallet on UserStat.UserId = UserWallet.UserId

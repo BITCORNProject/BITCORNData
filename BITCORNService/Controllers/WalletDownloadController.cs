@@ -54,7 +54,7 @@ namespace BITCORNService.Controllers
 
                     if (referrerUser != null && userReferral != null && userReferral?.WalletDownloadDate == null)
                     {
-                        await ReferralUtils.ReferralRewards(_dbContext, walletDownload, userReferral, referrerUser, user, "Wallet download");
+                        await ReferralUtils.WalletDOwnloadRewards(_dbContext, walletDownload, userReferral, referrerUser, user, "Wallet download");
                     }
                 }
 
