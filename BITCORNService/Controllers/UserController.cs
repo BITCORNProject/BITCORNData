@@ -53,6 +53,18 @@ namespace BITCORNService.Controllers
                 return StatusCode(404);
             }
         }
+        
+        [HttpGet("userid/{id}")]
+        public async Task<ActionResult<int>> UserId(string id)
+        {
+            var platformId = BitcornUtils.GetPlatformId(id);
+            var user = await BitcornUtils.GetUserForPlatform(platformId,_dbContext).FirstOrDefaultAsync();
+            if (user != null)
+            {
+                return user.UserId;
+            }
+            return StatusCode(404);
+        }
 
         [ServiceFilter(typeof(CacheUserAttribute))]
         [HttpPost("{id}/[action]")]
@@ -105,7 +117,7 @@ namespace BITCORNService.Controllers
 
             var senderPlatformId = BitcornUtils.GetPlatformId(request.Sender);
             var senderUser = await BitcornUtils.GetUserForPlatform(senderPlatformId, _dbContext).FirstOrDefaultAsync();
-            if (senderUser!=null&&senderUser.Level == "5000")
+            if (senderUser!=null && senderUser.IsAdmin())
             {
                 var banPlatformId = BitcornUtils.GetPlatformId(request.BanUser);
                 var primaryKey = -1;

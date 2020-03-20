@@ -1,4 +1,5 @@
 using System;
+using BITCORNService.Games.Models;
 using BITCORNService.Models;
 using BITCORNService.Utils.LockUser;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -48,6 +49,14 @@ namespace BITCORNService
                         maxRetryCount: 10,
                         maxRetryDelay: TimeSpan.FromSeconds(30),
                         errorNumbersToAdd: null)));
+
+            services.AddDbContext<BitcornGameContext>(options =>
+                options.UseSqlServer(connection,
+                Options => Options.EnableRetryOnFailure(
+                        maxRetryCount: 10,
+                        maxRetryDelay: TimeSpan.FromSeconds(30),
+                        errorNumbersToAdd: null)));
+
             services.AddControllers();
         }
 

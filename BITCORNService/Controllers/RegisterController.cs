@@ -1,6 +1,5 @@
-﻿using System;
+using System;
 using System.Linq;
-using System.Reflection;
 using System.Threading.Tasks;
 using BITCORNService.Models;
 using BITCORNService.Platforms;
@@ -10,10 +9,8 @@ using BITCORNService.Utils.LockUser;
 using BITCORNService.Utils.Models;
 using BITCORNService.Utils.Tx;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Microsoft.Extensions.Configuration;
 using Newtonsoft.Json;
 
