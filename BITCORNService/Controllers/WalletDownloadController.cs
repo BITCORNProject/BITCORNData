@@ -28,6 +28,10 @@ namespace BITCORNService.Controllers
 
         public async Task<ActionResult> Post([FromBody] WalletDownload walletDownload)
         {
+            return await Download(walletDownload, DateTime.Now);
+        }
+        public async Task<ActionResult> Download(WalletDownload walletDownload, DateTime now)
+        {
             var user = await _dbContext.User.FirstOrDefaultAsync(r => r.UserId == walletDownload.UserId);
             var userReferral = await _dbContext.UserReferral.FirstOrDefaultAsync(r => r.UserId == walletDownload.UserId);
             if (userReferral != null && !UserLockCollection.Lock(userReferral.UserId))
@@ -35,10 +39,11 @@ namespace BITCORNService.Controllers
                 return StatusCode(UserLockCollection.UserLockedReturnCode);
             }
 
-            var downloads = _dbContext.WalletDownload.Where(w => w.TimeStamp > DateTime.Now.AddDays(-7)).Where(d => d.IPAddress == walletDownload.IPAddress);
             try
             {
-                if (!downloads.Any() && userReferral != null && (userReferral.ReferralId != 0 && userReferral.WalletDownloadDate == null)) 
+                var downloads = _dbContext.WalletDownload.Where(w => w.TimeStamp.AddDays(7) < now).Where(d => d.IPAddress == walletDownload.IPAddress);
+
+                if (!downloads.Any() && userReferral != null && (userReferral.ReferralId != 0 && userReferral.WalletDownloadDate == null))
                 {
                     try
                     {
@@ -50,7 +55,7 @@ namespace BITCORNService.Controllers
                         throw new Exception($"could not convert referral code: {walletDownload.ReferralCode} to an integer");
                     }
 
-                    var referrerUser = await _dbContext.JoinUserModels().FirstOrDefaultAsync(u=>u.UserId==walletDownload.ReferralUserId);
+                    var referrerUser = await _dbContext.JoinUserModels().FirstOrDefaultAsync(u => u.UserId == walletDownload.ReferralUserId);
 
                     if (referrerUser != null && userReferral != null && userReferral?.WalletDownloadDate == null)
                     {
@@ -58,7 +63,7 @@ namespace BITCORNService.Controllers
                     }
                 }
 
-                walletDownload.TimeStamp = DateTime.Now;
+                walletDownload.TimeStamp = now;
                 _dbContext.WalletDownload.Add(walletDownload);
                 await _dbContext.SaveAsync();
                 return StatusCode((int)HttpStatusCode.OK);
