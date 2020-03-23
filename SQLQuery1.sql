@@ -1,19 +1,21 @@
-﻿select * from userstat where userid = 2081
+﻿select * from userstat where userid = 2651
 
-select * from UserReferral where userid = 2771
+update userstat set TotalReferralRewardsUsdt = 0.000001 where userid = 5395
 
-select * from [UserIdentity] where UserId >= 5320
-select * from UserIdentity where UserId = 5294
+select * from UserReferral where userid = 5421
 
-update userwallet set balance = 1010 where userId = 5329
+select * from [UserIdentity] where UserId >= 5413
+select * from UserIdentity where UserId = 2651
+
+update userwallet set balance = 1040 where userId = 5420
 update UserReferral set MinimumBalanceDate = null
 
-select * from UserReferral where userid = 5322
+select * from UserReferral where userid = 5383
 update userwallet set balance = 1000000 where userId = 2081
 
 update userwallet set balance = 0 where userId = 2081
 
-select * from UserReferral where UserId = 5320
+select * from UserReferral where UserId = 5421
 
 select * from ErrorLogs
 
@@ -21,11 +23,13 @@ select * from referrer where userId = 5330
 
 select * from useridentity where TwitchUsername like  '%bombbot%'
 
-select * from UserIdentity where Auth0Nickname = 'CORN2MOON'
+select * from UserIdentity where Auth0Nickname like 'awesometimkim'
 
 
-update UserIdentity set TwitterId = null where TwitterUsername =  'JasonSowers14'
-update UserIdentity set TwitterUsername = null where  TwitterUsername =  'JasonSowers14'
+
+
+update UserIdentity set TwitterId = null where TwitterUsername =  'bitcorntester11'
+update UserIdentity set TwitterUsername = null where  TwitterUsername =  'bitcorntester11'
 
 update UserReferral set MinimumBalanceDate = null where UserId = 2771
 update UserReferral set SyncDate = null where UserId = 5320
@@ -37,13 +41,13 @@ update userstat set TotalReferralRewardsCorn  = 0 where userid = 2081
 update userstat set TotalReferralRewardsUsdt  = 0 where userid = 2081
 update Referrer set YtdTotal  = 0 where userid = 2081
 delete from referraltx
-select * from ReferralTx
+select * from Referraltx
 
 select YtdTotal, UserStat.TotalReferrals, UserStat.TotalReferralRewardsUSdt, UserStat.TotalReferralRewardsCorn, UserWallet.Balance
 from [Referrer] 
 join userStat on UserStat.UserId = Referrer.UserId
 join UserWallet on UserStat.UserId = UserWallet.UserId
-where UserStat.UserId = 2081
+where UserStat.UserId = 5355
 
 
 select * from ErrorLogs where id > 280
