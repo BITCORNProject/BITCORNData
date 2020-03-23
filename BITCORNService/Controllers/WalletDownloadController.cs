@@ -6,7 +6,6 @@ using BITCORNService.Models;
 using BITCORNService.Utils;
 using BITCORNService.Utils.DbActions;
 using BITCORNService.Utils.LockUser;
-using BITCORNService.Utils.Tx;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
