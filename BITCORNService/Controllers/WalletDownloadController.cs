@@ -41,8 +41,8 @@ namespace BITCORNService.Controllers
 
             try
             {
-                var downloads = _dbContext.WalletDownload.Where(w => w.TimeStamp.AddDays(7) < now).Where(d => d.IPAddress == walletDownload.IPAddress);
-
+                var downloads = _dbContext.WalletDownload.Where(w => w.TimeStamp.AddDays(7) > now).Where(d => d.IPAddress == walletDownload.IPAddress);
+                
                 if (!downloads.Any() && userReferral != null && (userReferral.ReferralId != 0 && userReferral.WalletDownloadDate == null))
                 {
                     try
