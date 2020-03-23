@@ -94,7 +94,7 @@ namespace BITCORNService.Controllers
                                 {
                                     referrerStat.TotalReferralRewardsUsdt = 0;
                                 }
-                                referrerStat.TotalReferralRewardsUsdt += (referralPayoutTotal * Convert.ToDecimal(await ProbitApi.GetCornPriceAsync()));
+                                referrerStat.TotalReferralRewardsUsdt += (referralPayoutTotal * (await ProbitApi.GetCornPriceAsync()));
                             }
                             user.UserReferral.SignupReward = DateTime.Now;
                         }
@@ -114,7 +114,7 @@ namespace BITCORNService.Controllers
 
         [ServiceFilter(typeof(CacheUserAttribute))]
         [HttpPost]
-        public async Task<object> Register([FromBody] RegistrationData registrationData)
+        public async Task<PlatformSyncResponse> Register([FromBody] RegistrationData registrationData)
         {
             if (registrationData == null) throw new ArgumentNullException("registrationData");
             if (registrationData.Auth0Id == null) throw new ArgumentNullException("registrationData.Auth0Id");

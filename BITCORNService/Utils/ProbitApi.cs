@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -11,7 +12,7 @@ namespace BITCORNService.Utils
 {
     public static class ProbitApi
     {
-        public static async Task<string> GetCornPriceAsync()
+        public static async Task<decimal> GetCornPriceAsync()
         {
             var client = new RestClient("https://api.probit.com");
             var request = new RestRequest("/api/exchange/v1/ticker", Method.POST);
@@ -21,7 +22,7 @@ namespace BITCORNService.Utils
            
             var tickers = JsonConvert.DeserializeObject<Tickers>(response.Content);
 
-            return tickers.data[0].last;
+            return Convert.ToDecimal(tickers.data[0].last, CultureInfo.InvariantCulture);
         }
     }
 

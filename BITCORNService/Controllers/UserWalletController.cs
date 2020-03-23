@@ -63,7 +63,7 @@ namespace BITCORNService.Controllers
                                 {
 
                                     referrerStat.TotalReferralRewardsCorn += referralPayoutTotal;
-                                    referrerStat.TotalReferralRewardsUsdt += (referralPayoutTotal * Convert.ToDecimal(await ProbitApi.GetCornPriceAsync()));
+                                    referrerStat.TotalReferralRewardsUsdt += (referralPayoutTotal * (await ProbitApi.GetCornPriceAsync()));
                                     userReferral.MinimumBalanceDate = DateTime.Now;
                                     await ReferralUtils.UpdateYtdTotal(_dbContext, referrer, referralPayoutTotal);
                                     await ReferralUtils.LogReferralTx(_dbContext, user.UserId, referrer.Amount, "Recruit minimum balance Reward");
