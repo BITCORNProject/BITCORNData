@@ -7,7 +7,7 @@ select * from UserReferral where userid = 5421
 select * from [UserIdentity] where UserId >= 5413
 select * from UserIdentity where UserId = 2651
 
-update userwallet set balance = 1040 where userId = 5420
+update userwallet set balance = 1040 where userId = 5423
 update UserReferral set MinimumBalanceDate = null
 
 select * from UserReferral where userid = 5383
@@ -19,11 +19,11 @@ select * from UserReferral where UserId = 5421
 
 select * from ErrorLogs
 
-select * from referrer where userId = 5330
+select * from referrer where userId = 5423
 
 select * from useridentity where TwitchUsername like  '%bombbot%'
 
-select * from UserIdentity where Auth0Nickname like 'awesometimkim'
+select * from UserIdentity where Auth0Nickname like 'awesometimkim+1'
 
 
 
@@ -39,7 +39,7 @@ update UserReferral set Bonus = 0 where UserId = 5320
 update userstat set TotalReferrals  = 0 where userid = 2081
 update userstat set TotalReferralRewardsCorn  = 0 where userid = 2081
 update userstat set TotalReferralRewardsUsdt  = 0 where userid = 2081
-update Referrer set YtdTotal  = 0 where userid = 2081
+update Referrer set tier  = 3 where userid = 5423
 delete from referraltx
 select * from Referraltx
 

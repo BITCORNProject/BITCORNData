@@ -120,19 +120,19 @@ namespace BITCORNService.Utils
                 stats.TotalReferrals = 0;
             }
 
-            if (stats.TotalReferrals < 50)
+            if (stats.TotalReferrals < 50 && referrer.Tier < 1)
             {
                 referrer.Tier = 0;
             }
-            if (stats.TotalReferrals >= 50)
+            if (stats.TotalReferrals >= 50 && referrer.Tier < 1)
             {
                 referrer.Tier = 1;
             }
-            if (stats.TotalReferrals >= 500)
+            if (stats.TotalReferrals >= 500 && referrer.Tier < 2)
             {
                 referrer.Tier = 2;
             }
-            if (stats.TotalReferrals >= 20000)
+            if (stats.TotalReferrals >= 20000 && referrer.Tier < 3)
             {
                 referrer.Tier = 3;
             }
@@ -145,6 +145,13 @@ namespace BITCORNService.Utils
             await SetTier(dbContext, referrer);
             var referralTier = await dbContext.ReferralTier.FirstOrDefaultAsync(r => r.Tier == referrer.Tier);
             return referrer.Amount * referralTier.Bonus;
+        }
+
+        public static async Task<decimal> WalletBonusReward(BitcornContext dbContext, Referrer referrer, int amount)
+        {
+            await SetTier(dbContext, referrer);
+            var referralTier = await dbContext.ReferralTier.FirstOrDefaultAsync(r => r.Tier == referrer.Tier);
+            return amount * referralTier.Bonus;
         }
 
         public static async Task BonusPayout(BitcornContext dbContext, UserReferral userReferral, Referrer referrer, User user, User referrerUser,
@@ -191,19 +198,19 @@ namespace BITCORNService.Utils
 
             if (referrer != null && (referrer.YtdTotal < 600 || (referrer.ETag != null && referrer.Key != null)))
             {
-                var referralPayoutTotal = await ReferralUtils.TotalReward(dbContext, referrer);
-                var referrerReward = await TxUtils.SendFromBitcornhub(referrerUser, referralPayoutTotal + 10, "BITCORNFarms",
+                var referralPayoutTotal = await ReferralUtils.TotalReward(dbContext, referrer) + await ReferralUtils.WalletBonusReward(dbContext, referrer, 10); ;
+                var referrerReward = await TxUtils.SendFromBitcornhub(referrerUser, referralPayoutTotal , "BITCORNFarms",
                     type, dbContext);
                 var referreeReward = await TxUtils.SendFromBitcornhub(user, referrer.Amount + 10, "BITCORNFarms",
                     type, dbContext);
 
                 if (referrerReward && referreeReward)
                 {
-                    await ReferralUtils.LogReferralTx(dbContext, referrerUser.UserId, referralPayoutTotal + 10,
+                    await ReferralUtils.LogReferralTx(dbContext, referrerUser.UserId, referralPayoutTotal ,
                         type);
                     await ReferralUtils.LogReferralTx(dbContext, user.UserId, referrer.Amount + 10,
                         $"Recruit {type}");
-                    await ReferralUtils.UpdateYtdTotal(dbContext, referrer, referralPayoutTotal + 10);
+                    await ReferralUtils.UpdateYtdTotal(dbContext, referrer, referralPayoutTotal );
                     if (referrerUser.UserStat.TotalReferralRewardsCorn == null)
                     {
                         referrerUser.UserStat.TotalReferralRewardsCorn = 0;
@@ -212,9 +219,9 @@ namespace BITCORNService.Utils
                     {
                         referrerUser.UserStat.TotalReferralRewardsUsdt = 0;
                     }
-                    referrerUser.UserStat.TotalReferralRewardsCorn += referralPayoutTotal + 10;
+                    referrerUser.UserStat.TotalReferralRewardsCorn += referralPayoutTotal ;
                     referrerUser.UserStat.TotalReferralRewardsUsdt +=
-                        ((referralPayoutTotal + 10) * Convert.ToDecimal(await ProbitApi.GetCornPriceAsync()));
+                        ((referralPayoutTotal ) * Convert.ToDecimal(await ProbitApi.GetCornPriceAsync()));
                     userReferral.WalletDownloadDate = DateTime.Now;
                     await ReferralUtils.BonusPayout(dbContext, userReferral, referrer, user, referrerUser,
                         referrerUser.UserStat);

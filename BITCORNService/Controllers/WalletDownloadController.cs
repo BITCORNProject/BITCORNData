@@ -36,9 +36,10 @@ namespace BITCORNService.Controllers
                 return StatusCode(UserLockCollection.UserLockedReturnCode);
             }
 
+            var downloads = _dbContext.WalletDownload.Where(w => w.TimeStamp > DateTime.Now.AddDays(-7)).Where(d => d.IPAddress == walletDownload.IPAddress);
             try
             {
-                if (userReferral != null && (userReferral.ReferralId != 0 && userReferral.WalletDownloadDate == null)) 
+                if (!downloads.Any() && userReferral != null && (userReferral.ReferralId != 0 && userReferral.WalletDownloadDate == null)) 
                 {
                     try
                     {
