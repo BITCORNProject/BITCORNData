@@ -258,7 +258,7 @@ namespace BITCORNService.Utils.Tx
 
             var sql = new StringBuilder();
             //get corn usdt price at this time
-            var cornUsdtPrice = Convert.ToDecimal(await ProbitApi.GetCornPriceAsync(), CultureInfo.InvariantCulture);
+            var cornUsdtPrice = (await ProbitApi.GetCornPriceAsync());
             foreach (var to in platformIdArray)
             {
                 var receipt = new TxReceipt();

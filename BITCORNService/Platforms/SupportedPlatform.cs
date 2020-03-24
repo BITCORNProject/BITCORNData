@@ -62,7 +62,7 @@ namespace BITCORNService.Platforms
             _configuration = config;
         }
         //cannot be abstract because cannot create instance of SocialRegisteration then..
-        public virtual async Task<object> SyncPlatform(RegistrationData registrationData, User auth0DbUser, PlatformId platformId, string auth0Id)
+        public virtual async Task<PlatformSyncResponse> SyncPlatform(RegistrationData registrationData, User auth0DbUser, PlatformId platformId, string auth0Id)
         {
             throw new NotImplementedException();
         }
@@ -70,11 +70,22 @@ namespace BITCORNService.Platforms
         public virtual async Task OnSyncSuccess(PlatformId platformId)
         {
             await TxUtils.TryClaimTx(platformId, null, _dbContext);
-            await ReferralUtils.UpdateReferralSync(_dbContext, platformId);
+            var key = $"{platformId.Platform}|{platformId.Id}";
+            if (!(await _dbContext.SocialIdentity.AnyAsync(s => s.PlatformId == key)))
+            {
+                await ReferralUtils.UpdateReferralSync(_dbContext, platformId);
+                _dbContext.SocialIdentity.Add(new SocialIdentity()
+                {
+                    PlatformId = key,
+                    Timestamp = DateTime.Now
+                });
+                await _dbContext.SaveAsync();
+
+            }
         }
-        protected object GetSyncOutput(User user, bool isMigration)
+        protected PlatformSyncResponse GetSyncOutput(User user, bool isMigration)
         {
-            return new
+            return new PlatformSyncResponse()
             {
                 IsMigration = isMigration,
                 User = BitcornUtils.GetFullUser(user, user.UserIdentity, user.UserWallet, user.UserStat)

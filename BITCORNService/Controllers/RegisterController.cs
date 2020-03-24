@@ -1,9 +1,6 @@
 ﻿using System;
 using System.Linq;
-using System.Reflection;
 using System.Threading.Tasks;
-using BITCORNService.Games;
-using BITCORNService.Games.Models;
 using BITCORNService.Models;
 using BITCORNService.Platforms;
 using BITCORNService.Utils;
@@ -12,10 +9,8 @@ using BITCORNService.Utils.LockUser;
 using BITCORNService.Utils.Models;
 using BITCORNService.Utils.Tx;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Microsoft.Extensions.Configuration;
 using Newtonsoft.Json;
 
@@ -65,7 +60,7 @@ namespace BITCORNService.Controllers
             {
                 var user = CreateUser(auth0User, referralId);
                 _dbContext.User.Add(user);
-                if (referral != null)
+                if (referral != null && referralId != 0)
                 {
                     var referrer = await _dbContext.Referrer.FirstOrDefaultAsync(r => r.ReferralId == referralId);
                     if (referrer.YtdTotal < 600 || (referrer.ETag != null && referrer.Key != null))
@@ -73,19 +68,33 @@ namespace BITCORNService.Controllers
                         var referrerUser = await _dbContext.User.FirstOrDefaultAsync(u => u.UserId == referrer.UserId);
                         var referralPayoutTotal = await ReferralUtils.TotalReward(_dbContext, referrer);
                         var referrerRegistrationReward = await TxUtils.SendFromBitcornhub(referrerUser, referralPayoutTotal, "BITCORNFarms", "Registrations reward", _dbContext);
-                        var userRegistrationReward = await TxUtils.SendFromBitcornhub(user, referrer.Amount, "BITCORNFarms", "Registrations reward", _dbContext);
+                        var userRegistrationReward = await TxUtils.SendFromBitcornhub(user, referrer.Amount, "BITCORNFarms", "Recruit registrations reward", _dbContext);
 
                         if (referrerRegistrationReward && userRegistrationReward)
                         {
                             await ReferralUtils.UpdateYtdTotal(_dbContext, referrer, referralPayoutTotal);
                             await ReferralUtils.LogReferralTx(_dbContext, referrer.UserId, referralPayoutTotal, "Registration reward");
-                            await ReferralUtils.LogReferralTx(_dbContext, user.UserId, referrer.Amount, "Registration reward");
+                            await ReferralUtils.LogReferralTx(_dbContext, user.UserId, referrer.Amount, "Recruit registration reward");
                             var referrerStat = await _dbContext.UserStat.FirstOrDefaultAsync(s => s.UserId == referrer.UserId);
                             if (referrerStat != null)
                             {
+                                if (referrerStat.TotalReferrals == null)
+                                {
+                                    referrerStat.TotalReferrals = 0;
+                                }
                                 referrerStat.TotalReferrals++;
+
+                                if (referrerStat.TotalReferralRewardsCorn == null)
+                                {
+                                    referrerStat.TotalReferralRewardsCorn = 0;
+                                }
                                 referrerStat.TotalReferralRewardsCorn += referralPayoutTotal;
-                                referrerStat.TotalReferralRewardsUsdt += (referralPayoutTotal * Convert.ToDecimal(await ProbitApi.GetCornPriceAsync()));
+
+                                if (referrerStat.TotalReferralRewardsUsdt == null)
+                                {
+                                    referrerStat.TotalReferralRewardsUsdt = 0;
+                                }
+                                referrerStat.TotalReferralRewardsUsdt += (referralPayoutTotal * (await ProbitApi.GetCornPriceAsync()));
                             }
                             user.UserReferral.SignupReward = DateTime.Now;
                         }
@@ -105,7 +114,7 @@ namespace BITCORNService.Controllers
 
         [ServiceFilter(typeof(CacheUserAttribute))]
         [HttpPost]
-        public async Task<object> Register([FromBody] RegistrationData registrationData)
+        public async Task<PlatformSyncResponse> Register([FromBody] RegistrationData registrationData)
         {
             if (registrationData == null) throw new ArgumentNullException("registrationData");
             if (registrationData.Auth0Id == null) throw new ArgumentNullException("registrationData.Auth0Id");

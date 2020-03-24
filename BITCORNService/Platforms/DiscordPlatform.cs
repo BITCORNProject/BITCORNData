@@ -14,7 +14,7 @@ namespace BITCORNService.Platforms
 {
     public class DiscordPlatform : SupportedPlatform
     {
-        public override async Task<object> SyncPlatform(RegistrationData registrationData, User auth0DbUser, PlatformId platformId, string auth0Id)
+        public override async Task<PlatformSyncResponse> SyncPlatform(RegistrationData registrationData, User auth0DbUser, PlatformId platformId, string auth0Id)
         {
             try
             {
