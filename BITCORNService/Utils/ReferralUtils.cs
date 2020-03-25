@@ -20,6 +20,8 @@ namespace BITCORNService.Utils
             {
                 if (user != null && user.UserId != 0)
                 {
+                    if (user.IsBanned)
+                        return;
                     if (!UserLockCollection.Lock(user.UserId))
                     {
                         throw new Exception("User is locked");
@@ -33,9 +35,15 @@ namespace BITCORNService.Utils
                         if (referrer != null && (referrer.YtdTotal < 600 || (referrer.ETag != null && referrer.Key != null)))
                         {
                             var referralPayoutTotal = await ReferralUtils.TotalReward(dbContext, referrer);
-                            var referrerUser= await dbContext.User.FirstOrDefaultAsync( u => u.UserId == referrer.UserId);
-                            var referreeReward = await TxUtils.SendFromBitcornhub(user, referrer.Amount, "BITCORNfarms","Recruit social sync", dbContext);
-                            var referrerReward = await TxUtils.SendFromBitcornhub(referrerUser, referralPayoutTotal, "BITCORNfarms","Social sync", dbContext);
+                            var referrerUser = await dbContext.User.FirstOrDefaultAsync(u => u.UserId == referrer.UserId);
+                            if (referrerUser.IsBanned)
+                            {
+                                if (user != null)
+                                    UserLockCollection.Release(user.UserId);
+                                return;
+                            }
+                            var referreeReward = await TxUtils.SendFromBitcornhub(user, referrer.Amount, "BITCORNfarms", "Recruit social sync", dbContext);
+                            var referrerReward = await TxUtils.SendFromBitcornhub(referrerUser, referralPayoutTotal, "BITCORNfarms", "Social sync", dbContext);
 
                             if (referrerReward && referreeReward)
                             {
@@ -62,7 +70,8 @@ namespace BITCORNService.Utils
             }
             finally
             {
-                UserLockCollection.Release(user.UserId);
+                if (user != null)
+                    UserLockCollection.Release(user.UserId);
             }
         }
 
@@ -113,6 +122,8 @@ namespace BITCORNService.Utils
 
         public static async  Task SetTier(BitcornContext dbContext,Referrer referrer)
         {
+            var banned = await dbContext.User.Where(s => s.UserId == referrer.UserId).Select(u=>u.IsBanned).FirstOrDefaultAsync();
+            if (banned) return;
             var stats = await dbContext.UserStat.FirstOrDefaultAsync(s=>s.UserId == referrer.UserId);
             if (stats.TotalReferrals == null)
             {
@@ -163,7 +174,9 @@ namespace BITCORNService.Utils
                 && userReferral.SyncDate != null
                 && userReferral.Bonus == null
                 && userReferral.ReferrerBonus == null
-                && referrer != null)
+                && referrer != null
+                && !user.IsBanned
+                && !referrerUser.IsBanned)
             {
                 var bonusReward = await TxUtils.SendFromBitcornhub(user, 4200, "BITCORNFarms", "Referral bonus reward", dbContext);
 
@@ -190,6 +203,8 @@ namespace BITCORNService.Utils
         public static async Task ReferralRewards(BitcornContext dbContext, WalletDownload walletDownload, UserReferral userReferral, User referrerUser,
     User user, string type)
         {
+            if (user.IsBanned || referrerUser.IsBanned) return;
+
             var referrer = await dbContext.Referrer
                 .FirstOrDefaultAsync(w => w.UserId == walletDownload.ReferralUserId);
 

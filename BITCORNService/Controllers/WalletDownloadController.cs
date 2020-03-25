@@ -56,10 +56,12 @@ namespace BITCORNService.Controllers
                     }
 
                     var referrerUser = await _dbContext.JoinUserModels().FirstOrDefaultAsync(u => u.UserId == walletDownload.ReferralUserId);
-
                     if (referrerUser != null && userReferral != null && userReferral?.WalletDownloadDate == null)
                     {
-                        await ReferralUtils.ReferralRewards(_dbContext, walletDownload, userReferral, referrerUser, user, "Wallet download");
+                        if (!referrerUser.IsBanned && !user.IsBanned)
+                        {
+                            await ReferralUtils.ReferralRewards(_dbContext, walletDownload, userReferral, referrerUser, user, "Wallet download");
+                        }
                     }
                 }
 

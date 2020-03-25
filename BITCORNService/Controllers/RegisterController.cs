@@ -66,37 +66,40 @@ namespace BITCORNService.Controllers
                     if (referrer.YtdTotal < 600 || (referrer.ETag != null && referrer.Key != null))
                     {
                         var referrerUser = await _dbContext.User.FirstOrDefaultAsync(u => u.UserId == referrer.UserId);
-                        var referralPayoutTotal = await ReferralUtils.TotalReward(_dbContext, referrer);
-                        var referrerRegistrationReward = await TxUtils.SendFromBitcornhub(referrerUser, referralPayoutTotal, "BITCORNFarms", "Registrations reward", _dbContext);
-                        var userRegistrationReward = await TxUtils.SendFromBitcornhub(user, referrer.Amount, "BITCORNFarms", "Recruit registrations reward", _dbContext);
-
-                        if (referrerRegistrationReward && userRegistrationReward)
+                        if (referrerUser!=null&&!referrerUser.IsBanned)
                         {
-                            await ReferralUtils.UpdateYtdTotal(_dbContext, referrer, referralPayoutTotal);
-                            await ReferralUtils.LogReferralTx(_dbContext, referrer.UserId, referralPayoutTotal, "Registration reward");
-                            await ReferralUtils.LogReferralTx(_dbContext, user.UserId, referrer.Amount, "Recruit registration reward");
-                            var referrerStat = await _dbContext.UserStat.FirstOrDefaultAsync(s => s.UserId == referrer.UserId);
-                            if (referrerStat != null)
+                            var referralPayoutTotal = await ReferralUtils.TotalReward(_dbContext, referrer);
+                            var referrerRegistrationReward = await TxUtils.SendFromBitcornhub(referrerUser, referralPayoutTotal, "BITCORNFarms", "Registrations reward", _dbContext);
+                            var userRegistrationReward = await TxUtils.SendFromBitcornhub(user, referrer.Amount, "BITCORNFarms", "Recruit registrations reward", _dbContext);
+
+                            if (referrerRegistrationReward && userRegistrationReward)
                             {
-                                if (referrerStat.TotalReferrals == null)
+                                await ReferralUtils.UpdateYtdTotal(_dbContext, referrer, referralPayoutTotal);
+                                await ReferralUtils.LogReferralTx(_dbContext, referrer.UserId, referralPayoutTotal, "Registration reward");
+                                await ReferralUtils.LogReferralTx(_dbContext, user.UserId, referrer.Amount, "Recruit registration reward");
+                                var referrerStat = await _dbContext.UserStat.FirstOrDefaultAsync(s => s.UserId == referrer.UserId);
+                                if (referrerStat != null)
                                 {
-                                    referrerStat.TotalReferrals = 0;
-                                }
-                                referrerStat.TotalReferrals++;
+                                    if (referrerStat.TotalReferrals == null)
+                                    {
+                                        referrerStat.TotalReferrals = 0;
+                                    }
+                                    referrerStat.TotalReferrals++;
 
-                                if (referrerStat.TotalReferralRewardsCorn == null)
-                                {
-                                    referrerStat.TotalReferralRewardsCorn = 0;
-                                }
-                                referrerStat.TotalReferralRewardsCorn += referralPayoutTotal;
+                                    if (referrerStat.TotalReferralRewardsCorn == null)
+                                    {
+                                        referrerStat.TotalReferralRewardsCorn = 0;
+                                    }
+                                    referrerStat.TotalReferralRewardsCorn += referralPayoutTotal;
 
-                                if (referrerStat.TotalReferralRewardsUsdt == null)
-                                {
-                                    referrerStat.TotalReferralRewardsUsdt = 0;
+                                    if (referrerStat.TotalReferralRewardsUsdt == null)
+                                    {
+                                        referrerStat.TotalReferralRewardsUsdt = 0;
+                                    }
+                                    referrerStat.TotalReferralRewardsUsdt += (referralPayoutTotal * (await ProbitApi.GetCornPriceAsync()));
                                 }
-                                referrerStat.TotalReferralRewardsUsdt += (referralPayoutTotal * (await ProbitApi.GetCornPriceAsync()));
+                                user.UserReferral.SignupReward = DateTime.Now;
                             }
-                            user.UserReferral.SignupReward = DateTime.Now;
                         }
                     }
                 }
