@@ -30,14 +30,14 @@ namespace BITCORNService.Platforms
                 twitchDbUser.UserIdentity.Auth0Nickname = auth0DbUser.UserIdentity.Auth0Nickname;
 
                 await MigrateOldProfile(auth0DbUser, twitchDbUser);
-                return GetSyncOutput(twitchDbUser, true);
+                return GetSyncOutput(twitchUser.created_at, twitchDbUser, true);
             }
             else if (twitchDbUser == null && auth0DbUser != null)
             {
                 auth0DbUser.UserIdentity.TwitchId = platformId.Id;
                 auth0DbUser.UserIdentity.TwitchUsername = twitchUser.name;
                 await _dbContext.SaveAsync();
-                return GetSyncOutput(auth0DbUser, false);
+                return GetSyncOutput(twitchUser.created_at, auth0DbUser, false);
             }
             else if (twitchDbUser != null)
             {

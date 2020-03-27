@@ -22,7 +22,7 @@ namespace BITCORNService.Platforms
                 var discordUser = await DiscordApi.GetDiscordUser(discordToken, platformId.Id);
 
                 var discordDbUser = await _dbContext.DiscordQuery(platformId.Id).FirstOrDefaultAsync();
-
+                var creationTime = discordUser.GetCreatedTime();
                 if (discordDbUser != null && discordDbUser.UserIdentity.Auth0Id == null)
                 {
                     //_dbContext.UserIdentity.Remove(auth0DbUser);
@@ -34,7 +34,7 @@ namespace BITCORNService.Platforms
                     discordDbUser.UserIdentity.Auth0Id = auth0Id;
                     discordDbUser.UserIdentity.Auth0Nickname = auth0DbUser.UserIdentity.Auth0Nickname;
                     await MigrateOldProfile(auth0DbUser, discordDbUser);
-                    return GetSyncOutput(discordDbUser, true);
+                    return GetSyncOutput(creationTime, discordDbUser, true);
                 }
                 else if (discordDbUser == null && auth0DbUser != null)
                 {
@@ -42,7 +42,7 @@ namespace BITCORNService.Platforms
                     auth0DbUser.UserIdentity.DiscordUsername = DiscordApi.GetUsernameString(discordUser);
 
                     await _dbContext.SaveAsync();
-                    return GetSyncOutput(auth0DbUser, false);
+                    return GetSyncOutput(creationTime, auth0DbUser, false);
                 }
                 else if (discordDbUser?.UserIdentity.Auth0Id != null)
                 {

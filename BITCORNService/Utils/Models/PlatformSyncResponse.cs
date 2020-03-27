@@ -1,4 +1,5 @@
 ﻿using BITCORNService.Models;
+using System;
 
 namespace BITCORNService.Utils.Models
 {
@@ -6,5 +7,6 @@ namespace BITCORNService.Utils.Models
     {
         public FullUser User { get; set; }
         public bool IsMigration { get; set; }
+        public DateTime? SocialCreationTime { get; set; }
     }
 }

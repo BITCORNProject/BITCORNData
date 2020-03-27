@@ -19,7 +19,7 @@ namespace BITCORNService.Platforms
             {
                 var twitterUser = await TwitterApi.GetTwitterUser(_configuration, platformId.Id);
                 var twitterDbUser = await _dbContext.TwitterQuery(platformId.Id).FirstOrDefaultAsync();
-
+                var creationTime = twitterUser.GetCreatedTime();
                 if (twitterDbUser != null && twitterDbUser.UserIdentity.Auth0Id == null)
                 {
                     auth0DbUser.UserIdentity.TwitterId = twitterDbUser.UserIdentity.TwitterId;
@@ -29,14 +29,14 @@ namespace BITCORNService.Platforms
                     twitterDbUser.UserIdentity.TwitterUsername = twitterUser.ScreenName;
                     twitterDbUser.UserIdentity.Auth0Nickname = auth0DbUser.UserIdentity.Auth0Nickname;
                     await MigrateOldProfile(auth0DbUser, twitterDbUser);
-                    return GetSyncOutput(twitterDbUser, true);
+                    return GetSyncOutput(creationTime,twitterDbUser, true);
                 }
                 if (twitterDbUser == null && auth0DbUser != null)
                 {
                     auth0DbUser.UserIdentity.TwitterId = platformId.Id;
                     auth0DbUser.UserIdentity.TwitterUsername = twitterUser.ScreenName;
                     await _dbContext.SaveAsync(); 
-                    return GetSyncOutput(auth0DbUser, false);
+                    return GetSyncOutput(creationTime,auth0DbUser, false);
                 }
                 if (twitterDbUser?.UserIdentity.Auth0Id != null)
                 {
