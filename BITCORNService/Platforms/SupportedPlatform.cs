@@ -71,22 +71,25 @@ namespace BITCORNService.Platforms
         {
             await TxUtils.TryClaimTx(platformId, null, _dbContext);
             var key = $"{platformId.Platform}|{platformId.Id}";
-            if (socialAccountCreationDate != null && DateTime.Now.AddDays(7) < socialAccountCreationDate)
+
+            if (!(await _dbContext.SocialIdentity.AnyAsync(s => s.PlatformId == key)))
             {
-                if (!(await _dbContext.SocialIdentity.AnyAsync(s => s.PlatformId == key)))
+                if (socialAccountCreationDate != null && DateTime.Now > socialAccountCreationDate.Value.AddDays(7))
                 {
                     await ReferralUtils.UpdateReferralSync(_dbContext, platformId);
-                    _dbContext.SocialIdentity.Add(new SocialIdentity()
-                    {
-                        PlatformId = key,
-                        Timestamp = DateTime.Now
-                    });
-                    await _dbContext.SaveAsync();
-
                 }
+
+                _dbContext.SocialIdentity.Add(new SocialIdentity()
+                {
+                    PlatformId = key,
+                    Timestamp = DateTime.Now
+                });
+                await _dbContext.SaveAsync();
+
             }
+
         }
-        protected PlatformSyncResponse GetSyncOutput( User user, bool isMigration)
+        protected PlatformSyncResponse GetSyncOutput(User user, bool isMigration)
         {
             return new PlatformSyncResponse()
             {

@@ -639,7 +639,7 @@ namespace BITCORNServiceTests
             {
                 var startFromUser = dbContext.TwitchQuery(_configuration["Config:TestFromUserId"]).FirstOrDefault();
                 var startToUser = dbContext.TwitchQuery(_configuration["Config:TestToUserId"]).FirstOrDefault();
-                var results = await Rain(startToUser.UserWallet.Balance.Value+1, startFromUser, new User[] { startToUser }, true);
+                var results = await Rain(startFromUser.UserWallet.Balance.Value+1, startFromUser, new User[] { startToUser }, true);
                 var result = results[0];
                 Assert.Equal(result.ToEndBalance, result.ToStartBalance);
                 Assert.Equal(result.FromEndBalance, result.FromStartBalance);
