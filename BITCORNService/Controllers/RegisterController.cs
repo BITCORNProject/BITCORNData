@@ -139,7 +139,7 @@ namespace BITCORNService.Controllers
                     if (result != null)
                     {
                         //claim transactions etc..
-                        await registerController.OnSyncSuccess(platformId);
+                        await registerController.OnSyncSuccess(result.SocialCreationTime, platformId);
                     }
                     return result;
                 }

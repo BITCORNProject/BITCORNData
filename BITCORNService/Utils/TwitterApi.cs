@@ -36,9 +36,5 @@ namespace BITCORNService.Utils
             return JsonConvert.DeserializeObject<TwitterUser>(response.Content);
         }
 
-        public static string GetUsernameString(DiscordUser discordUser)
-        {
-            return $"{discordUser.Username}#{discordUser.Discriminator}";
-        }
     }
 }

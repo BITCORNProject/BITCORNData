@@ -67,13 +67,18 @@ namespace BITCORNService.Platforms
             throw new NotImplementedException();
         }
 
-        public virtual async Task OnSyncSuccess(PlatformId platformId)
+        public virtual async Task OnSyncSuccess(DateTime? socialAccountCreationDate, PlatformId platformId)
         {
             await TxUtils.TryClaimTx(platformId, null, _dbContext);
             var key = $"{platformId.Platform}|{platformId.Id}";
+
             if (!(await _dbContext.SocialIdentity.AnyAsync(s => s.PlatformId == key)))
             {
-                await ReferralUtils.UpdateReferralSync(_dbContext, platformId);
+                if (socialAccountCreationDate != null && DateTime.Now > socialAccountCreationDate.Value.AddDays(7))
+                {
+                    await ReferralUtils.UpdateReferralSync(_dbContext, platformId);
+                }
+
                 _dbContext.SocialIdentity.Add(new SocialIdentity()
                 {
                     PlatformId = key,
@@ -82,13 +87,24 @@ namespace BITCORNService.Platforms
                 await _dbContext.SaveAsync();
 
             }
+
         }
         protected PlatformSyncResponse GetSyncOutput(User user, bool isMigration)
         {
             return new PlatformSyncResponse()
             {
                 IsMigration = isMigration,
-                User = BitcornUtils.GetFullUser(user, user.UserIdentity, user.UserWallet, user.UserStat)
+                User = BitcornUtils.GetFullUser(user, user.UserIdentity, user.UserWallet, user.UserStat),
+              
+            };
+        }
+        protected PlatformSyncResponse GetSyncOutput(DateTime? socialCreationTime, User user, bool isMigration)
+        {
+            return new PlatformSyncResponse()
+            {
+                IsMigration = isMigration,
+                User = BitcornUtils.GetFullUser(user, user.UserIdentity, user.UserWallet, user.UserStat),
+                SocialCreationTime = socialCreationTime
             };
         }
         /// <summary>
