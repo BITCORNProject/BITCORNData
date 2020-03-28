@@ -39,7 +39,7 @@ namespace BITCORNService.Controllers
                     var referrer = new Referrer();
                     referrer.Amount = 10;
                     referrer.UserId = referralUpload.UserId;
-                    referrer.Tier = 1;
+                    referrer.Tier = 0;
                     referrer.YtdTotal = 0;
                     referrer.ETag = referralUpload.W9.ETag;
                     referrer.Key = referralUpload.W9.Key;
