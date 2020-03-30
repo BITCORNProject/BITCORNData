@@ -8,11 +8,17 @@ namespace BITCORNService.Utils.Models
     public class TipRequest : ITxRequest
     {
         public string From { get; set; }
+
         public string To { get; set; }
+
         public decimal Amount { get; set; }
+
         public string Platform { get; set; }
+
         public string[] Columns { get; set; }
+
         string ITxRequest.TxType => "$tipcorn";
+
         IEnumerable<string> ITxRequest.To
         {
             get
@@ -20,6 +26,7 @@ namespace BITCORNService.Utils.Models
                 yield return this.To;
             }
         }
+
         [JsonIgnore]
         public User FromUser { get; set; }
 

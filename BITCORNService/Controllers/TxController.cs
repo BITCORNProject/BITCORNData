@@ -141,6 +141,17 @@ namespace BITCORNService.Controllers
             }
         }
 
+        [HttpPost("sub")]
+        public async Task<ActionResult<SubscriptionResponse>> Sub([FromBody] SubRequest subRequest)
+        {
+            var user = this.GetCachedUser();
+            
+            var tx = await SubscriptionUtils.Subscribe(_dbContext,user,subRequest);
+            if (tx != null) return tx;
+
+            return StatusCode((int)HttpStatusCode.BadRequest);
+        }
+
         [HttpPost("tipcorn")]
         public async Task<ActionResult<TxReceipt[]>> Tipcorn([FromBody] TipRequest tipRequest)
         {

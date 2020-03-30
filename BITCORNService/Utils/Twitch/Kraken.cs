@@ -10,6 +10,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Migrations.Operations;
 using Microsoft.Extensions.Configuration;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using RestSharp;
 
 namespace BITCORNService.Utils.Twitch
@@ -72,23 +73,87 @@ namespace BITCORNService.Utils.Twitch
             var updateEndpoint = _config["Config:SubTierDiscordUpdate"];
             if (!string.IsNullOrEmpty(updateEndpoint))
             {
-                var discordSubs = await _dbContext.UserIdentity.
+                var mttvSubs = await _dbContext.UserIdentity.
                     Where(u => u.DiscordId != null).
                     Join(_dbContext.User,
                         identity => identity.UserId,
                         us => us.UserId,
                         (id, u) => new SubTierDiscord(id.DiscordId, u.SubTier)).
                     ToArrayAsync();
+
+                var discordUpdateData = new List<DiscordGuildUpdate>();
+                discordUpdateData.Add(new DiscordGuildUpdate() { 
+                    GuildId = "446556386076393473",
+                    Roles = new List<DiscordUserRoleUpdate> { 
+                        new DiscordUserRoleUpdate()
+                        {
+                            RoleId = "522152365374046210",
+                            Users = mttvSubs.Where(u=>u.SubTier==3).Select(u=>u.DiscordId).ToList()
+                        }
+                    }
+                });
+                
+                var subInfo = await (from userSubscription in _dbContext.UserSubscription
+                 join subscription in _dbContext.Subscription on userSubscription.SubscriptionId equals subscription.SubscriptionId
+                 join subscriptionTier in _dbContext.SubscriptionTier on userSubscription.SubscriptionTierId equals subscriptionTier.SubscriptionTierId
+                 join userIdentity in _dbContext.UserIdentity on userSubscription.UserId equals userIdentity.UserId
+                 select new 
+                 {
+                     userSubscription,
+                     subscription,
+                     subscriptionTier,
+                     userIdentity
+
+                 }).Where(sub=>sub.subscription.DiscordGuildId!=null && sub.userSubscription.FarmsSubDate.Value.AddDays(sub.subscription.Duration)>DateTime.Now).ToArrayAsync();
+
+                foreach (var sub in subInfo)
+                {
+                    if (string.IsNullOrEmpty(sub.subscriptionTier.Data)) continue;
+                    string roleId = string.Empty;
+
+                    try
+                    {
+                        roleId = JObject.Parse(sub.subscriptionTier.Data)["DiscordRoleId"].ToString();
+                    }
+                    catch
+                    {
+                        continue;
+                    }
+
+                    var update = discordUpdateData.FirstOrDefault(d => d.GuildId == sub.subscription.DiscordGuildId);
+
+                    if (update == null)
+                    {
+                        update = new DiscordGuildUpdate()
+                        {
+                            GuildId = sub.subscription.DiscordGuildId
+                        };
+                        discordUpdateData.Add(update);
+                    }
+
+                    var role = update.Roles.FirstOrDefault(r => r.RoleId == roleId);
+                    if (role == null)
+                    {
+                        role = new DiscordUserRoleUpdate()
+                        {
+                            RoleId = roleId
+                        };
+                        update.Roles.Add(role);
+                    }
+                    role.Users.Add(sub.userIdentity.DiscordId);
+                }
+            
                 var client = new RestClient(updateEndpoint);
 
                 //create request
                 var req = new RestRequest(Method.POST);
                 req.Resource = "discord";
-                req.AddJsonBody(discordSubs);
-                client.Execute(req);
+                req.AddJsonBody(discordUpdateData);
+                var r = client.Execute(req);
+            
             }
         }
-
+        
         public async Task<bool> UpdateSubTiers(Sub[] subs)
         {
             try
