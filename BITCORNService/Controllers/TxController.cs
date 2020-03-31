@@ -27,7 +27,7 @@ namespace BITCORNService.Controllers
     {
         public int TimeToClaimTipMinutes { get; set; } = 60 * 24;
         private readonly BitcornContext _dbContext;
-        IConfiguration _configuration;
+        private readonly IConfiguration _configuration;
         public TxController(IConfiguration configuration,BitcornContext dbContext)
         {
             _configuration = configuration;
@@ -140,18 +140,7 @@ namespace BITCORNService.Controllers
                 throw e;
             }
         }
-
-        [HttpPost("sub")]
-        public async Task<ActionResult<SubscriptionResponse>> Sub([FromBody] SubRequest subRequest)
-        {
-            var user = this.GetCachedUser();
-            
-            var tx = await SubscriptionUtils.Subscribe(_dbContext,user,subRequest);
-            if (tx != null) return tx;
-
-            return StatusCode((int)HttpStatusCode.BadRequest);
-        }
-
+    
         [HttpPost("tipcorn")]
         public async Task<ActionResult<TxReceipt[]>> Tipcorn([FromBody] TipRequest tipRequest)
         {

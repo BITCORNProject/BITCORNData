@@ -195,7 +195,9 @@ namespace BITCORNService.Utils
                 UserId = user.UserId,
                 Avatar = user.Avatar,
                 Level = user.Level,
-
+                IsBanned = user.IsBanned,
+                CreationTime = user.CreationTime,
+                
                 Auth0Id = userIdentity.Auth0Id,
                 Auth0Nickname = userIdentity.Auth0Nickname,
                 TwitchId = userIdentity.TwitchId,
@@ -221,6 +223,9 @@ namespace BITCORNService.Utils
                 AmountOfRainsReceived = userStats.AmountOfRainsReceived,
                 TotalReceivedBitcornRains = userStats.TotalReceivedBitcornRains,
                 SubTier = user.SubTier,
+                TotalReferralRewardsCorn = userStats.TotalReferralRewardsCorn,
+                TotalReferralRewardsUsdt = userStats.TotalReferralRewardsUsdt,
+                TotalReferrals = userStats.TotalReferrals,
                 LargestReceivedBitcornRain = userStats.LargestReceivedBitcornRain
             };
         
@@ -238,6 +243,7 @@ namespace BITCORNService.Utils
                 Avatar = user.Avatar,
                 Level = user.Level,
                 IsBanned = user.IsBanned,
+                CreationTime = user.CreationTime,
                 SubTier = user.SubTier,
 
                 //UserIdentity
@@ -272,8 +278,9 @@ namespace BITCORNService.Utils
                 LargestReceivedBitcornRain = userStats.LargestReceivedBitcornRain,
                 TotalReferralRewardsCorn = userStats.TotalReferralRewardsCorn,
                 TotalReferralRewardsUsdt = userStats.TotalReferralRewardsUsdt,
-                TotalReferrals = userStats.TotalReferrals
-    };
+                TotalReferrals = userStats.TotalReferrals,
+                
+            };
             if (referrer != null)
             {
                 fullUser.ReferralId = referrer.ReferralId;

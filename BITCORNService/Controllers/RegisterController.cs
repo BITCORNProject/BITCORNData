@@ -163,7 +163,8 @@ namespace BITCORNService.Controllers
                 },
                 UserWallet = new UserWallet(),
                 UserStat = new UserStat(),
-                UserReferral = new UserReferral { ReferralId = referralId }
+                UserReferral = new UserReferral { ReferralId = referralId },
+                CreationTime = DateTime.Now
             };
 
             return user;

@@ -104,7 +104,7 @@ namespace BITCORNService.Utils.Twitch
                      subscriptionTier,
                      userIdentity
 
-                 }).Where(sub=>sub.subscription.DiscordGuildId!=null && sub.userSubscription.FarmsSubDate.Value.AddDays(sub.subscription.Duration)>DateTime.Now).ToArrayAsync();
+                 }).Where(sub=>sub.subscription.DiscordGuildId!=null && sub.userSubscription.LastSubDate.Value.AddDays(sub.subscription.Duration)>DateTime.Now).ToArrayAsync();
 
                 foreach (var sub in subInfo)
                 {

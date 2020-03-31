@@ -13,7 +13,8 @@ namespace BITCORNService.Models
         public int UserSubscriptionId { get; set; }
         [ForeignKey("FK_usersubscription_userId")]
         public int UserId { get; set; }
-        public DateTime? FarmsSubDate { get; set; }
+        public DateTime? LastSubDate { get; set; }
+        public DateTime? FirstSubDate { get; set; }
         public int SubscriptionTierId { get; set; }
         public int SubscriptionId { get; set; }
         public virtual User User { get; set; }
