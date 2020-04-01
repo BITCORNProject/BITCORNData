@@ -10,5 +10,6 @@ namespace BITCORNService.Models
         public string Description { get; set; }
         public string DiscordGuildId { get; set; }
         public int Duration { get; set; }
+        public int? OwnerUserId { get; set; }
     }
 }

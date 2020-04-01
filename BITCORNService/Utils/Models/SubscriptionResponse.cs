@@ -15,6 +15,8 @@ namespace BITCORNService.Utils.Models
 
         public SubscriptionTier RequestedSubscriptionTier { get; set; }
         public double DaysLeft { get; set; }
+        public decimal Cost { get; set; }
         public UserSubcriptionTierInfo UserSubscriptionInfo { get; set; }
     }
+    
 }

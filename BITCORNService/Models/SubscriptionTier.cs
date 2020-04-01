@@ -9,6 +9,8 @@ namespace BITCORNService.Models
         public int SubscriptionId { get; set; }
         public int Tier { get; set; }
         public string Data { get; set; }
-        public decimal Cost { get; set; }
+        public decimal? CostCorn { get; set; }
+        public decimal? CostUsdt { get; set; }
+
     }
 }

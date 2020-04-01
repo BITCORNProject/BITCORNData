@@ -33,7 +33,7 @@ namespace BITCORNService.Models
         public virtual DbSet<SocialIdentity> SocialIdentity { get; set; }
         public virtual DbSet<Subscription> Subscription { get; set; }
         public virtual DbSet<SubscriptionTier> SubscriptionTier { get; set; }
-
+        public virtual DbSet<SubTx> SubTx { get; set; }
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {
         }

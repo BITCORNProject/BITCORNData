@@ -97,14 +97,17 @@ namespace BITCORNService.Utils.Twitch
                  join subscription in _dbContext.Subscription on userSubscription.SubscriptionId equals subscription.SubscriptionId
                  join subscriptionTier in _dbContext.SubscriptionTier on userSubscription.SubscriptionTierId equals subscriptionTier.SubscriptionTierId
                  join userIdentity in _dbContext.UserIdentity on userSubscription.UserId equals userIdentity.UserId
+                 join user in _dbContext.User on userSubscription.UserId equals user.UserId
+
                  select new 
                  {
                      userSubscription,
                      subscription,
                      subscriptionTier,
-                     userIdentity
+                     userIdentity,
+                     isBanned = user.IsBanned
 
-                 }).Where(sub=>sub.subscription.DiscordGuildId!=null && sub.userSubscription.LastSubDate.Value.AddDays(sub.subscription.Duration)>DateTime.Now).ToArrayAsync();
+                 }).Where(sub=>!sub.isBanned&&sub.subscription.DiscordGuildId!=null && sub.userSubscription.LastSubDate.Value.AddDays(sub.subscription.Duration)>DateTime.Now).ToArrayAsync();
 
                 var subInfo = await (from subscription in _dbContext.Subscription
                               join subscriptionTier in _dbContext.SubscriptionTier on subscription.SubscriptionId equals subscriptionTier.SubscriptionId

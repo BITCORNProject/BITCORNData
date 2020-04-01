@@ -3,6 +3,7 @@ using BITCORNService.Reflection;
 using BITCORNService.Utils.DbActions;
 using BITCORNService.Utils.Models;
 using BITCORNService.Utils.Tx;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
@@ -33,17 +34,29 @@ namespace BITCORNService.Utils
 
             dbContext.SaveChanges();
         }
+
         public static IQueryable<UserSubcriptionTierInfo> GetUserSubscriptions(BitcornContext dbContext, User user)
         {
             return (from userSubscription in dbContext.UserSubscription
-                                           join subsriptionTier in dbContext.SubscriptionTier
-                                           on userSubscription.SubscriptionTierId equals subsriptionTier.SubscriptionTierId
+                                           join subscriptionTier in dbContext.SubscriptionTier
+                                           on userSubscription.SubscriptionTierId equals subscriptionTier.SubscriptionTierId
                                            select new UserSubcriptionTierInfo
                                            {
                                                UserSubscription = userSubscription,
-                                               SubscriptionTier = subsriptionTier
+                                               SubscriptionTier = subscriptionTier
                                            }).Where(t => t.UserSubscription.UserId == user.UserId);
 
+        }
+
+        public static decimal CalculateUsdtToCornCost(decimal cornUsdt,SubscriptionTier tier)
+        {
+            return Math.Ceiling(tier.CostUsdt.Value / cornUsdt);
+        }
+
+        public static async Task<decimal> CalculateUsdtToCornCost(SubscriptionTier tier)
+        {
+            var price = await ProbitApi.GetCornPriceAsync();
+            return CalculateUsdtToCornCost(price,tier);
         }
         public static async Task<SubscriptionResponse> Subscribe(BitcornContext dbContext, User user, SubRequest subRequest)
         {
@@ -58,6 +71,20 @@ namespace BITCORNService.Utils
                     output.RequestedSubscriptionTier = requestedTierInfo;
                     if (requestedTierInfo != null)
                     {
+                        decimal cost = 0;
+                        if (requestedTierInfo.CostUsdt != null && requestedTierInfo.CostUsdt > 0)
+                        {
+                            cost = await CalculateUsdtToCornCost(requestedTierInfo);
+                        }
+                        else if (requestedTierInfo.CostCorn != null && requestedTierInfo.CostCorn > 0)
+                        {
+                            cost = requestedTierInfo.CostCorn.Value;
+                        }
+                        else
+                        {
+                            throw new ArgumentException($"Invalid cost setting on subscription tier id:{requestedTierInfo.SubscriptionId}");
+                        }
+                        output.Cost = cost;
                         UserSubcriptionTierInfo[] existingSubscriptions = new UserSubcriptionTierInfo[0];
                         if (user != null)
                         {
@@ -79,19 +106,21 @@ namespace BITCORNService.Utils
                         }
 
                         UserSubscription sub = null;
-
-                        if (subState != SubscriptionState.Subscribed && subRequest.Amount == requestedTierInfo.Cost)
+                        TxRequest txRequest = null;
+                        if (subState != SubscriptionState.Subscribed && subRequest.Amount == cost)
                         {
-                            /*
-                            if (subRequest.Amount != requestedTierInfo.Cost)
+                            string[] to = new string[1];
+                            if (subInfo.OwnerUserId != null)
                             {
-                                return null;
-                            }*/
+                                to[0] = $"userid|{subInfo.OwnerUserId.Value}";
+                            }
+                            else
+                            {
+                                to[0] = $"userid|{TxUtils.BitcornHubPK}";
+                            }
 
-                            subRequest.FromUser = user;
-
-                            subRequest.Amount = requestedTierInfo.Cost;
-                            var processInfo = await TxUtils.ProcessRequest(subRequest, dbContext);
+                            txRequest = new TxRequest(user,cost,subRequest.Platform, "$sub", to);
+                            var processInfo = await TxUtils.ProcessRequest(txRequest, dbContext);
                             var transactions = processInfo.Transactions;
                             if (transactions != null && transactions.Length > 0)
                             {
@@ -122,6 +151,15 @@ namespace BITCORNService.Utils
 
                                     await dbContext.Database.ExecuteSqlRawAsync(sql.ToString());
                                     await dbContext.SaveAsync(IsolationLevel.RepeatableRead);
+                                    
+                                    var subTx = new SubTx();
+                                    subTx.UserId = user.UserId;
+                                    subTx.SubTxId = transactions[0].TxId.Value;
+                                    subTx.UserSubscriptionId = sub.UserSubscriptionId;
+                                    dbContext.SubTx.Add(subTx);
+
+                                    await dbContext.SaveAsync();
+
                                     subState = SubscriptionState.Subscribed;
                                 }
 
@@ -134,7 +172,7 @@ namespace BITCORNService.Utils
                             }
                         }
 
-                        if (subRequest.FromUser == null)
+                        if (txRequest == null)
                         {
                             await PopuplateUserResponse(dbContext, subRequest, output, user);
                             if (existingSubscription != null)
@@ -169,6 +207,27 @@ namespace BITCORNService.Utils
                 throw e;
             }
         }
+
+        public static async Task<bool> IsSubbed(BitcornContext dbContext,User user, string subscriptionName, int? tier)
+        {
+            if (user == null) return false;
+            if (user.IsBanned) return false;
+            var query = GetUserSubscriptions(dbContext,user).Join(dbContext.Subscription,
+                (UserSubcriptionTierInfo info)=>info.SubscriptionTier.SubscriptionId,
+                (Subscription sub)=>sub.SubscriptionId,
+                (info,sub)=>new { 
+                    info,sub
+                }).Where(s=>s.sub.Name.ToLower()==subscriptionName.ToLower());
+            if (tier != null)
+            {
+                return await query.Where(s=>s.info.SubscriptionTier.Tier>=tier.Value).AnyAsync();
+            }
+            else
+            {
+                return await query.AnyAsync();
+            }
+        }
+
         static async Task PopuplateUserResponse(BitcornContext dbContext, SubRequest subRequest,SubscriptionResponse output, User user)
         {
             var selectableUser = new SelectableUser(user);
