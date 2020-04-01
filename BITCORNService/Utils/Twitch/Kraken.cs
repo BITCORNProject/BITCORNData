@@ -93,7 +93,7 @@ namespace BITCORNService.Utils.Twitch
                     }
                 });
                 
-                var subInfo = await (from userSubscription in _dbContext.UserSubscription
+                var fullInfo = await (from userSubscription in _dbContext.UserSubscription
                  join subscription in _dbContext.Subscription on userSubscription.SubscriptionId equals subscription.SubscriptionId
                  join subscriptionTier in _dbContext.SubscriptionTier on userSubscription.SubscriptionTierId equals subscriptionTier.SubscriptionTierId
                  join userIdentity in _dbContext.UserIdentity on userSubscription.UserId equals userIdentity.UserId
@@ -106,11 +106,19 @@ namespace BITCORNService.Utils.Twitch
 
                  }).Where(sub=>sub.subscription.DiscordGuildId!=null && sub.userSubscription.LastSubDate.Value.AddDays(sub.subscription.Duration)>DateTime.Now).ToArrayAsync();
 
+                var subInfo = await (from subscription in _dbContext.Subscription
+                              join subscriptionTier in _dbContext.SubscriptionTier on subscription.SubscriptionId equals subscriptionTier.SubscriptionId
+                              select new
+                              {
+                                  subscription,
+                                  subscriptionTier
+
+                              }).Where(sub => sub.subscription.DiscordGuildId != null).ToArrayAsync();
+
                 foreach (var sub in subInfo)
                 {
                     if (string.IsNullOrEmpty(sub.subscriptionTier.Data)) continue;
                     string roleId = string.Empty;
-
                     try
                     {
                         roleId = JObject.Parse(sub.subscriptionTier.Data)["DiscordRoleId"].ToString();
@@ -140,9 +148,32 @@ namespace BITCORNService.Utils.Twitch
                         };
                         update.Roles.Add(role);
                     }
-                    role.Users.Add(sub.userIdentity.DiscordId);
                 }
-            
+
+
+                foreach (var sub in fullInfo)
+                {
+                    if (string.IsNullOrEmpty(sub.subscriptionTier.Data)) continue;
+                    string roleId = string.Empty;
+
+                    try
+                    {
+                        roleId = JObject.Parse(sub.subscriptionTier.Data)["DiscordRoleId"].ToString();
+                    }
+                    catch
+                    {
+                        continue;
+                    }
+
+                    var update = discordUpdateData.FirstOrDefault(d => d.GuildId == sub.subscription.DiscordGuildId);
+                    if (update != null)
+                    {
+                        var role = update.Roles.FirstOrDefault(r => r.RoleId == roleId);
+
+                        role.Users.Add(sub.userIdentity.DiscordId);
+                    }
+                }
+
                 var client = new RestClient(updateEndpoint);
 
                 //create request
