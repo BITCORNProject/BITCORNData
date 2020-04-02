@@ -11,5 +11,6 @@ namespace BITCORNService.Models
         public string DiscordGuildId { get; set; }
         public int Duration { get; set; }
         public int? OwnerUserId { get; set; }
+        public decimal? ReferrerPercentage { get; set; }
     }
 }

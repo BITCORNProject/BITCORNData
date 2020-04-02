@@ -62,140 +62,31 @@ namespace BITCORNService.Utils
         {
             try
             {
+                //try to find subscription
                 var subInfo = await dbContext.Subscription.FirstOrDefaultAsync(s => s.Name.ToLower() == subRequest.SubscriptionName.ToLower());
+                //initialize response object
                 var output = new SubscriptionResponse();
                 if (subInfo != null)
                 {
                     output.RequestedSubscriptionInfo = subInfo;
+                    //try to find subscription tier info
                     var requestedTierInfo = await dbContext.SubscriptionTier.FirstOrDefaultAsync(t => t.SubscriptionId == subInfo.SubscriptionId && t.Tier == subRequest.Tier);
+                    
                     output.RequestedSubscriptionTier = requestedTierInfo;
+                    //if tier was found, attempt to process the subscription
                     if (requestedTierInfo != null)
                     {
-                        decimal cost = 0;
-                        if (requestedTierInfo.CostUsdt != null && requestedTierInfo.CostUsdt > 0)
-                        {
-                            cost = await CalculateUsdtToCornCost(requestedTierInfo);
-                        }
-                        else if (requestedTierInfo.CostCorn != null && requestedTierInfo.CostCorn > 0)
-                        {
-                            cost = requestedTierInfo.CostCorn.Value;
-                        }
-                        else
-                        {
-                            throw new ArgumentException($"Invalid cost setting on subscription tier id:{requestedTierInfo.SubscriptionId}");
-                        }
-                        output.Cost = cost;
-                        UserSubcriptionTierInfo[] existingSubscriptions = new UserSubcriptionTierInfo[0];
-                        if (user != null)
-                        {
-                            existingSubscriptions = await GetUserSubscriptions(dbContext, user)
-                                .Where(t => t.SubscriptionTier.SubscriptionId == subInfo.SubscriptionId).ToArrayAsync();
-                        }
-
-                        UserSubcriptionTierInfo existingSubscription = null;
-
-                        var subState = SubscriptionState.None;
-                        if (existingSubscriptions.Any())
-                        {
-                            existingSubscription = existingSubscriptions[0];
-                            if (subInfo.HasExpired(existingSubscription.UserSubscription))
-                                subState = SubscriptionState.Expired;
-                            else if (existingSubscription.SubscriptionTier.Tier < requestedTierInfo.Tier)
-                                subState = SubscriptionState.TierDown;
-                            else subState = SubscriptionState.Subscribed;
-                        }
-
-                        UserSubscription sub = null;
-                        TxRequest txRequest = null;
-                        if (subState != SubscriptionState.Subscribed && subRequest.Amount == cost)
-                        {
-                            string[] to = new string[1];
-                            if (subInfo.OwnerUserId != null)
-                            {
-                                to[0] = $"userid|{subInfo.OwnerUserId.Value}";
-                            }
-                            else
-                            {
-                                to[0] = $"userid|{TxUtils.BitcornHubPK}";
-                            }
-
-                            txRequest = new TxRequest(user,cost,subRequest.Platform, "$sub", to);
-                            var processInfo = await TxUtils.ProcessRequest(txRequest, dbContext);
-                            var transactions = processInfo.Transactions;
-                            if (transactions != null && transactions.Length > 0)
-                            {
-                                StringBuilder sql = new StringBuilder();
-                                if (processInfo.WriteTransactionOutput(sql))
-                                {
-
-                                    switch (subState)
-                                    {
-                                        case SubscriptionState.None:
-                                            sub = new UserSubscription();
-                                            sub.SubscriptionId = subInfo.SubscriptionId;
-                                            sub.SubscriptionTierId = requestedTierInfo.SubscriptionTierId;
-                                            sub.UserId = user.UserId;
-                                            sub.FirstSubDate = DateTime.Now;
-                                            dbContext.UserSubscription.Add(sub);
-                                            break;
-                                        case SubscriptionState.TierDown:
-                                        case SubscriptionState.Expired:
-                                            existingSubscription.UserSubscription.SubscriptionTierId = requestedTierInfo.SubscriptionTierId;
-                                            sub = existingSubscription.UserSubscription;
-                                            break;
-                                        default:
-                                            break;
-                                    }
-
-                                    sub.LastSubDate = DateTime.Now;
-
-                                    await dbContext.Database.ExecuteSqlRawAsync(sql.ToString());
-                                    await dbContext.SaveAsync(IsolationLevel.RepeatableRead);
-                                    
-                                    var subTx = new SubTx();
-                                    subTx.UserId = user.UserId;
-                                    subTx.SubTxId = transactions[0].TxId.Value;
-                                    subTx.UserSubscriptionId = sub.UserSubscriptionId;
-                                    dbContext.SubTx.Add(subTx);
-
-                                    await dbContext.SaveAsync();
-
-                                    subState = SubscriptionState.Subscribed;
-                                }
-
-                                await TxUtils.AppendTxs(transactions, dbContext, subRequest.Columns);
-
-                                var tx = transactions[0];
-
-                                output.TxId = tx.TxId;
-                                output.User = tx.From;
-                            }
-                        }
-
-                        if (txRequest == null)
-                        {
-                            await PopuplateUserResponse(dbContext, subRequest, output, user);
-                            if (existingSubscription != null)
-                            {
-                                sub = existingSubscription.UserSubscription;
-                            }
-                        }
-
-                        if (subState == SubscriptionState.Subscribed && sub != null)
-                        {
-                            var end = output.SubscriptionEndTime = sub.LastSubDate.Value.AddDays(subInfo.Duration);
-                            output.DaysLeft = Math.Ceiling((end.Value - DateTime.Now).TotalDays);
-                            output.UserSubscriptionInfo = await GetUserSubscriptions(dbContext, user)
-                                .Where(t => t.SubscriptionTier.SubscriptionId == subInfo.SubscriptionId).FirstOrDefaultAsync();
-                        }
+                        return await ProcessSubscription(dbContext, output, subRequest, subInfo, requestedTierInfo, user);
                     }
                     else
                     {
+                        //this subscription cannot be executed, fill out the response object
                         await PopuplateUserResponse(dbContext, subRequest, output, user);
                     }
                 }
                 else
                 {
+                    //this subscription cannot be executed, fill out the response object
                     await PopuplateUserResponse(dbContext, subRequest, output, user);
                 }
 
@@ -208,16 +99,210 @@ namespace BITCORNService.Utils
             }
         }
 
+        private static async Task<SubscriptionResponse> ProcessSubscription(BitcornContext dbContext, SubscriptionResponse output, SubRequest subRequest, Subscription subInfo, SubscriptionTier requestedTierInfo,User user)
+        {
+            decimal cost = 0;
+            //if tier usdt cost has been initialized, the corn cost has to be calculated
+            if (requestedTierInfo.CostUsdt != null && requestedTierInfo.CostUsdt > 0)
+            {
+                cost = await CalculateUsdtToCornCost(requestedTierInfo);
+            }
+            // check if cost is initialized properly
+            else if (requestedTierInfo.CostCorn != null && requestedTierInfo.CostCorn > 0)
+            {
+                cost = requestedTierInfo.CostCorn.Value;
+            }
+            else
+            {
+                throw new ArgumentException($"Invalid cost setting on subscription tier id:{requestedTierInfo.SubscriptionId}");
+            }
+            //set the amount that will be removed from subscriber to the response object
+            output.Cost = cost;
+            //initialize array of existing subscriptions
+            UserSubcriptionTierInfo[] existingSubscriptions = new UserSubcriptionTierInfo[0];
+            if (user != null)
+            {
+                //set data to existing subscriptions array
+                existingSubscriptions = await GetUserSubscriptions(dbContext, user)
+                    .Where(t => t.SubscriptionTier.SubscriptionId == subInfo.SubscriptionId).ToArrayAsync();
+            }
+            //initialize reference to existing subtierinfo
+            UserSubcriptionTierInfo existingSubscription = null;
+            //initialize current substate 
+            var subState = SubscriptionState.None;
+            //if any subscriptions were found
+            if (existingSubscriptions.Any())
+            {
+                //set existing subtierinfo
+                existingSubscription = existingSubscriptions[0];
+                //if sub has expired, set substate to expired
+                if (subInfo.HasExpired(existingSubscription.UserSubscription))
+                    subState = SubscriptionState.Expired;
+                //if existing sub has not expired, but the tier is below, set subState to TierDown
+                else if (existingSubscription.SubscriptionTier.Tier < requestedTierInfo.Tier)
+                    subState = SubscriptionState.TierDown;
+                //else, the user is subscribed 
+                else subState = SubscriptionState.Subscribed;
+            }
+            //initialize reference to usersubscription & tx request
+            UserSubscription sub = null;
+            TxRequest txRequest = null;
+            //if current user sub state is not subscribed & the client confirmed the cost to be equal to the cost amount, attempt to subscribe
+            if (subState != SubscriptionState.Subscribed && subRequest.Amount == cost)
+            {
+                //initialize recipient of the transaction
+                string[] to = new string[1];
+                //default to bitcornhub if no subscription owner has been set
+                int recipientId = TxUtils.BitcornHubPK;
+                //if subscription owner is set, overwrite bitcornhub
+                if (subInfo.OwnerUserId != null && subInfo.OwnerUserId>0)
+                    recipientId = subInfo.OwnerUserId.Value;
+              
+                to[0] = $"userid|{recipientId}";
+                //initialize tx request
+                txRequest = new TxRequest(user, cost, subRequest.Platform, "$sub", to);
+                //prepare transaction for saving
+                var processInfo = await TxUtils.ProcessRequest(txRequest, dbContext);
+                var transactions = processInfo.Transactions;
+                if (transactions != null && transactions.Length > 0)
+                {
+                    StringBuilder sql = new StringBuilder();
+                    //check if transaction can be executed
+                    if (processInfo.WriteTransactionOutput(sql))
+                    {
+                        //transaction is ready to be saved
+                        switch (subState)
+                        {
+                            case SubscriptionState.None:
+                                //user was previously not subscribed, create instance of usersubscription and point it to the user
+                                sub = new UserSubscription();
+                                sub.SubscriptionId = subInfo.SubscriptionId;
+                                sub.SubscriptionTierId = requestedTierInfo.SubscriptionTierId;
+                                sub.UserId = user.UserId;
+                                sub.FirstSubDate = DateTime.Now;
+                                dbContext.UserSubscription.Add(sub);
+                                break;
+                            case SubscriptionState.TierDown:
+                            case SubscriptionState.Expired:
+                                //previous subscription was found, update subscription tier
+                                existingSubscription.UserSubscription.SubscriptionTierId = requestedTierInfo.SubscriptionTierId;
+                                sub = existingSubscription.UserSubscription;
+                                break;
+                            default:
+                                break;
+                        }
+                        //set subscription date to now
+                        sub.LastSubDate = DateTime.Now;
+
+                        await dbContext.Database.ExecuteSqlRawAsync(sql.ToString());
+                        await dbContext.SaveAsync(IsolationLevel.RepeatableRead);
+                        //create subtx that will link user, corntx and usersubscription together
+                        var subTx = new SubTx();
+                        subTx.UserId = user.UserId;
+                        subTx.SubTxId = transactions[0].TxId.Value;
+                        subTx.UserSubscriptionId = sub.UserSubscriptionId;
+                        dbContext.SubTx.Add(subTx);
+
+                        await dbContext.SaveAsync();
+                        //if user was not subscribed before, attempt to share the payment with a referrer
+                        if (subState == SubscriptionState.None)
+                        {
+                            await TrySharePaymentWithReferrer(dbContext, output, subRequest, subInfo, requestedTierInfo, user, recipientId, cost);
+                        }
+                        subState = SubscriptionState.Subscribed;
+                    }
+                    //append receipt object with what client requested
+                    await TxUtils.AppendTxs(transactions, dbContext, subRequest.Columns);
+
+                    var tx = transactions[0];
+
+                    output.TxId = tx.TxId;
+                    output.User = tx.From;
+                }
+            }
+            //couldn't process transaction
+            if (txRequest == null)
+            {
+                //fill out response object
+                await PopuplateUserResponse(dbContext, subRequest, output, user);
+                if (existingSubscription != null)
+                {
+                    sub = existingSubscription.UserSubscription;
+                }
+            }
+            
+            if (subState == SubscriptionState.Subscribed && sub != null)
+            {
+                var end = output.SubscriptionEndTime = sub.LastSubDate.Value.AddDays(subInfo.Duration);
+                //calculate days left
+                output.DaysLeft = Math.Ceiling((end.Value - DateTime.Now).TotalDays);
+                //setup sub info
+                output.UserSubscriptionInfo = await GetUserSubscriptions(dbContext, user)
+                    .Where(t => t.SubscriptionTier.SubscriptionId == subInfo.SubscriptionId).FirstOrDefaultAsync();
+            }
+            return output;
+        }
+
+        private static async Task TrySharePaymentWithReferrer(BitcornContext dbContext, SubscriptionResponse output, SubRequest subRequest, Subscription subInfo, SubscriptionTier requestedTierInfo, User user, int subscriptionPaymentRecipientId, decimal cost)
+        {
+            //if subscription referrar share is defined and its between 0 and 1
+            if (subInfo.ReferrerPercentage != null && subInfo.ReferrerPercentage > 0 && subInfo.ReferrerPercentage <= 1)
+            {
+                //get the user who received the subscription payment
+                var subscriptionPaymentRecipient = await dbContext.JoinUserModels().FirstOrDefaultAsync(u => u.UserId == subscriptionPaymentRecipientId);
+                //get subscriber userreferral info
+                var userReferral = await dbContext.UserReferral.FirstOrDefaultAsync(r => r.UserId == user.UserId);
+                if (userReferral != null && userReferral.ReferralId != 0)
+                {
+                    //get info of the person who referred the subscriber
+                    var referrer = await dbContext.Referrer.FirstOrDefaultAsync(u => u.ReferralId == userReferral.ReferralId);
+                    //check if referrer can get rewards
+                    if (ReferralUtils.IsValidReferrer(referrer))
+                    {
+                        //get referrer user info
+                        var referrerUser = await dbContext.JoinUserModels().FirstOrDefaultAsync(u => u.UserId == referrer.UserId);
+                        if (referrerUser != null && !referrerUser.IsBanned)
+                        {
+                            //calculate amount that will be sent to the referrer
+                            var referralShare = cost * subInfo.ReferrerPercentage.Value;
+                            //prepare transaction to the referrer
+                            var referralShareTx = await TxUtils.PrepareTransaction(subscriptionPaymentRecipient, referrerUser, referralShare, "BITCORNFarms", "$sub referral share", dbContext);
+                            //make sure stat tracking values have been initialized
+                            if (referrerUser.UserStat.TotalReferralRewardsCorn == null)
+                                referrerUser.UserStat.TotalReferralRewardsCorn = 0;
+                            //make sure stat tracking values have been initialized
+                            if (referrerUser.UserStat.TotalReferralRewardsUsdt == null)
+                                referrerUser.UserStat.TotalReferralRewardsUsdt = 0;
+                            //increment total received corn rewards
+                            referrerUser.UserStat.TotalReferralRewardsCorn += referralShare;
+                            //inceremnt total received usdt rewards
+                            referrerUser.UserStat.TotalReferralRewardsUsdt +=
+                                ((referralShare) * (await ProbitApi.GetCornPriceAsync()));
+                            //execute transaction
+                            if (await TxUtils.ExecuteTransaction(referralShareTx, dbContext))
+                            {
+                                //if transaction was made, log & update ytd total
+                                await ReferralUtils.UpdateYtdTotal(dbContext, referrer, referralShare);
+                                await ReferralUtils.LogReferralTx(dbContext, referrerUser.UserId, referralShare, "$sub referral share");
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
         public static async Task<bool> IsSubbed(BitcornContext dbContext,User user, string subscriptionName, int? tier)
         {
             if (user == null) return false;
             if (user.IsBanned) return false;
+
             var query = GetUserSubscriptions(dbContext,user).Join(dbContext.Subscription,
                 (UserSubcriptionTierInfo info)=>info.SubscriptionTier.SubscriptionId,
                 (Subscription sub)=>sub.SubscriptionId,
                 (info,sub)=>new { 
                     info,sub
                 }).Where(s=>s.sub.Name.ToLower()==subscriptionName.ToLower());
+
             if (tier != null)
             {
                 return await query.Where(s=>s.info.SubscriptionTier.Tier>=tier.Value).AnyAsync();
