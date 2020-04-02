@@ -12,5 +12,6 @@ namespace BITCORNService.Models
         public int Duration { get; set; }
         public int? OwnerUserId { get; set; }
         public decimal? ReferrerPercentage { get; set; }
+        public bool RestrictReferralRewards { get; set; }
     }
 }

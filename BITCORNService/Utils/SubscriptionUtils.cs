@@ -255,7 +255,7 @@ namespace BITCORNService.Utils
             SubscriptionState previousSubState,
             SubTx subTx)
         {
-            if (previousSubState != SubscriptionState.None) return false;
+            //if (previousSubState != SubscriptionState.None) return false;
             //if subscription referrar share is defined and its between 0 and 1
             if (subInfo.ReferrerPercentage != null && subInfo.ReferrerPercentage > 0 && subInfo.ReferrerPercentage <= 1)
             {
@@ -274,10 +274,10 @@ namespace BITCORNService.Utils
                         var referrerUser = await dbContext.JoinUserModels().FirstOrDefaultAsync(u => u.UserId == referrer.UserId);
                         if (referrerUser != null && !referrerUser.IsBanned)
                         {
-                            if (referrerUser.Level == "BEST" 
+                            if (!subInfo.RestrictReferralRewards && (subInfo.RestrictReferralRewards && (referrerUser.Level == "BEST" 
                                 || referrerUser.Level == "BAIT" 
                                 || referrerUser.IsAdmin()
-                                || referrer.Tier >= 3)
+                                || referrer.Tier >= 3)))
                             {
                                 //calculate amount that will be sent to the referrer
                                 var referralShare = cost * subInfo.ReferrerPercentage.Value;
