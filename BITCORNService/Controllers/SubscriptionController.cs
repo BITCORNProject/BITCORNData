@@ -13,6 +13,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
+using Newtonsoft.Json;
 
 namespace BITCORNService.Controllers
 {
@@ -33,59 +34,75 @@ namespace BITCORNService.Controllers
         [HttpPost("new")]
         public async Task<ActionResult<SubscriptionResponse>> New([FromBody] SubRequest subRequest)
         {
-            var user = this.GetCachedUser();
+            try
+            {
+                var user = this.GetCachedUser();
 
-            var tx = await SubscriptionUtils.Subscribe(_dbContext, user, subRequest);
-            if (tx != null) return tx;
+                var tx = await SubscriptionUtils.Subscribe(_dbContext, user, subRequest);
+                if (tx != null) return tx;
 
-            return StatusCode((int)HttpStatusCode.BadRequest);
+                return StatusCode((int)HttpStatusCode.BadRequest);
+            }
+            catch (Exception e)
+            {
+                await BITCORNLogger.LogError(_dbContext,e,JsonConvert.SerializeObject(subRequest));
+                throw e;
+            }
         }
 
         [HttpGet("available")]
         public async Task<ActionResult<List<AvailableSubscriptionResponse>>> Available([FromQuery] string subscriptionName = null)
         {
-            AvailableSubscriptionInfo[] subscriptions = null;
-            var query = (from subscriptionTier in _dbContext.SubscriptionTier
-                         join subscription in _dbContext.Subscription on subscriptionTier.SubscriptionId equals subscription.SubscriptionId
-                         select new AvailableSubscriptionInfo
-                         {
-                             SubscriptionTier = subscriptionTier,
-                             Subscription = subscription
-                         });
-
-            if (string.IsNullOrEmpty(subscriptionName))
-                subscriptions = await query.ToArrayAsync();
-            else
-                subscriptions = await query.Where(s => s.Subscription.Name.ToLower() == subscriptionName.ToLower()).ToArrayAsync();
-
-            var availableSubscriptions = new List<AvailableSubscriptionResponse>();
-            var cornUsdt = await ProbitApi.GetCornPriceAsync();
-            foreach (var row in subscriptions)
+            try
             {
-                var existingEntry = availableSubscriptions.FirstOrDefault(l => l.Subscription.SubscriptionId == row.Subscription.SubscriptionId);
-                if (existingEntry == null)
+                AvailableSubscriptionInfo[] subscriptions = null;
+                var query = (from subscriptionTier in _dbContext.SubscriptionTier
+                             join subscription in _dbContext.Subscription on subscriptionTier.SubscriptionId equals subscription.SubscriptionId
+                             select new AvailableSubscriptionInfo
+                             {
+                                 SubscriptionTier = subscriptionTier,
+                                 Subscription = subscription
+                             });
+
+                if (string.IsNullOrEmpty(subscriptionName))
+                    subscriptions = await query.ToArrayAsync();
+                else
+                    subscriptions = await query.Where(s => s.Subscription.Name.ToLower() == subscriptionName.ToLower()).ToArrayAsync();
+
+                var availableSubscriptions = new List<AvailableSubscriptionResponse>();
+                var cornUsdt = await ProbitApi.GetCornPriceAsync();
+                foreach (var row in subscriptions)
                 {
-                    existingEntry = new AvailableSubscriptionResponse()
+                    var existingEntry = availableSubscriptions.FirstOrDefault(l => l.Subscription.SubscriptionId == row.Subscription.SubscriptionId);
+                    if (existingEntry == null)
                     {
-                        Subscription = row.Subscription,
-                    };
-                    availableSubscriptions.Add(existingEntry);
+                        existingEntry = new AvailableSubscriptionResponse()
+                        {
+                            Subscription = row.Subscription,
+                        };
+                        availableSubscriptions.Add(existingEntry);
+                    }
+
+                    decimal actualCost = 0;
+                    if (row.SubscriptionTier.CostUsdt != null && row.SubscriptionTier.CostUsdt > 0)
+                        actualCost = SubscriptionUtils.CalculateUsdtToCornCost(cornUsdt, row.SubscriptionTier);
+
+                    else if (row.SubscriptionTier.CostCorn != null && row.SubscriptionTier.CostCorn > 0)
+                        actualCost = row.SubscriptionTier.CostCorn.Value;
+
+                    existingEntry.Tiers.Add(new
+                    {
+                        tierInfo = row.SubscriptionTier,
+                        actualCost
+                    });
                 }
-
-                decimal actualCost = 0;
-                if (row.SubscriptionTier.CostUsdt != null && row.SubscriptionTier.CostUsdt > 0)
-                    actualCost = SubscriptionUtils.CalculateUsdtToCornCost(cornUsdt, row.SubscriptionTier);
-
-                else if (row.SubscriptionTier.CostCorn != null && row.SubscriptionTier.CostCorn > 0)
-                    actualCost = row.SubscriptionTier.CostCorn.Value;
-
-                existingEntry.Tiers.Add(new
-                {
-                    tierInfo = row.SubscriptionTier,
-                    actualCost
-                });
+                return availableSubscriptions;
             }
-            return availableSubscriptions;
+            catch(Exception e)
+            {
+                await BITCORNLogger.LogError(_dbContext, e, subscriptionName);
+                throw e;
+            }
         }
 
         [HttpGet("user")]
@@ -94,44 +111,52 @@ namespace BITCORNService.Controllers
             if (string.IsNullOrEmpty(platformId))
                 throw new ArgumentException("platformId");
 
-            var id = BitcornUtils.GetPlatformId(platformId);
-            var user = await BitcornUtils.GetUserForPlatform(id, _dbContext).FirstOrDefaultAsync();
-            if (user != null)
+            try
             {
-                var subscriptionsQuery = SubscriptionUtils.GetUserSubscriptions(_dbContext, user)
-                    .Join(_dbContext.Subscription,
-                    (UserSubcriptionTierInfo info) => info.SubscriptionTier.SubscriptionId,
-                    (Subscription sub) => sub.SubscriptionId,
-                    (info, sub) => new
-                    {
-                        userInfo = info,
-                        subscriptionInfo = sub
-                    }).Where(s => s.userInfo.UserSubscription.LastSubDate.Value.AddDays(s.subscriptionInfo.Duration) > DateTime.Now);
-
-                if (!string.IsNullOrEmpty(subscriptionName))
+                var id = BitcornUtils.GetPlatformId(platformId);
+                var user = await BitcornUtils.GetUserForPlatform(id, _dbContext).FirstOrDefaultAsync();
+                if (user != null)
                 {
-                    return await subscriptionsQuery.Where(q => q.subscriptionInfo.Name.ToLower() == subscriptionName.ToLower()).Select(s => new
+                    var subscriptionsQuery = SubscriptionUtils.GetUserSubscriptions(_dbContext, user)
+                        .Join(_dbContext.Subscription,
+                        (UserSubcriptionTierInfo info) => info.SubscriptionTier.SubscriptionId,
+                        (Subscription sub) => sub.SubscriptionId,
+                        (info, sub) => new
+                        {
+                            userInfo = info,
+                            subscriptionInfo = sub
+                        }).Where(s => s.userInfo.UserSubscription.LastSubDate.Value.AddDays(s.subscriptionInfo.Duration) > DateTime.Now);
+
+                    if (!string.IsNullOrEmpty(subscriptionName))
                     {
-                        daysLeft = (s.userInfo.UserSubscription.LastSubDate.Value.AddDays(s.subscriptionInfo.Duration) - DateTime.Now).TotalDays,
-                        tier = s.userInfo.SubscriptionTier.Tier,
-                        name = s.subscriptionInfo.Name,
-                        description = s.subscriptionInfo.Description
-                    }).ToArrayAsync();
+                        return await subscriptionsQuery.Where(q => q.subscriptionInfo.Name.ToLower() == subscriptionName.ToLower()).Select(s => new
+                        {
+                            daysLeft = (s.userInfo.UserSubscription.LastSubDate.Value.AddDays(s.subscriptionInfo.Duration) - DateTime.Now).TotalDays,
+                            tier = s.userInfo.SubscriptionTier.Tier,
+                            name = s.subscriptionInfo.Name,
+                            description = s.subscriptionInfo.Description
+                        }).ToArrayAsync();
+                    }
+                    else
+                    {
+                        return await subscriptionsQuery.Select(s => new
+                        {
+                            daysLeft = (s.userInfo.UserSubscription.LastSubDate.Value.AddDays(s.subscriptionInfo.Duration) - DateTime.Now).TotalDays,
+                            tier = s.userInfo.SubscriptionTier.Tier,
+                            name = s.subscriptionInfo.Name,
+                            description = s.subscriptionInfo.Description
+                        }).ToArrayAsync();
+                    }
                 }
                 else
                 {
-                    return await subscriptionsQuery.Select(s => new
-                    {
-                        daysLeft = (s.userInfo.UserSubscription.LastSubDate.Value.AddDays(s.subscriptionInfo.Duration) - DateTime.Now).TotalDays,
-                        tier = s.userInfo.SubscriptionTier.Tier,
-                        name = s.subscriptionInfo.Name,
-                        description = s.subscriptionInfo.Description
-                    }).ToArrayAsync();
+                    return StatusCode(404);
                 }
             }
-            else
+            catch(Exception e)
             {
-                return StatusCode(404);
+                await BITCORNLogger.LogError(_dbContext, e, JsonConvert.SerializeObject(new { platformId, subscriptionName}));
+                throw e;
             }
         }
 
@@ -142,27 +167,39 @@ namespace BITCORNService.Controllers
                 throw new ArgumentException("platformId");
             if (string.IsNullOrEmpty(subscriptionName))
                 throw new ArgumentException("subscriptionName");
-
-            var id = BitcornUtils.GetPlatformId(platformId);
-            var user = await BitcornUtils.GetUserForPlatform(id, _dbContext).FirstOrDefaultAsync();
-            if (user != null)
+            try
             {
-                int? tier = null;
-                if (!string.IsNullOrEmpty(subTier))
+                var id = BitcornUtils.GetPlatformId(platformId);
+                var user = await BitcornUtils.GetUserForPlatform(id, _dbContext).FirstOrDefaultAsync();
+                if (user != null)
                 {
-                    try
+                    int? tier = null;
+                    if (!string.IsNullOrEmpty(subTier))
                     {
-                        tier = int.Parse(subTier);
+                        try
+                        {
+                            tier = int.Parse(subTier);
+                        }
+                        catch { }
                     }
-                    catch { }
-                }
 
-                return await SubscriptionUtils.IsSubbed(_dbContext, user, subscriptionName, tier);
+                    return await SubscriptionUtils.IsSubbed(_dbContext, user, subscriptionName, tier);
+                }
+                else
+                {
+                    return StatusCode(404);
+                }
             }
-            else
+            catch (Exception e)
             {
-                return StatusCode(404);
+                await BITCORNLogger.LogError(_dbContext, e, JsonConvert.SerializeObject(new { 
+                    subTier,
+                    platformId,
+                    subscriptionName
+                }));
+                throw e;
             }
         }
+
     }
 }
