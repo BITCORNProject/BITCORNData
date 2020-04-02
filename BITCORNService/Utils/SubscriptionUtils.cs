@@ -204,10 +204,12 @@ namespace BITCORNService.Utils
                         subTx.UserSubscriptionId = sub.UserSubscriptionId;
                         dbContext.SubTx.Add(subTx);
 
-                        await dbContext.SaveAsync();
                         //if user was not subscribed before, attempt to share the payment with a referrer
-                        await TrySharePaymentWithReferrer(dbContext, output, subRequest, subInfo, requestedTierInfo, user, recipientId, cost, subState);
-                        
+                        if (!await TrySharePaymentWithReferrer(dbContext, output, subRequest, subInfo, requestedTierInfo, user, recipientId, cost, subState, subTx))
+                        {
+                            await dbContext.SaveAsync();
+                        }
+
                         subState = SubscriptionState.Subscribed;
                     }
                     //append receipt object with what client requested
@@ -242,7 +244,7 @@ namespace BITCORNService.Utils
             return output;
         }
 
-        private static async Task TrySharePaymentWithReferrer(BitcornContext dbContext,
+        private static async Task<bool> TrySharePaymentWithReferrer(BitcornContext dbContext,
             SubscriptionResponse output,
             SubRequest subRequest,
             Subscription subInfo,
@@ -250,9 +252,10 @@ namespace BITCORNService.Utils
             User user,
             int subscriptionPaymentRecipientId,
             decimal cost,
-            SubscriptionState previousSubState)
+            SubscriptionState previousSubState,
+            SubTx subTx)
         {
-            if (previousSubState != SubscriptionState.None) return;
+            if (previousSubState != SubscriptionState.None) return false;
             //if subscription referrar share is defined and its between 0 and 1
             if (subInfo.ReferrerPercentage != null && subInfo.ReferrerPercentage > 0 && subInfo.ReferrerPercentage <= 1)
             {
@@ -296,13 +299,16 @@ namespace BITCORNService.Utils
                                 {
                                     //if transaction was made, log & update ytd total
                                     await ReferralUtils.UpdateYtdTotal(dbContext, referrer, referralShare);
-                                    await ReferralUtils.LogReferralTx(dbContext, referrerUser.UserId, referralShare, "$sub referral share");
+                                    var referralTx = await ReferralUtils.LogReferralTx(dbContext, referrerUser.UserId, referralShare, "$sub referral share");
+                                    subTx.ReferralTxId = referralTx.ReferralTxId;
+                                    return true;
                                 }
                             }
                         }
                     }
                 }
             }
+            return false;
         }
 
         public static async Task<bool> IsSubbed(BitcornContext dbContext,User user, string subscriptionName, int? tier)
