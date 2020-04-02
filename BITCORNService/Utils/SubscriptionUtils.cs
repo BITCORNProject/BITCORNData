@@ -274,7 +274,7 @@ namespace BITCORNService.Utils
                         var referrerUser = await dbContext.JoinUserModels().FirstOrDefaultAsync(u => u.UserId == referrer.UserId);
                         if (referrerUser != null && !referrerUser.IsBanned)
                         {
-                            if (!subInfo.RestrictReferralRewards && (subInfo.RestrictReferralRewards && (referrerUser.Level == "BEST" 
+                            if (!subInfo.RestrictReferralRewards || (subInfo.RestrictReferralRewards && (referrerUser.Level == "BEST" 
                                 || referrerUser.Level == "BAIT" 
                                 || referrerUser.IsAdmin()
                                 || referrer.Tier >= 3)))
