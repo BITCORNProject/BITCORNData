@@ -17,6 +17,7 @@ namespace BITCORNService.Models
         public DateTime? FirstSubDate { get; set; }
         public int SubscriptionTierId { get; set; }
         public int SubscriptionId { get; set; }
+        public int SubCount { get; set; }
         public virtual User User { get; set; }
         public virtual SubscriptionTier SubscriptionTier { get; set; }
     }

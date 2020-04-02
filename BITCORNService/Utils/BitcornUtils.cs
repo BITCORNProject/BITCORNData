@@ -31,14 +31,18 @@ namespace BITCORNService.Utils
 
             return platformId;
         }
+
         public static bool IsAdmin(this User user)
         {
-            return user.Level == "5000";
+            //TODO: change 5000 to ADMIN on prod
+            return user.Level == "5000" || user.Level == "ADMIN";
         }
+
         public static async Task<UserIdentity> GetUserIdentityForPlatform(PlatformId platformId, BitcornContext dbContext)
         {
             return await GetUserForPlatform(platformId,dbContext).Select(u=>u.UserIdentity).FirstOrDefaultAsync();
         }
+
         public static IQueryable<User> GetUserForPlatform(PlatformId platformId, BitcornContext dbContext)
         {
             switch (platformId.Platform)
@@ -73,6 +77,7 @@ namespace BITCORNService.Utils
             var query = GetUsersForPlatform(platformId,dbContext);
             return await ToPlatformDictionary(platformId,query,dbContext);
         }
+
         public static async Task<Dictionary<string, User>> ToPlatformDictionary(PlatformId[] platformId, IQueryable<User> query, BitcornContext dbContext)
         {
             switch (platformId[0].Platform)
@@ -233,6 +238,7 @@ namespace BITCORNService.Utils
             //call for discord username
             return fullUser;
         }
+
         public static FullUserAndReferrer GetFullUserAndReferer(User user, UserIdentity userIdentity, UserWallet userWallet, UserStat userStats,UserReferral userReferral = null ,Referrer referrer = null)
         {
             var fullUser = new FullUserAndReferrer()

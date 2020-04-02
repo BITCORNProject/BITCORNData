@@ -186,6 +186,7 @@ namespace BITCORNService.Utils
                             case SubscriptionState.Expired:
                                 //previous subscription was found, update subscription tier
                                 existingSubscription.UserSubscription.SubscriptionTierId = requestedTierInfo.SubscriptionTierId;
+                                existingSubscription.UserSubscription.SubCount += 1;
                                 sub = existingSubscription.UserSubscription;
                                 break;
                             default:
@@ -205,10 +206,8 @@ namespace BITCORNService.Utils
 
                         await dbContext.SaveAsync();
                         //if user was not subscribed before, attempt to share the payment with a referrer
-                        if (subState == SubscriptionState.None)
-                        {
-                            await TrySharePaymentWithReferrer(dbContext, output, subRequest, subInfo, requestedTierInfo, user, recipientId, cost);
-                        }
+                        await TrySharePaymentWithReferrer(dbContext, output, subRequest, subInfo, requestedTierInfo, user, recipientId, cost, subState);
+                        
                         subState = SubscriptionState.Subscribed;
                     }
                     //append receipt object with what client requested
@@ -243,8 +242,17 @@ namespace BITCORNService.Utils
             return output;
         }
 
-        private static async Task TrySharePaymentWithReferrer(BitcornContext dbContext, SubscriptionResponse output, SubRequest subRequest, Subscription subInfo, SubscriptionTier requestedTierInfo, User user, int subscriptionPaymentRecipientId, decimal cost)
+        private static async Task TrySharePaymentWithReferrer(BitcornContext dbContext,
+            SubscriptionResponse output,
+            SubRequest subRequest,
+            Subscription subInfo,
+            SubscriptionTier requestedTierInfo,
+            User user,
+            int subscriptionPaymentRecipientId,
+            decimal cost,
+            SubscriptionState previousSubState)
         {
+            if (previousSubState != SubscriptionState.None) return;
             //if subscription referrar share is defined and its between 0 and 1
             if (subInfo.ReferrerPercentage != null && subInfo.ReferrerPercentage > 0 && subInfo.ReferrerPercentage <= 1)
             {
@@ -257,33 +265,39 @@ namespace BITCORNService.Utils
                     //get info of the person who referred the subscriber
                     var referrer = await dbContext.Referrer.FirstOrDefaultAsync(u => u.ReferralId == userReferral.ReferralId);
                     //check if referrer can get rewards
-                    if (ReferralUtils.IsValidReferrer(referrer))
+                    if (ReferralUtils.IsValidReferrer(referrer) && referrer.EnableSubscriptionRewards)
                     {
                         //get referrer user info
                         var referrerUser = await dbContext.JoinUserModels().FirstOrDefaultAsync(u => u.UserId == referrer.UserId);
                         if (referrerUser != null && !referrerUser.IsBanned)
                         {
-                            //calculate amount that will be sent to the referrer
-                            var referralShare = cost * subInfo.ReferrerPercentage.Value;
-                            //prepare transaction to the referrer
-                            var referralShareTx = await TxUtils.PrepareTransaction(subscriptionPaymentRecipient, referrerUser, referralShare, "BITCORNFarms", "$sub referral share", dbContext);
-                            //make sure stat tracking values have been initialized
-                            if (referrerUser.UserStat.TotalReferralRewardsCorn == null)
-                                referrerUser.UserStat.TotalReferralRewardsCorn = 0;
-                            //make sure stat tracking values have been initialized
-                            if (referrerUser.UserStat.TotalReferralRewardsUsdt == null)
-                                referrerUser.UserStat.TotalReferralRewardsUsdt = 0;
-                            //increment total received corn rewards
-                            referrerUser.UserStat.TotalReferralRewardsCorn += referralShare;
-                            //inceremnt total received usdt rewards
-                            referrerUser.UserStat.TotalReferralRewardsUsdt +=
-                                ((referralShare) * (await ProbitApi.GetCornPriceAsync()));
-                            //execute transaction
-                            if (await TxUtils.ExecuteTransaction(referralShareTx, dbContext))
+                            if (referrerUser.Level == "BEST" 
+                                || referrerUser.Level == "BAIT" 
+                                || referrerUser.IsAdmin()
+                                || referrer.Tier >= 3)
                             {
-                                //if transaction was made, log & update ytd total
-                                await ReferralUtils.UpdateYtdTotal(dbContext, referrer, referralShare);
-                                await ReferralUtils.LogReferralTx(dbContext, referrerUser.UserId, referralShare, "$sub referral share");
+                                //calculate amount that will be sent to the referrer
+                                var referralShare = cost * subInfo.ReferrerPercentage.Value;
+                                //prepare transaction to the referrer
+                                var referralShareTx = await TxUtils.PrepareTransaction(subscriptionPaymentRecipient, referrerUser, referralShare, "BITCORNFarms", "$sub referral share", dbContext);
+                                //make sure stat tracking values have been initialized
+                                if (referrerUser.UserStat.TotalReferralRewardsCorn == null)
+                                    referrerUser.UserStat.TotalReferralRewardsCorn = 0;
+                                //make sure stat tracking values have been initialized
+                                if (referrerUser.UserStat.TotalReferralRewardsUsdt == null)
+                                    referrerUser.UserStat.TotalReferralRewardsUsdt = 0;
+                                //increment total received corn rewards
+                                referrerUser.UserStat.TotalReferralRewardsCorn += referralShare;
+                                //inceremnt total received usdt rewards
+                                referrerUser.UserStat.TotalReferralRewardsUsdt +=
+                                    ((referralShare) * (await ProbitApi.GetCornPriceAsync()));
+                                //execute transaction
+                                if (await TxUtils.ExecuteTransaction(referralShareTx, dbContext))
+                                {
+                                    //if transaction was made, log & update ytd total
+                                    await ReferralUtils.UpdateYtdTotal(dbContext, referrer, referralShare);
+                                    await ReferralUtils.LogReferralTx(dbContext, referrerUser.UserId, referralShare, "$sub referral share");
+                                }
                             }
                         }
                     }
