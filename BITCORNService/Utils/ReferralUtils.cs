@@ -75,7 +75,7 @@ namespace BITCORNService.Utils
             }
         }
 
-        public static async Task LogReferralTx(BitcornContext dbContext, int referrerUserId, decimal amount, string type)
+        public static async Task<ReferralTx> LogReferralTx(BitcornContext dbContext, int referrerUserId, decimal amount, string type)
         {
             var referralTx = new ReferralTx();
             referralTx.UserId = referrerUserId;
@@ -86,6 +86,7 @@ namespace BITCORNService.Utils
             referralTx.Type = type;
             dbContext.ReferralTx.Add(referralTx);
             await dbContext.SaveAsync();
+            return referralTx;
         }
 
         public static async Task<decimal> CornPrice(BitcornContext dbContext)
