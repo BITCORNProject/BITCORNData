@@ -301,6 +301,7 @@ namespace BITCORNService.Utils
                                     await ReferralUtils.UpdateYtdTotal(dbContext, referrer, referralShare);
                                     var referralTx = await ReferralUtils.LogReferralTx(dbContext, referrerUser.UserId, referralShare, "$sub referral share");
                                     subTx.ReferralTxId = referralTx.ReferralTxId;
+                                    await dbContext.SaveAsync();
                                     return true;
                                 }
                             }
