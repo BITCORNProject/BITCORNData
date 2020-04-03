@@ -31,7 +31,9 @@ namespace BITCORNService.Models
         public virtual DbSet<ReferralTx> ReferralTx { get; set; }
         public virtual DbSet<Price> Price { get; set; }
         public virtual DbSet<SocialIdentity> SocialIdentity { get; set; }
-
+        public virtual DbSet<Subscription> Subscription { get; set; }
+        public virtual DbSet<SubscriptionTier> SubscriptionTier { get; set; }
+        public virtual DbSet<SubTx> SubTx { get; set; }
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {
         }

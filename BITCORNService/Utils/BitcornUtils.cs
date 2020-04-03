@@ -31,14 +31,18 @@ namespace BITCORNService.Utils
 
             return platformId;
         }
+
         public static bool IsAdmin(this User user)
         {
-            return user.Level == "5000";
+            //TODO: change 5000 to ADMIN on prod
+            return user.Level == "5000" || user.Level == "ADMIN";
         }
+
         public static async Task<UserIdentity> GetUserIdentityForPlatform(PlatformId platformId, BitcornContext dbContext)
         {
             return await GetUserForPlatform(platformId,dbContext).Select(u=>u.UserIdentity).FirstOrDefaultAsync();
         }
+
         public static IQueryable<User> GetUserForPlatform(PlatformId platformId, BitcornContext dbContext)
         {
             switch (platformId.Platform)
@@ -73,6 +77,7 @@ namespace BITCORNService.Utils
             var query = GetUsersForPlatform(platformId,dbContext);
             return await ToPlatformDictionary(platformId,query,dbContext);
         }
+
         public static async Task<Dictionary<string, User>> ToPlatformDictionary(PlatformId[] platformId, IQueryable<User> query, BitcornContext dbContext)
         {
             switch (platformId[0].Platform)
@@ -195,7 +200,9 @@ namespace BITCORNService.Utils
                 UserId = user.UserId,
                 Avatar = user.Avatar,
                 Level = user.Level,
-
+                IsBanned = user.IsBanned,
+                CreationTime = user.CreationTime,
+                
                 Auth0Id = userIdentity.Auth0Id,
                 Auth0Nickname = userIdentity.Auth0Nickname,
                 TwitchId = userIdentity.TwitchId,
@@ -221,6 +228,9 @@ namespace BITCORNService.Utils
                 AmountOfRainsReceived = userStats.AmountOfRainsReceived,
                 TotalReceivedBitcornRains = userStats.TotalReceivedBitcornRains,
                 SubTier = user.SubTier,
+                TotalReferralRewardsCorn = userStats.TotalReferralRewardsCorn,
+                TotalReferralRewardsUsdt = userStats.TotalReferralRewardsUsdt,
+                TotalReferrals = userStats.TotalReferrals,
                 LargestReceivedBitcornRain = userStats.LargestReceivedBitcornRain
             };
         
@@ -228,6 +238,7 @@ namespace BITCORNService.Utils
             //call for discord username
             return fullUser;
         }
+
         public static FullUserAndReferrer GetFullUserAndReferer(User user, UserIdentity userIdentity, UserWallet userWallet, UserStat userStats,UserReferral userReferral = null ,Referrer referrer = null)
         {
             var fullUser = new FullUserAndReferrer()
@@ -238,6 +249,7 @@ namespace BITCORNService.Utils
                 Avatar = user.Avatar,
                 Level = user.Level,
                 IsBanned = user.IsBanned,
+                CreationTime = user.CreationTime,
                 SubTier = user.SubTier,
 
                 //UserIdentity
@@ -272,8 +284,9 @@ namespace BITCORNService.Utils
                 LargestReceivedBitcornRain = userStats.LargestReceivedBitcornRain,
                 TotalReferralRewardsCorn = userStats.TotalReferralRewardsCorn,
                 TotalReferralRewardsUsdt = userStats.TotalReferralRewardsUsdt,
-                TotalReferrals = userStats.TotalReferrals
-    };
+                TotalReferrals = userStats.TotalReferrals,
+                
+            };
             if (referrer != null)
             {
                 fullUser.ReferralId = referrer.ReferralId;

@@ -27,7 +27,7 @@ namespace BITCORNService.Controllers
     {
         public int TimeToClaimTipMinutes { get; set; } = 60 * 24;
         private readonly BitcornContext _dbContext;
-        IConfiguration _configuration;
+        private readonly IConfiguration _configuration;
         public TxController(IConfiguration configuration,BitcornContext dbContext)
         {
             _configuration = configuration;
@@ -140,7 +140,7 @@ namespace BITCORNService.Controllers
                 throw e;
             }
         }
-
+    
         [HttpPost("tipcorn")]
         public async Task<ActionResult<TxReceipt[]>> Tipcorn([FromBody] TipRequest tipRequest)
         {

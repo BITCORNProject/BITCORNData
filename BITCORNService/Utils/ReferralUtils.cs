@@ -75,7 +75,7 @@ namespace BITCORNService.Utils
             }
         }
 
-        public static async Task LogReferralTx(BitcornContext dbContext, int referrerUserId, decimal amount, string type)
+        public static async Task<ReferralTx> LogReferralTx(BitcornContext dbContext, int referrerUserId, decimal amount, string type)
         {
             var referralTx = new ReferralTx();
             referralTx.UserId = referrerUserId;
@@ -86,6 +86,7 @@ namespace BITCORNService.Utils
             referralTx.Type = type;
             dbContext.ReferralTx.Add(referralTx);
             await dbContext.SaveAsync();
+            return referralTx;
         }
 
         public static async Task<decimal> CornPrice(BitcornContext dbContext)
@@ -178,26 +179,32 @@ namespace BITCORNService.Utils
                 && !user.IsBanned
                 && !referrerUser.IsBanned)
             {
-                var bonusReward = await TxUtils.SendFromBitcornhub(user, 4200, "BITCORNFarms", "Referral bonus reward", dbContext);
+                var amount = 4200;
+                var bonusReward = await TxUtils.SendFromBitcornhub(user, amount, "BITCORNFarms", "Referral bonus reward", dbContext);
 
-                if (referrer.YtdTotal < 600 || (referrer.ETag != null && referrer.Key != null))
+                if (IsValidReferrer(referrer))
                 {
                     if (bonusReward)
                     {
                         userReferral.Bonus = DateTime.Now;
-                        await LogReferralTx(dbContext, user.UserId, 4200, "Recruit bonus reward");
-                        var referrerBonusReward = await TxUtils.SendFromBitcornhub(referrerUser, 4200, "BITCORNFarms", "Referral bonus reward", dbContext);
+                        await LogReferralTx(dbContext, user.UserId, amount, "Recruit bonus reward");
+                        var referrerBonusReward = await TxUtils.SendFromBitcornhub(referrerUser, amount, "BITCORNFarms", "Referral bonus reward", dbContext);
                         if (referrerBonusReward)
                         {
-                            await UpdateYtdTotal(dbContext, referrer,  4200);
-                            await LogReferralTx(dbContext, referrerUser.UserId, 4200, "Referral bonus reward");
-                            referrerStat.TotalReferralRewardsCorn +=  4200;
-                            referrerStat.TotalReferralRewardsUsdt += (4200 * await ProbitApi.GetCornPriceAsync());
+                            await UpdateYtdTotal(dbContext, referrer,  amount);
+                            await LogReferralTx(dbContext, referrerUser.UserId, amount, "Referral bonus reward");
+                            referrerStat.TotalReferralRewardsCorn +=  amount;
+                            referrerStat.TotalReferralRewardsUsdt += (amount * await ProbitApi.GetCornPriceAsync());
                             userReferral.ReferrerBonus = DateTime.Now;
                         }
                     }
                 }
             }
+        }
+        
+        public static bool IsValidReferrer(Referrer referrer)
+        {
+            return referrer != null && (referrer.YtdTotal < 600 || (referrer.ETag != null && referrer.Key != null));
         }
 
         public static async Task ReferralRewards(BitcornContext dbContext, WalletDownload walletDownload, UserReferral userReferral, User referrerUser,
@@ -210,7 +217,7 @@ namespace BITCORNService.Utils
 
             userReferral.WalletDownloadDate = DateTime.Now;
 
-            if (referrer != null && (referrer.YtdTotal < 600 || (referrer.ETag != null && referrer.Key != null)))
+            if (IsValidReferrer(referrer))
             {
                 var referralPayoutTotal = await ReferralUtils.TotalReward(dbContext, referrer) + await ReferralUtils.WalletBonusReward(dbContext, referrer, 10); ;
                 var referrerReward = await TxUtils.SendFromBitcornhub(referrerUser, referralPayoutTotal , "BITCORNFarms",

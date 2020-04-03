@@ -20,6 +20,7 @@ namespace BITCORNService.Models
         public int Tier { get; set; }
         public string ETag { get; set; }
         public string Key { get; set; }
+        public bool EnableSubscriptionRewards { get; set; }
         public virtual User User { get; set; }
     }
 }

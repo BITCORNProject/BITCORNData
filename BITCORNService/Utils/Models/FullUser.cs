@@ -1,4 +1,6 @@
-﻿namespace BITCORNService.Utils.Models
+﻿using System;
+
+namespace BITCORNService.Utils.Models
 {
     public class FullUser
     {
@@ -29,9 +31,15 @@
         public decimal? TotalReceivedBitcornRains { get; set; }
         public decimal? LargestReceivedBitcornRain { get; set; }
         public decimal? EarnedIdle { get; set; }
+        public decimal? TotalReferralRewardsCorn { get; set; }
+        public decimal? TotalReferralRewardsUsdt { get; set; }
+        public int? TotalReferrals { get; set; }
+        
         public int? WalletServer { get; set; }
         public decimal? Balance { get; set; }
         public string CornAddy { get; set; }
         public int SubTier { get; set; }
+        public bool IsBanned { get; set; }
+        public DateTime? CreationTime { get; set; }
     }
 }

@@ -9,10 +9,10 @@ namespace BITCORNService.Utils.Models
     public class TwitchSubData
     {
         public int _total { get; set; }
-        public Subscription[] subscriptions { get; set; }
+        public TwitchSubscription[] subscriptions { get; set; }
     }
 
-    public class Subscription
+    public class TwitchSubscription
     {
         public DateTime created_at { get; set; }
         public string _id { get; set; }
@@ -34,6 +34,4 @@ namespace BITCORNService.Utils.Models
         public string _id { get; set; }
         public string logo { get; set; }
     }
-
-
 }

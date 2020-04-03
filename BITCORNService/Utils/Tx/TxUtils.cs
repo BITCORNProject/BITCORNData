@@ -21,7 +21,7 @@ namespace BITCORNService.Utils.Tx
         public const int BitcornHubPK = 196;
         public static async Task AppendTxs(TxReceipt[] transactions, BitcornContext dbContext, string[] appendColumns)
         {
-            if (appendColumns.Length > 0)
+            if (appendColumns != null && appendColumns.Length > 0)
             {
                 List<int> participants = new List<int>(transactions.Length + 1);
                 if (transactions[0].From != null)
@@ -36,7 +36,7 @@ namespace BITCORNService.Utils.Tx
                     }
                 }
                 var columns = await UserReflection.GetColumns(dbContext, appendColumns, participants.ToArray());
-              
+
                 foreach (var tx in transactions)
                 {
                     if (tx.From != null)

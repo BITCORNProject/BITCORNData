@@ -63,7 +63,7 @@ namespace BITCORNService.Controllers
                 if (referral != null && referralId != 0)
                 {
                     var referrer = await _dbContext.Referrer.FirstOrDefaultAsync(r => r.ReferralId == referralId);
-                    if (referrer.YtdTotal < 600 || (referrer.ETag != null && referrer.Key != null))
+                    if (ReferralUtils.IsValidReferrer(referrer))
                     {
                         var referrerUser = await _dbContext.User.FirstOrDefaultAsync(u => u.UserId == referrer.UserId);
                         if (referrerUser!=null&&!referrerUser.IsBanned)
@@ -163,7 +163,8 @@ namespace BITCORNService.Controllers
                 },
                 UserWallet = new UserWallet(),
                 UserStat = new UserStat(),
-                UserReferral = new UserReferral { ReferralId = referralId }
+                UserReferral = new UserReferral { ReferralId = referralId },
+                CreationTime = DateTime.Now
             };
 
             return user;

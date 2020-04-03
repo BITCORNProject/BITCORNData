@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 
 namespace BITCORNService.Models
@@ -17,6 +18,7 @@ namespace BITCORNService.Models
         public string Username { get; set; }
         public string Avatar { get; set; }
         public bool IsBanned { get; set; }
+        public DateTime? CreationTime { get; set; }
         public virtual UserIdentity UserIdentity { get; set; }
         public virtual UserStat UserStat { get; set; }
         public virtual UserWallet UserWallet { get; set; }
