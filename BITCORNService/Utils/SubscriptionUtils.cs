@@ -180,6 +180,7 @@ namespace BITCORNService.Utils
                                 sub.SubscriptionTierId = requestedTierInfo.SubscriptionTierId;
                                 sub.UserId = user.UserId;
                                 sub.FirstSubDate = DateTime.Now;
+                                sub.SubCount = 1;
                                 dbContext.UserSubscription.Add(sub);
                                 break;
                             case SubscriptionState.TierDown:
