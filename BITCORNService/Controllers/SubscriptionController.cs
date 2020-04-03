@@ -117,6 +117,7 @@ namespace BITCORNService.Controllers
                 var user = await BitcornUtils.GetUserForPlatform(id, _dbContext).FirstOrDefaultAsync();
                 if (user != null)
                 {
+                    var now = DateTime.Now;
                     var subscriptionsQuery = SubscriptionUtils.GetUserSubscriptions(_dbContext, user)
                         .Join(_dbContext.Subscription,
                         (UserSubcriptionTierInfo info) => info.SubscriptionTier.SubscriptionId,
@@ -125,13 +126,13 @@ namespace BITCORNService.Controllers
                         {
                             userInfo = info,
                             subscriptionInfo = sub
-                        }).Where(s => s.userInfo.UserSubscription.LastSubDate.Value.AddDays(s.subscriptionInfo.Duration) > DateTime.Now);
+                        }).Where(s => s.userInfo.UserSubscription.LastSubDate.Value.AddDays(s.subscriptionInfo.Duration) > now);
 
                     if (!string.IsNullOrEmpty(subscriptionName))
                     {
                         return await subscriptionsQuery.Where(q => q.subscriptionInfo.Name.ToLower() == subscriptionName.ToLower()).Select(s => new
                         {
-                            daysLeft = (s.userInfo.UserSubscription.LastSubDate.Value.AddDays(s.subscriptionInfo.Duration) - DateTime.Now).TotalDays,
+                            daysLeft = (s.userInfo.UserSubscription.LastSubDate.Value.AddDays(s.subscriptionInfo.Duration) - now).TotalDays,
                             tier = s.userInfo.SubscriptionTier.Tier,
                             name = s.subscriptionInfo.Name,
                             description = s.subscriptionInfo.Description
@@ -141,7 +142,7 @@ namespace BITCORNService.Controllers
                     {
                         return await subscriptionsQuery.Select(s => new
                         {
-                            daysLeft = (s.userInfo.UserSubscription.LastSubDate.Value.AddDays(s.subscriptionInfo.Duration) - DateTime.Now).TotalDays,
+                            daysLeft = (s.userInfo.UserSubscription.LastSubDate.Value.AddDays(s.subscriptionInfo.Duration) - now).TotalDays,
                             tier = s.userInfo.SubscriptionTier.Tier,
                             name = s.subscriptionInfo.Name,
                             description = s.subscriptionInfo.Description
