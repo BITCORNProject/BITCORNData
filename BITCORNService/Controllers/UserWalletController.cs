@@ -18,7 +18,7 @@ namespace BITCORNService.Controllers
     public class UserWalletController : ControllerBase
     {
         private readonly BitcornContext _dbContext;
-
+        public const decimal MIN_BALANCE_QUEST_AMOUNT = 1000;
         public UserWalletController(BitcornContext dbContext)
         {
             _dbContext = dbContext;
@@ -51,7 +51,7 @@ namespace BITCORNService.Controllers
                         if (referrer != null &&
                             userReferral != null &&
                             userReferral.MinimumBalanceDate == null &&
-                            userWallet.Balance >= 1000)
+                            userWallet.Balance >= MIN_BALANCE_QUEST_AMOUNT)
                         {
                             if (referrer.YtdTotal < 600 || (referrer.ETag != null && referrer.Key != null))
                             {
