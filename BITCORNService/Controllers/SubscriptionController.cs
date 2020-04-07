@@ -184,7 +184,7 @@ namespace BITCORNService.Controllers
                         catch { }
                     }
 
-                    return await SubscriptionUtils.IsSubbed(_dbContext, user, subscriptionName, tier);
+                    return await SubscriptionUtils.HasSubscribed(_dbContext, user, subscriptionName, tier);
                 }
                 else
                 {

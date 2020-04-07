@@ -38,17 +38,17 @@ namespace BITCORNService.Utils
         public static IQueryable<UserSubcriptionTierInfo> GetUserSubscriptions(BitcornContext dbContext, User user)
         {
             return (from userSubscription in dbContext.UserSubscription
-                                           join subscriptionTier in dbContext.SubscriptionTier
-                                           on userSubscription.SubscriptionTierId equals subscriptionTier.SubscriptionTierId
-                                           select new UserSubcriptionTierInfo
-                                           {
-                                               UserSubscription = userSubscription,
-                                               SubscriptionTier = subscriptionTier
-                                           }).Where(t => t.UserSubscription.UserId == user.UserId);
+                    join subscriptionTier in dbContext.SubscriptionTier
+                    on userSubscription.SubscriptionTierId equals subscriptionTier.SubscriptionTierId
+                    select new UserSubcriptionTierInfo
+                    {
+                        UserSubscription = userSubscription,
+                        SubscriptionTier = subscriptionTier
+                    }).Where(t => t.UserSubscription.UserId == user.UserId);
 
         }
 
-        public static decimal CalculateUsdtToCornCost(decimal cornUsdt,SubscriptionTier tier)
+        public static decimal CalculateUsdtToCornCost(decimal cornUsdt, SubscriptionTier tier)
         {
             return Math.Ceiling(tier.CostUsdt.Value / cornUsdt);
         }
@@ -56,7 +56,7 @@ namespace BITCORNService.Utils
         public static async Task<decimal> CalculateUsdtToCornCost(SubscriptionTier tier)
         {
             var price = await ProbitApi.GetCornPriceAsync();
-            return CalculateUsdtToCornCost(price,tier);
+            return CalculateUsdtToCornCost(price, tier);
         }
         public static async Task<SubscriptionResponse> Subscribe(BitcornContext dbContext, User user, SubRequest subRequest)
         {
@@ -71,7 +71,7 @@ namespace BITCORNService.Utils
                     output.RequestedSubscriptionInfo = subInfo;
                     //try to find subscription tier info
                     var requestedTierInfo = await dbContext.SubscriptionTier.FirstOrDefaultAsync(t => t.SubscriptionId == subInfo.SubscriptionId && t.Tier == subRequest.Tier);
-                    
+
                     output.RequestedSubscriptionTier = requestedTierInfo;
                     //if tier was found, attempt to process the subscription
                     if (requestedTierInfo != null)
@@ -92,14 +92,14 @@ namespace BITCORNService.Utils
 
                 return output;
             }
-            catch(Exception e)
+            catch (Exception e)
             {
-                await BITCORNLogger.LogError(dbContext,e,null);
+                await BITCORNLogger.LogError(dbContext, e, null);
                 throw e;
             }
         }
 
-        private static async Task<SubscriptionResponse> ProcessSubscription(BitcornContext dbContext, SubscriptionResponse output, SubRequest subRequest, Subscription subInfo, SubscriptionTier requestedTierInfo,User user)
+        private static async Task<SubscriptionResponse> ProcessSubscription(BitcornContext dbContext, SubscriptionResponse output, SubRequest subRequest, Subscription subInfo, SubscriptionTier requestedTierInfo, User user)
         {
             decimal cost = 0;
             //if tier usdt cost has been initialized, the corn cost has to be calculated
@@ -155,9 +155,9 @@ namespace BITCORNService.Utils
                 //default to bitcornhub if no subscription owner has been set
                 int recipientId = TxUtils.BitcornHubPK;
                 //if subscription owner is set, overwrite bitcornhub
-                if (subInfo.OwnerUserId != null && subInfo.OwnerUserId>0)
+                if (subInfo.OwnerUserId != null && subInfo.OwnerUserId > 0)
                     recipientId = subInfo.OwnerUserId.Value;
-              
+
                 to[0] = $"userid|{recipientId}";
                 //initialize tx request
                 txRequest = new TxRequest(user, cost, subRequest.Platform, "$sub", to);
@@ -232,7 +232,7 @@ namespace BITCORNService.Utils
                     sub = existingSubscription.UserSubscription;
                 }
             }
-            
+
             if (subState == SubscriptionState.Subscribed && sub != null)
             {
                 var end = output.SubscriptionEndTime = sub.LastSubDate.Value.AddDays(subInfo.Duration);
@@ -258,81 +258,126 @@ namespace BITCORNService.Utils
         {
             //if (previousSubState != SubscriptionState.None) return false;
             //if subscription referrar share is defined and its between 0 and 1
-            if (subInfo.ReferrerPercentage != null && subInfo.ReferrerPercentage > 0 && subInfo.ReferrerPercentage <= 1)
+            //get subscriber userreferral info
+            var userReferral = await dbContext.UserReferral.FirstOrDefaultAsync(r => r.UserId == user.UserId);
+            if (userReferral != null && userReferral.ReferralId != 0)
             {
-                //get the user who received the subscription payment
-                var subscriptionPaymentRecipient = await dbContext.JoinUserModels().FirstOrDefaultAsync(u => u.UserId == subscriptionPaymentRecipientId);
-                //get subscriber userreferral info
-                var userReferral = await dbContext.UserReferral.FirstOrDefaultAsync(r => r.UserId == user.UserId);
-                if (userReferral != null && userReferral.ReferralId != 0)
+                //get info of the person who referred the subscriber
+                var referrer = await dbContext.Referrer.FirstOrDefaultAsync(u => u.ReferralId == userReferral.ReferralId);
+                //check if referrer can get rewards
+                if (ReferralUtils.IsValidReferrer(referrer))
                 {
-                    //get info of the person who referred the subscriber
-                    var referrer = await dbContext.Referrer.FirstOrDefaultAsync(u => u.ReferralId == userReferral.ReferralId);
-                    //check if referrer can get rewards
-                    if (ReferralUtils.IsValidReferrer(referrer) && referrer.EnableSubscriptionRewards)
+                    var referrerUser = await dbContext.JoinUserModels().FirstOrDefaultAsync(u => u.UserId == referrer.UserId);
+                    if (referrerUser != null && !referrerUser.IsBanned)
                     {
-                        //get referrer user info
-                        var referrerUser = await dbContext.JoinUserModels().FirstOrDefaultAsync(u => u.UserId == referrer.UserId);
-                        if (referrerUser != null && !referrerUser.IsBanned)
+                        bool success = false;
+                        if (subInfo.ReferrerPercentage != null && subInfo.ReferrerPercentage > 0 && subInfo.ReferrerPercentage <= 1)
                         {
-                            if (!subInfo.RestrictReferralRewards || (subInfo.RestrictReferralRewards && (referrerUser.Level == "BEST" 
-                                || referrerUser.Level == "BAIT" 
-                                || referrerUser.IsAdmin()
-                                || referrer.Tier >= 3)))
-                            {
-                                //calculate amount that will be sent to the referrer
-                                var referralShare = cost * subInfo.ReferrerPercentage.Value;
-                                //prepare transaction to the referrer
-                                var referralShareTx = await TxUtils.PrepareTransaction(subscriptionPaymentRecipient, referrerUser, referralShare, "BITCORNFarms", "$sub referral share", dbContext);
-                                //make sure stat tracking values have been initialized
-                                if (referrerUser.UserStat.TotalReferralRewardsCorn == null)
-                                    referrerUser.UserStat.TotalReferralRewardsCorn = 0;
-                                //make sure stat tracking values have been initialized
-                                if (referrerUser.UserStat.TotalReferralRewardsUsdt == null)
-                                    referrerUser.UserStat.TotalReferralRewardsUsdt = 0;
-                                //increment total received corn rewards
-                                referrerUser.UserStat.TotalReferralRewardsCorn += referralShare;
-                                //inceremnt total received usdt rewards
-                                referrerUser.UserStat.TotalReferralRewardsUsdt +=
-                                    ((referralShare) * (await ProbitApi.GetCornPriceAsync()));
-                                //execute transaction
-                                if (await TxUtils.ExecuteTransaction(referralShareTx, dbContext))
-                                {
-                                    //if transaction was made, log & update ytd total
-                                    await ReferralUtils.UpdateYtdTotal(dbContext, referrer, referralShare);
-                                    var referralTx = await ReferralUtils.LogReferralTx(dbContext, referrerUser.UserId, referralShare, "$sub referral share");
-                                    subTx.ReferralTxId = referralTx.ReferralTxId;
-                                    await dbContext.SaveAsync();
-                                    return true;
-                                }
-                            }
+                            //get the user who received the subscription payment
+                            var subscriptionPaymentRecipient = await dbContext.JoinUserModels().FirstOrDefaultAsync(u => u.UserId == subscriptionPaymentRecipientId);
+
+                            success = await ShareSubscriptionPaymentWithReferrer(dbContext,
+                                subInfo,
+                                cost,
+                                subTx,
+                                referrer,
+                                referrerUser,
+                                subscriptionPaymentRecipient);
                         }
+
+                        if (previousSubState == SubscriptionState.None && subInfo.Name== "BITCORNFarms")
+                        {
+                            await ReferralUtils.BonusPayout(dbContext, userReferral, referrer, user, referrerUser, referrerUser.UserStat);
+                        }
+
+                        return success;
+                    }
+                }
+            }
+
+            return false;
+        }
+
+        static async Task<bool> ShareSubscriptionPaymentWithReferrer(BitcornContext dbContext,
+            Subscription subInfo,
+            decimal cost,
+            SubTx subTx,
+            Referrer referrer,
+            User referrerUser,
+            User subscriptionPaymentRecipient)
+        {
+            if (referrer.EnableSubscriptionRewards)
+            {
+                //get referrer user info
+                if (!subInfo.RestrictReferralRewards || (subInfo.RestrictReferralRewards && (referrerUser.Level == "BEST"
+                    || referrerUser.Level == "BAIT"
+                    || referrerUser.IsAdmin()
+                    || referrer.Tier >= 3)))
+                {
+                    //calculate amount that will be sent to the referrer
+                    var referralShare = cost * subInfo.ReferrerPercentage.Value;
+                    //prepare transaction to the referrer
+                    var referralShareTx = await TxUtils.PrepareTransaction(subscriptionPaymentRecipient, referrerUser, referralShare, "BITCORNFarms", "$sub referral share", dbContext);
+                    //make sure stat tracking values have been initialized
+                    if (referrerUser.UserStat.TotalReferralRewardsCorn == null)
+                        referrerUser.UserStat.TotalReferralRewardsCorn = 0;
+                    //make sure stat tracking values have been initialized
+                    if (referrerUser.UserStat.TotalReferralRewardsUsdt == null)
+                        referrerUser.UserStat.TotalReferralRewardsUsdt = 0;
+                    //increment total received corn rewards
+                    referrerUser.UserStat.TotalReferralRewardsCorn += referralShare;
+                    //inceremnt total received usdt rewards
+                    referrerUser.UserStat.TotalReferralRewardsUsdt +=
+                        ((referralShare) * (await ProbitApi.GetCornPriceAsync()));
+                    //execute transaction
+                    if (await TxUtils.ExecuteTransaction(referralShareTx, dbContext))
+                    {
+                        //if transaction was made, log & update ytd total
+                        await ReferralUtils.UpdateYtdTotal(dbContext, referrer, referralShare);
+                        var referralTx = await ReferralUtils.LogReferralTx(dbContext, referrerUser.UserId, referralShare, "$sub referral share");
+                        subTx.ReferralTxId = referralTx.ReferralTxId;
+                        await dbContext.SaveAsync();
+                        return true;
                     }
                 }
             }
             return false;
         }
 
-        public static async Task<bool> IsSubbed(BitcornContext dbContext,User user, string subscriptionName, int? tier)
+        public static IQueryable<FullUserSubscriptionInfo> GetActiveSubscription(BitcornContext dbContext, User user, string subscriptionName, int? tier)
         {
-            if (user == null) return false;
-            if (user.IsBanned) return false;
+            if (user == null) return null;
+            if (user.IsBanned) return null;
 
-            var query = GetUserSubscriptions(dbContext,user).Join(dbContext.Subscription,
-                (UserSubcriptionTierInfo info)=>info.SubscriptionTier.SubscriptionId,
-                (Subscription sub)=>sub.SubscriptionId,
-                (info,sub)=>new { 
-                    info,sub
-                }).Where(s=>s.sub.Name.ToLower()==subscriptionName.ToLower());
+            var now = DateTime.Now;
+
+            var query = GetUserSubscriptions(dbContext, user).Join(dbContext.Subscription,
+                (UserSubcriptionTierInfo info) => info.SubscriptionTier.SubscriptionId,
+                (Subscription sub) => sub.SubscriptionId,
+                (info, sub) => new FullUserSubscriptionInfo
+                {
+                    UserSubcriptionTierInfo = info,
+                    Subscription = sub
+                }).Where(s => s.Subscription.Name.ToLower() == subscriptionName.ToLower()
+                    && s.UserSubcriptionTierInfo.UserSubscription.LastSubDate.Value.AddDays(s.Subscription.Duration) > now);
+            //.Where(s => s.userInfo.UserSubscription.LastSubDate.Value.AddDays(s.subscriptionInfo.Duration) > now)
 
             if (tier != null)
             {
-                return await query.Where(s=>s.info.SubscriptionTier.Tier>=tier.Value).AnyAsync();
+                return query.Where(s => s.UserSubcriptionTierInfo.SubscriptionTier.Tier >= tier.Value);
             }
             else
             {
-                return await query.AnyAsync();
+                return query;
             }
+        }
+
+        public static async Task<bool> HasSubscribed(BitcornContext dbContext, User user, string subscriptionName, int? tier)
+        {
+            var query = GetActiveSubscription(dbContext, user, subscriptionName, tier);
+            if (query != null)
+                return await query.AnyAsync();
+            return false;
         }
 
         static async Task PopuplateUserResponse(BitcornContext dbContext, SubRequest subRequest,SubscriptionResponse output, User user)

@@ -164,7 +164,7 @@ namespace BITCORNService.Utils
             var referralTier = await dbContext.ReferralTier.FirstOrDefaultAsync(r => r.Tier == referrer.Tier);
             return amount * referralTier.Bonus;
         }
-
+        public const decimal BONUS_PAYOUT = 4200;
         public static async Task BonusPayout(BitcornContext dbContext, UserReferral userReferral, Referrer referrer, User user, User referrerUser,
             UserStat referrerStat)
         {
@@ -175,11 +175,23 @@ namespace BITCORNService.Utils
                 && userReferral.SyncDate != null
                 && userReferral.Bonus == null
                 && userReferral.ReferrerBonus == null
+                && userReferral.UserSubscriptionId == null
                 && referrer != null
                 && !user.IsBanned
                 && !referrerUser.IsBanned)
             {
-                var amount = 4200;
+                
+                var subQuery = SubscriptionUtils.GetActiveSubscription(dbContext, user, "BITCORNFarms", 1);
+                if (subQuery == null)
+                    return;
+                
+                var userSubInfo = await subQuery.FirstOrDefaultAsync();
+                if (userSubInfo == null)
+                    return;
+                
+                userReferral.UserSubscriptionId = userSubInfo.UserSubcriptionTierInfo.UserSubscription.UserSubscriptionId;
+
+                var amount = BONUS_PAYOUT;
                 var bonusReward = await TxUtils.SendFromBitcornhub(user, amount, "BITCORNFarms", "Referral bonus reward", dbContext);
 
                 if (IsValidReferrer(referrer))

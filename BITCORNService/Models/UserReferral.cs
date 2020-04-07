@@ -21,6 +21,7 @@ namespace BITCORNService.Models
         public DateTime? SignupReward { get; set; }
         public DateTime? Bonus { get; set; }
         public DateTime? ReferrerBonus { get; set; }
+        public int? UserSubscriptionId { get; set; }
         public virtual User User { get; set; }
     }
 }
