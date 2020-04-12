@@ -69,6 +69,16 @@ namespace BITCORNService.Reflection
         {
 
             CacheReflection();
+            if (columns == null)
+            {
+                var output= new Dictionary<int, Dictionary<string, object>>();
+                for (int i = 0; i < primaryKeys.Length; i++)
+                {
+                    output.Add(primaryKeys[i], new Dictionary<string, object>());
+                }
+
+                return output;
+            }
             string[] validColumns;
             if (columns.Length == 1 && columns[0] == "*")
             {

@@ -19,6 +19,5 @@ namespace BITCORNService.Models
         public int SubscriptionId { get; set; }
         public int SubCount { get; set; }
         public virtual User User { get; set; }
-        public virtual SubscriptionTier SubscriptionTier { get; set; }
     }
 }
