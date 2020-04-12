@@ -8,7 +8,7 @@ namespace BITCORNService.Utils.Models
     public class SubRequest 
     {
         public string Platform { get; set; }
-
+        public string Id { get; set; }
         public string SubscriptionName { get; set; }
 
         public int Tier { get; set; }

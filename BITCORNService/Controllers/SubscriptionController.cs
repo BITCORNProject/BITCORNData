@@ -30,28 +30,36 @@ namespace BITCORNService.Controllers
             _dbContext = dbContext;
         }
 
-        [ServiceFilter(typeof(LockUserAttribute))]
         [HttpPost("new")]
         public async Task<ActionResult<SubscriptionResponse>> New([FromBody] SubRequest subRequest)
         {
-            try
-            {
-                var user = this.GetCachedUser();
 
-                var tx = await SubscriptionUtils.Subscribe(_dbContext, user, subRequest);
-                if (tx != null) return tx;
-
-                return StatusCode((int)HttpStatusCode.BadRequest);
-            }
-            catch (Exception e)
+            var platformId = BitcornUtils.GetPlatformId(subRequest.Id);
+            var user = await BitcornUtils.GetUserForPlatform(platformId, _dbContext).FirstOrDefaultAsync();
+            if (user != null && UserLockCollection.Lock(user.UserId))
             {
-                await BITCORNLogger.LogError(_dbContext,e,JsonConvert.SerializeObject(subRequest));
-                throw e;
+                try
+                {
+                    subRequest.Platform = platformId.Platform;
+                    var tx = await SubscriptionUtils.Subscribe(_dbContext, user, subRequest);
+                    if (tx != null) return tx;
+                }
+                catch (Exception e)
+                {
+                    await BITCORNLogger.LogError(_dbContext, e, JsonConvert.SerializeObject(subRequest));
+                    throw e;
+                }
+                finally
+                {
+                    UserLockCollection.Release(user.UserId);
+                }
             }
+
+            return StatusCode((int)HttpStatusCode.BadRequest);
         }
 
-        [HttpGet("available")]
-        public async Task<ActionResult<List<AvailableSubscriptionResponse>>> Available([FromQuery] string subscriptionName = null)
+        [HttpGet("available/{subscriptionName}")]
+        public async Task<ActionResult<List<AvailableSubscriptionResponse>>> Available([FromRoute] string subscriptionName = null)
         {
             try
             {
@@ -64,7 +72,7 @@ namespace BITCORNService.Controllers
                                  Subscription = subscription
                              });
 
-                if (string.IsNullOrEmpty(subscriptionName))
+                if (string.IsNullOrEmpty(subscriptionName)||subscriptionName=="*")
                     subscriptions = await query.ToArrayAsync();
                 else
                     subscriptions = await query.Where(s => s.Subscription.Name.ToLower() == subscriptionName.ToLower()).ToArrayAsync();
@@ -105,8 +113,8 @@ namespace BITCORNService.Controllers
             }
         }
 
-        [HttpGet("user")]
-        public async Task<ActionResult<object>> GetUserSubscriptions([FromQuery] string platformId, [FromQuery] string subscriptionName = null)
+        [HttpGet("user/{platformId}/{subscriptionName}")]
+        public async Task<ActionResult<object>> GetUserSubscriptions([FromRoute] string platformId, [FromRoute] string subscriptionName = null)
         {
             if (string.IsNullOrEmpty(platformId))
                 throw new ArgumentException("platformId");
@@ -128,9 +136,9 @@ namespace BITCORNService.Controllers
                             subscriptionInfo = sub
                         }).Where(s => s.userInfo.UserSubscription.LastSubDate.Value.AddDays(s.subscriptionInfo.Duration) > now);
 
-                    if (!string.IsNullOrEmpty(subscriptionName))
+                    if (string.IsNullOrEmpty(subscriptionName)||subscriptionName=="*")
                     {
-                        return await subscriptionsQuery.Where(q => q.subscriptionInfo.Name.ToLower() == subscriptionName.ToLower()).Select(s => new
+                        return await subscriptionsQuery.Select(s => new
                         {
                             daysLeft = (s.userInfo.UserSubscription.LastSubDate.Value.AddDays(s.subscriptionInfo.Duration) - now).TotalDays,
                             tier = s.userInfo.SubscriptionTier.Tier,
@@ -140,7 +148,7 @@ namespace BITCORNService.Controllers
                     }
                     else
                     {
-                        return await subscriptionsQuery.Select(s => new
+                        return await subscriptionsQuery.Where(q => q.subscriptionInfo.Name.ToLower() == subscriptionName.ToLower()).Select(s => new
                         {
                             daysLeft = (s.userInfo.UserSubscription.LastSubDate.Value.AddDays(s.subscriptionInfo.Duration) - now).TotalDays,
                             tier = s.userInfo.SubscriptionTier.Tier,
@@ -161,8 +169,8 @@ namespace BITCORNService.Controllers
             }
         }
 
-        [HttpGet("issubbed")]
-        public async Task<ActionResult<bool>> IsSubbed([FromQuery] string platformId, [FromQuery] string subscriptionName, [FromQuery] string subTier = null)
+        [HttpGet("hassubscribed/{subscriptionName}/{platformId}")]
+        public async Task<ActionResult<bool>> IsSubbed([FromRoute] string platformId, [FromRoute] string subscriptionName, [FromQuery] string subTier = null)
         {
             if (string.IsNullOrEmpty(platformId))
                 throw new ArgumentException("platformId");
