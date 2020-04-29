@@ -17,7 +17,7 @@ using Newtonsoft.Json;
 
 namespace BITCORNService.Controllers
 {
-    [Authorize]
+    //[Authorize]
     [Route("api/[controller]")]
     [ApiController]
     public class SubscriptionController : ControllerBase
@@ -93,10 +93,17 @@ namespace BITCORNService.Controllers
 
                     decimal actualCost = 0;
                     if (row.SubscriptionTier.CostUsdt != null && row.SubscriptionTier.CostUsdt > 0)
+                    {
                         actualCost = SubscriptionUtils.CalculateUsdtToCornCost(cornUsdt, row.SubscriptionTier);
-
+                        if (row.SubscriptionTier.CostCorn == 0 || row.SubscriptionTier.CostCorn == null)
+                        {
+                            row.SubscriptionTier.CostCorn = actualCost;
+                        }
+                    }
                     else if (row.SubscriptionTier.CostCorn != null && row.SubscriptionTier.CostCorn > 0)
+                    {
                         actualCost = row.SubscriptionTier.CostCorn.Value;
+                    }
 
                     existingEntry.Tiers.Add(new
                     {
@@ -143,7 +150,8 @@ namespace BITCORNService.Controllers
                             daysLeft = (s.userInfo.UserSubscription.LastSubDate.Value.AddDays(s.subscriptionInfo.Duration) - now).TotalDays,
                             tier = s.userInfo.SubscriptionTier.Tier,
                             name = s.subscriptionInfo.Name,
-                            description = s.subscriptionInfo.Description
+                            description = s.subscriptionInfo.Description,
+                            lastSubDate = s.userInfo.UserSubscription.LastSubDate
                         }).ToArrayAsync();
                     }
                     else
@@ -153,7 +161,8 @@ namespace BITCORNService.Controllers
                             daysLeft = (s.userInfo.UserSubscription.LastSubDate.Value.AddDays(s.subscriptionInfo.Duration) - now).TotalDays,
                             tier = s.userInfo.SubscriptionTier.Tier,
                             name = s.subscriptionInfo.Name,
-                            description = s.subscriptionInfo.Description
+                            description = s.subscriptionInfo.Description,
+                            lastSubDate = s.userInfo.UserSubscription.LastSubDate
                         }).ToArrayAsync();
                     }
                 }
@@ -210,5 +219,10 @@ namespace BITCORNService.Controllers
             }
         }
 
+        [HttpGet("cornprice")]
+        public async Task<decimal> cornprice()
+        {
+            return await ProbitApi.GetCornPriceAsync();
+        }
     }
 }
