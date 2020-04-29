@@ -17,7 +17,7 @@ using Newtonsoft.Json;
 
 namespace BITCORNService.Controllers
 {
-    //[Authorize]
+    [Authorize]
     [Route("api/[controller]")]
     [ApiController]
     public class SubscriptionController : ControllerBase
