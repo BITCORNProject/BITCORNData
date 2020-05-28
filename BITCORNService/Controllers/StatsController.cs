@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Linq;
+using System.Net;
 using System.Threading.Tasks;
 using BITCORNService.Models;
 using BITCORNService.Utils.DbActions;
@@ -39,5 +40,26 @@ namespace BITCORNService.Controllers
             return Convert.ToDecimal(user.UserStat.TotalReceivedBitcornRains + user.UserStat.TotalReceivedBitcornTips);
         }
 
+        [HttpPost("leaderboard/{orderby}")]
+        public async Task<ActionResult<object>> Leaderboard([FromRoute] string orderby)
+        {
+            var properties = typeof(UserStat)
+                    .GetProperties()
+                    .Select(p => p.Name.ToLower())
+                    .ToArray();
+            if (properties.Contains(orderby.ToLower()))
+            {
+                return await _dbContext.UserStat.OrderByDescending(orderby).Join(_dbContext.UserIdentity,
+                               (stats) => stats.UserId,
+                               (identity) => identity.UserId,
+                               (s, i) => new
+                               {
+                                   identity = i,
+                                   stats = s
+                               }).Take(100).ToArrayAsync();
+            }
+            return StatusCode((int)HttpStatusCode.BadRequest);
+
+        }
     }
 }
