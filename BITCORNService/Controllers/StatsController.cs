@@ -40,7 +40,7 @@ namespace BITCORNService.Controllers
             return Convert.ToDecimal(user.UserStat.TotalReceivedBitcornRains + user.UserStat.TotalReceivedBitcornTips);
         }
 
-        [HttpPost("leaderboard/{orderby}")]
+        [HttpGet("leaderboard/{orderby}")]
         public async Task<ActionResult<object>> Leaderboard([FromRoute] string orderby)
         {
             var properties = typeof(UserStat)
