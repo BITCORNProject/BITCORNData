@@ -47,16 +47,27 @@ namespace BITCORNService.Controllers
                     .GetProperties()
                     .Select(p => p.Name.ToLower())
                     .ToArray();
+
             if (properties.Contains(orderby.ToLower()))
             {
                 return await _dbContext.UserStat.OrderByDescending(orderby).Join(_dbContext.UserIdentity,
                                (stats) => stats.UserId,
                                (identity) => identity.UserId,
-                               (s, i) => new
+                               (selectedStats, userIdentity) => new
                                {
-                                   identity = i,
-                                   stats = s
-                               }).Take(100).ToArrayAsync();
+                                   identity = userIdentity,
+                                   stats = selectedStats
+                               }).Join(_dbContext.User,
+                               (info) => info.stats.UserId,
+                               (user) => user.UserId,
+                               (selectedInfo, user) => new
+                               {
+                                   identity = selectedInfo.identity,
+                                   stats = selectedInfo.stats,
+                                   isBanned = user.IsBanned
+                               })
+                               .Where(u => !u.isBanned && u.identity.UserId != Utils.Tx.TxUtils.BitcornHubPK)
+                               .Take(100).ToArrayAsync();
             }
             return StatusCode((int)HttpStatusCode.BadRequest);
 

@@ -40,14 +40,20 @@ namespace BITCORNService.Controllers
 			{
 				if (properties.Contains(orderby.ToLower()))
 				{
-					return await _dbContext.BattlegroundsUser.Where(u=>u.HostId== userId).OrderByDescending(orderby).Join(_dbContext.UserIdentity,
+					return await _dbContext.BattlegroundsUser.Where(u => u.HostId == userId).OrderByDescending(orderby).Join(_dbContext.UserIdentity,
 						(stats) => stats.UserId,
 						(identity) => identity.UserId,
 						(s, i) => new
 						{
 							name = i.TwitchUsername,
 							stats = s
-						}).Take(100).ToArrayAsync();
+						}).Join(_dbContext.User, (info) => info.stats.UserId, (user) => user.UserId, (selectedInfo, selectedUser) => new
+						{
+							name = selectedInfo.name,
+							stats = selectedInfo.stats,
+							isBanned = selectedUser.IsBanned
+
+						}).Where(u => !u.isBanned).Take(100).ToArrayAsync();
 
 				}
 			}
