@@ -54,6 +54,7 @@ namespace BITCORNService.Utils.Stats
                     RedditUsername = user.RedditUsername
 
                 });
+
             var sent = await sentQuery.ToArrayAsync();
             var sentGrouping = sent.GroupBy(data => data.TxGroupId);
             foreach (var tx in sentGrouping)
@@ -65,10 +66,7 @@ namespace BITCORNService.Utils.Stats
                 {
                     output.Action = "sent";
                     output.BlockchainTxId = received.BlockchainTxId;
-                    if (received.BlockchainTxId != null)
-                    {
-                        Console.WriteLine("not null:"+received.BlockchainTxId);
-                    }
+                    
                     output.CornAddy = received.CornAddy;
                     output.Platform = received.Platform;
                     output.Time = received.Timestamp.Value;
@@ -110,10 +108,7 @@ namespace BITCORNService.Utils.Stats
                 var output = new TxRecordOutput();
                 output.Action = "receive";
                 output.BlockchainTxId = received.BlockchainTxId;
-                if (received.BlockchainTxId != null)
-                {
-                    Console.WriteLine("not null:" + received.BlockchainTxId);
-                }
+                
                 output.Platform = received.Platform;
                 output.Time = received.Timestamp.Value;
                 output.Amount = received.Amount.Value;
@@ -125,28 +120,52 @@ namespace BITCORNService.Utils.Stats
             return records.ToArray();
         }
 
-        public static async Task<TxRecordOutput[]> ListTransactions(BitcornContext dbContext, int user, int offset, int limit)
+        public static async Task<TxRecordOutput[]> ListTransactions(BitcornContext dbContext, int user, int offset, int limit, string[] txTypes)
         {
-            var transactions = await CornTxUtils.GetFullTransactionIds(dbContext, user, offset, limit);
+            var transactions = await CornTxUtils.GetFullTransactionIds(dbContext, user, offset, limit, txTypes);
+            
             List<TxRecordOutput> outputs = new List<TxRecordOutput>();
             outputs.AddRange(await ListSentTransactions(dbContext, user, transactions));
-            outputs.AddRange(await ListReceivedTransactions(dbContext,user,transactions));
-            outputs.Sort((a,b)=>b.Time.CompareTo(a.Time));
-            return outputs.ToArray();
+            
+            outputs.AddRange(await ListReceivedTransactions(dbContext, user, transactions));
+            
+            outputs.Sort((a, b) => b.Time.CompareTo(a.Time));
+
+            return outputs.Skip(offset).Take(limit).ToArray();
         }
-        public static async Task<HashSet<string>> GetFullTransactionIds(BitcornContext dbContext, int user,int offset = 0,int limit = 100)
+
+        public static async Task<HashSet<string>> GetFullTransactionIds(BitcornContext dbContext, int user,int offset = 0,int limit = 100, string[] txTypes = null)
         {
             HashSet<string> transactions = new HashSet<string>();
             using (var command = dbContext.Database.GetDbConnection().CreateCommand())
             {
-                var sql = new StringBuilder($"SELECT {nameof(CornTx.TxGroupId)}, {nameof(CornTx.CornTxId)}, {nameof(CornTx.ReceiverId)}, {nameof(CornTx.SenderId)} FROM (");
-                sql.Append($"SELECT {nameof(CornTx.TxGroupId)}, {nameof(CornTx.CornTxId)}, {nameof(CornTx.ReceiverId)}, {nameof(CornTx.SenderId)},");
-                sql.Append($"Row_number() OVER(PARTITION BY {nameof(CornTx.TxGroupId)} ORDER BY {nameof(CornTx.CornTxId)}) rn FROM {nameof(CornTx)}) t");
-                sql.Append($" WHERE rn = 1 and ({nameof(CornTx.ReceiverId)} = {user} or {nameof(CornTx.SenderId)} = {user}) ");
-                sql.Append($"order by {nameof(CornTx.CornTxId)} desc ");
-                sql.Append($" offset {offset} rows");
-                sql.Append($" fetch next {limit} rows only");
+                bool txTypesDefined = false;
 
+                if (txTypes != null && txTypes.Length > 0)
+                {
+                    txTypes = txTypes.Where(tx => tx == "$withdraw" || tx == "$rain" || tx == "$tipcorn" || tx == "receive").ToArray();
+                    txTypesDefined = txTypes.Length > 0;
+                }
+                var sql = new StringBuilder($"(select distinct  {nameof(CornTx.TxGroupId)} from  ");
+                sql.Append($" (select * from {nameof(CornTx)} where ({nameof(CornTx.ReceiverId)} = {user} or {nameof(CornTx.SenderId)} = {user}) ");
+                //txTypesDefined = false;
+                if (txTypesDefined)
+                {
+                    sql.Append($" and {nameof(CornTx.TxType)} in ( ");
+                    //{string.Join(",", txTypes)}
+                    for (int i = 0; i < txTypes.Length; i++)
+                    {
+                        sql.Append($"'{txTypes[i]}'");
+                        if (i != txTypes.Length - 1)
+                        {
+                            sql.Append(',');
+                        }
+                    }
+                    sql.Append(") ");
+                }
+
+                sql.Append(" ) t) ");
+                
                 command.CommandText = sql.ToString();
                 command.CommandType = CommandType.Text;
 

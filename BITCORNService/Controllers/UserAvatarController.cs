@@ -25,8 +25,8 @@ namespace BITCORNService.Controllers
         {
             this._dbContext = dbContext;
         }
-        [HttpGet("{id}")]
-        public async Task<ActionResult<object>> Get(string id)
+        [HttpGet("{platform}/{id}")]
+        public async Task<ActionResult<object>> Get([FromRoute]string platform,[FromRoute]string id)
         {
             try
             {
@@ -45,8 +45,7 @@ namespace BITCORNService.Controllers
 
                 if (user != null)
                 {
-                    throw new NotImplementedException();
-                    return GameUtils.GetAvatar(_dbContext,user,"");
+                    return await GameUtils.GetAvatar(_dbContext,user, platform);
                 }
                 throw new NotImplementedException();
             }

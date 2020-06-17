@@ -82,7 +82,7 @@ namespace BITCORNService.Controllers
             {
                 if (this.GetCachedUser() != null)
                     throw new InvalidOperationException();
-                var receipts = await WalletUtils.Deposit(_dbContext, request);
+                var receipts = await WalletUtils.Deposit(_dbContext, request, _configuration);
                 foreach (var receipt in receipts)
                 {
                     if (receipt.Amount >= 100000)

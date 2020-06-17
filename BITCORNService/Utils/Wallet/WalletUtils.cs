@@ -149,7 +149,7 @@ namespace BITCORNService.Utils.Wallet
         {
             return !string.IsNullOrEmpty(accessToken);
         }
-        public static async Task<CornTx> DebitWithdrawTx(string cornaddy,string txId, User user, WalletServer server, decimal amount, BitcornContext dbContext, string platform)
+        public static async Task<CornTx> DebitWithdrawTx(string cornaddy,string txId, User user, WalletServer server, decimal amount, BitcornContext dbContext, string platform, int emptyUser)
         {
             if (user.UserWallet.Balance >= amount)
             {
@@ -165,7 +165,7 @@ namespace BITCORNService.Utils.Wallet
                 log.TxType = "$withdraw";
                 log.TxGroupId = Guid.NewGuid().ToString();
                 log.Platform = platform;
-                log.ReceiverId = null;
+                log.ReceiverId = emptyUser;
                 log.SenderId = user.UserId;
                 log.CornAddy = cornaddy;
                 dbContext.CornTx.Add(log);
@@ -210,7 +210,7 @@ namespace BITCORNService.Utils.Wallet
                     if (!response.IsError)
                     {
                         string txId = response.GetParsedContent();
-                        await DebitWithdrawTx(cornAddy, txId, user, server, amount, dbContext, platform);
+                        await DebitWithdrawTx(cornAddy, txId, user, server, amount, dbContext, platform, int.Parse(configuration["Config:EmptyUserId"]));
                         cornResponse.WalletObject = txId;
 
                     }
@@ -246,7 +246,7 @@ namespace BITCORNService.Utils.Wallet
             return cornResponse;
         }
                 
-        public static async Task<CornTx[]> Deposit(BitcornContext dbContext, WalletDepositRequest request)
+        public static async Task<CornTx[]> Deposit(BitcornContext dbContext, WalletDepositRequest request, IConfiguration configuration)
         {
             var receipts = new List<CornTx>();
             try
@@ -273,8 +273,10 @@ namespace BITCORNService.Utils.Wallet
                             var cornTx = new CornTx();
                             cornTx.Amount = amount;
                             cornTx.BlockchainTxId = txid;
+                            cornTx.CornAddy = address;
+
                             cornTx.ReceiverId = wallet.UserId;
-                            cornTx.SenderId = null;
+                            cornTx.SenderId = int.Parse(configuration["Config:EmptyUserId"]);
                             cornTx.CornAddy = address;
                             cornTx.Timestamp = DateTime.Now;
                             cornTx.TxType = TransactionType.receive.ToString();

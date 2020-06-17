@@ -698,7 +698,7 @@ namespace BITCORNServiceTests
                 var user = dbContext.TwitchQuery(_configuration["Config:TestFromUserId"]).FirstOrDefault();
                 var server = dbContext.WalletServer.FirstOrDefault(u=>u.Index==user.UserWallet.WalletServer);
 
-                await WalletUtils.DebitWithdrawTx("testaddr","test",user,server,amount,dbContext, "test");
+                await WalletUtils.DebitWithdrawTx("testaddr","test",user,server,amount,dbContext, "test", int.Parse(_configuration["Config:EmptyUserId"]));
 
                 using (var dbContext2 = TestUtils.CreateDatabase())
                 {
@@ -724,7 +724,7 @@ namespace BITCORNServiceTests
 
                 var amount = user.UserWallet.Balance.Value+10;
                 var server = dbContext.WalletServer.FirstOrDefault(u => u.Index == user.UserWallet.WalletServer);
-                await WalletUtils.DebitWithdrawTx("test addr","test", user, server, amount, dbContext, "test");
+                await WalletUtils.DebitWithdrawTx("test addr","test", user, server, amount, dbContext, "test", int.Parse(_configuration["Config:EmptyUserId"]));
 
                 using (var dbContext2 = TestUtils.CreateDatabase())
                 {

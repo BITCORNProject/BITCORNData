@@ -66,6 +66,21 @@ namespace BITCORNService.Controllers
             return StatusCode(404);
         }
 
+        [HttpGet("transactions/{id}/{offset}/{amount}/{txTypes}")]
+        public async Task<ActionResult<object>> Transactions(string id,int offset,int amount,string txTypes= null)
+        {
+            var platformId = BitcornUtils.GetPlatformId(id);
+            var user = await BitcornUtils.GetUserForPlatform(platformId, _dbContext).FirstOrDefaultAsync();
+            if (user != null)
+            {
+                string[] txTypesArr = null;
+                if (!string.IsNullOrEmpty(txTypes)) txTypesArr = txTypes.Split(" ");
+
+                return await Utils.Stats.CornTxUtils.ListTransactions(_dbContext, user.UserId, offset, amount, txTypesArr);
+            }
+            return StatusCode(404);
+        }
+
         [ServiceFilter(typeof(CacheUserAttribute))]
         [HttpPost("{id}/[action]")]
         public async Task<ActionResult<FullUserAndReferrer>> FullUser([FromRoute] string id)
