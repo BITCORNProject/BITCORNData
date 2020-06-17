@@ -40,8 +40,8 @@ namespace BITCORNService.Controllers
             return Convert.ToDecimal(user.UserStat.TotalReceivedBitcornRains + user.UserStat.TotalReceivedBitcornTips);
         }
 
-        [HttpGet("leaderboard/{orderby}")]
-        public async Task<ActionResult<object>> Leaderboard([FromRoute] string orderby)
+        [HttpGet("leaderboard/{orderby}/{nameProvider}")]
+        public async Task<ActionResult<object>> Leaderboard([FromRoute] string orderby, [FromRoute] string nameProvider)
         {
             var properties = typeof(UserStat)
                     .GetProperties()
@@ -50,7 +50,7 @@ namespace BITCORNService.Controllers
 
             if (properties.Contains(orderby.ToLower()))
             {
-                return await _dbContext.UserStat.OrderByDescending(orderby).Join(_dbContext.UserIdentity,
+                var query = _dbContext.UserStat.OrderByDescending(orderby).Join(_dbContext.UserIdentity,
                                (stats) => stats.UserId,
                                (identity) => identity.UserId,
                                (selectedStats, userIdentity) => new
@@ -66,8 +66,22 @@ namespace BITCORNService.Controllers
                                    stats = selectedInfo.stats,
                                    isBanned = user.IsBanned
                                })
-                               .Where(u => !u.isBanned && u.identity.UserId != Utils.Tx.TxUtils.BitcornHubPK)
-                               .Take(100).ToArrayAsync();
+                               .Where(u => !u.isBanned && u.identity.UserId != Utils.Tx.TxUtils.BitcornHubPK);
+
+                if (!string.IsNullOrEmpty(nameProvider))
+                {
+                    var name = nameProvider.ToLower();
+                    if (name == "twitchusername")
+                        query = query.Where(u => u.identity.TwitchUsername != "" && u.identity.TwitchUsername != null);
+                    else if (name == "discordusername")
+                        query = query.Where(u => u.identity.DiscordUsername != "" && u.identity.DiscordUsername != null);
+                    else if (name == "twitterusername")
+                        query = query.Where(u => u.identity.TwitterUsername != "" && u.identity.TwitterUsername != null);
+                    else if (name == "redditusername")
+                        query = query.Where(u => u.identity.RedditId != "" && u.identity.RedditId != null);
+                }
+
+                return await query.Take(100).ToArrayAsync();
             }
             return StatusCode((int)HttpStatusCode.BadRequest);
 

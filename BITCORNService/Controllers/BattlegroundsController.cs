@@ -53,7 +53,7 @@ namespace BITCORNService.Controllers
 							stats = selectedInfo.stats,
 							isBanned = selectedUser.IsBanned
 
-						}).Where(u => !u.isBanned).Take(100).ToArrayAsync();
+						}).Where(u => !u.isBanned && (u.name != "" && u.name != null)).Take(100).ToArrayAsync();
 
 				}
 			}
