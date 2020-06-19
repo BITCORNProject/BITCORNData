@@ -209,6 +209,9 @@ namespace BITCORNService.Migrations
                     b.Property<string>("ETag")
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<bool>("EnableSubscriptionRewards")
+                        .HasColumnType("bit");
+
                     b.Property<string>("Key")
                         .HasColumnType("nvarchar(max)");
 
@@ -227,6 +230,109 @@ namespace BITCORNService.Migrations
                         .IsUnique();
 
                     b.ToTable("Referrer");
+                });
+
+            modelBuilder.Entity("BITCORNService.Models.SocialIdentity", b =>
+                {
+                    b.Property<string>("PlatformId")
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<DateTime>("Timestamp")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("PlatformId");
+
+                    b.ToTable("SocialIdentity");
+                });
+
+            modelBuilder.Entity("BITCORNService.Models.SubTx", b =>
+                {
+                    b.Property<int>("SubTxId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasAnnotation("SqlServer:ValueGenerationStrategy", SqlServerValueGenerationStrategy.IdentityColumn);
+
+                    b.Property<decimal?>("CostCorn")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal?>("CostUsd")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<int?>("ReferralTxId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("UserSubscriptionId")
+                        .HasColumnType("int");
+
+                    b.HasKey("SubTxId");
+
+                    b.ToTable("SubTx");
+                });
+
+            modelBuilder.Entity("BITCORNService.Models.Subscription", b =>
+                {
+                    b.Property<int>("SubscriptionId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasAnnotation("SqlServer:ValueGenerationStrategy", SqlServerValueGenerationStrategy.IdentityColumn);
+
+                    b.Property<string>("Description")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("DiscordGuildId")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("Duration")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Name")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int?>("OwnerUserId")
+                        .HasColumnType("int");
+
+                    b.Property<decimal?>("ReferrerPercentage")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<bool>("RestrictReferralRewards")
+                        .HasColumnType("bit");
+
+                    b.HasKey("SubscriptionId");
+
+                    b.ToTable("Subscription");
+                });
+
+            modelBuilder.Entity("BITCORNService.Models.SubscriptionTier", b =>
+                {
+                    b.Property<int>("SubscriptionTierId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasAnnotation("SqlServer:ValueGenerationStrategy", SqlServerValueGenerationStrategy.IdentityColumn);
+
+                    b.Property<decimal?>("CostCorn")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal?>("CostUsd")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal?>("CostUsdt")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("Data")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("SubscriptionId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Tier")
+                        .HasColumnType("int");
+
+                    b.HasKey("SubscriptionTierId");
+
+                    b.ToTable("SubscriptionTier");
                 });
 
             modelBuilder.Entity("BITCORNService.Models.UnclaimedTx", b =>
@@ -303,6 +409,9 @@ namespace BITCORNService.Migrations
                         .HasColumnType("varchar(2048)")
                         .HasMaxLength(2048)
                         .IsUnicode(false);
+
+                    b.Property<DateTime?>("CreationTime")
+                        .HasColumnType("datetime2");
 
                     b.Property<bool>("IsBanned")
                         .ValueGeneratedOnAdd()
@@ -414,6 +523,9 @@ namespace BITCORNService.Migrations
                     b.Property<int>("UserId")
                         .HasColumnType("int");
 
+                    b.Property<int?>("UserSubscriptionId")
+                        .HasColumnType("int");
+
                     b.Property<DateTime?>("WalletDownloadDate")
                         .HasColumnType("datetime2");
 
@@ -491,7 +603,7 @@ namespace BITCORNService.Migrations
                     b.Property<decimal?>("TotalReferralRewardsUsdt")
                         .HasColumnType("decimal(18,2)");
 
-                    b.Property<int>("TotalReferrals")
+                    b.Property<int?>("TotalReferrals")
                         .HasColumnType("int");
 
                     b.Property<decimal?>("TotalSentBitcornViaRains")
@@ -517,8 +629,20 @@ namespace BITCORNService.Migrations
                         .HasColumnType("int")
                         .HasAnnotation("SqlServer:ValueGenerationStrategy", SqlServerValueGenerationStrategy.IdentityColumn);
 
-                    b.Property<DateTime?>("FarmsSubDate")
+                    b.Property<DateTime?>("FirstSubDate")
                         .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("LastSubDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("SubCount")
+                        .HasColumnType("int");
+
+                    b.Property<int>("SubscriptionId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("SubscriptionTierId")
+                        .HasColumnType("int");
 
                     b.Property<int>("UserId")
                         .HasColumnType("int");

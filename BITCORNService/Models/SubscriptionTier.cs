@@ -11,6 +11,7 @@ namespace BITCORNService.Models
         public string Data { get; set; }
         public decimal? CostCorn { get; set; }
         public decimal? CostUsdt { get; set; }
+        public decimal? CostUsd { get; set; }
 
     }
 }

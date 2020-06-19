@@ -58,7 +58,7 @@ namespace BITCORNService.Controllers
             return StatusCode((int)HttpStatusCode.BadRequest);
         }
 
-        [HttpGet("available/{subscriptionName}")]
+        [HttpGet("available/{subscriptionName?}")]
         public async Task<ActionResult<List<AvailableSubscriptionResponse>>> Available([FromRoute] string subscriptionName = null)
         {
             try

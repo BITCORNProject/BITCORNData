@@ -203,6 +203,8 @@ namespace BITCORNService.Utils
                         subTx.UserId = user.UserId;
                         subTx.SubTxId = transactions[0].TxId.Value;
                         subTx.UserSubscriptionId = sub.UserSubscriptionId;
+                        subTx.CostCorn = requestedTierInfo.CostCorn;
+                        subTx.CostUsd = requestedTierInfo.CostUsd;
                         dbContext.SubTx.Add(subTx);
 
                         //if user was not subscribed before, attempt to share the payment with a referrer
