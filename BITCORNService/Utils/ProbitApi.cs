@@ -12,17 +12,35 @@ namespace BITCORNService.Utils
 {
     public static class ProbitApi
     {
-        public static async Task<decimal> GetCornPriceAsync()
+        static async Task<decimal> GetPrice(string market)
         {
+
             var client = new RestClient("https://api.probit.com");
             var request = new RestRequest("/api/exchange/v1/ticker", Method.POST);
-            request.AddQueryParameter("market_ids", "CORN-USDT");
+            request.AddQueryParameter("market_ids", market);
 
             var response = await client.ExecuteGetTaskAsync(request);
-           
+
             var tickers = JsonConvert.DeserializeObject<Tickers>(response.Content);
 
             return Convert.ToDecimal(tickers.data[0].last, CultureInfo.InvariantCulture);
+        }
+
+        public static async Task<decimal> GetCornPriceAsync()
+        {
+            try
+            {
+                var cornBtc = await GetPrice("CORN-BTC");
+                var btcUsdt = await GetPrice("BTC-USDT");
+                return cornBtc * btcUsdt;
+             
+            }
+            catch
+            {
+
+                return -1;
+            }
+
         }
     }
 
