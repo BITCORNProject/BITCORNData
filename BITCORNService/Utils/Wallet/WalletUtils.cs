@@ -168,6 +168,9 @@ namespace BITCORNService.Utils.Wallet
                 log.ReceiverId = emptyUser;
                 log.SenderId = user.UserId;
                 log.CornAddy = cornaddy;
+
+                var price = log.UsdtPrice = await ProbitApi.GetCornPriceAsync();
+                log.TotalUsdtValue = price * amount;
                 dbContext.CornTx.Add(log);
                 await dbContext.SaveAsync();
                 return log;
@@ -282,6 +285,9 @@ namespace BITCORNService.Utils.Wallet
                             cornTx.TxType = TransactionType.receive.ToString();
                             cornTx.Platform = "wallet-server";
                             cornTx.TxGroupId = Guid.NewGuid().ToString();
+                            var price = cornTx.UsdtPrice = await ProbitApi.GetCornPriceAsync();
+                            cornTx.TotalUsdtValue = price * amount;
+
                             var deposit = new CornDeposit();
                             deposit.TxId = txid;
                             deposit.UserId = wallet.UserId;
