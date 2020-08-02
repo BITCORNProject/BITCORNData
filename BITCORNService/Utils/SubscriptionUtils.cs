@@ -148,7 +148,8 @@ namespace BITCORNService.Utils
             UserSubscription sub = null;
             TxRequest txRequest = null;
             //if current user sub state is not subscribed & the client confirmed the cost to be equal to the cost amount, attempt to subscribe
-            if (subState != SubscriptionState.Subscribed && subRequest.Amount == cost)
+            var costDiff = Math.Abs(subRequest.Amount - cost);
+            if (subState != SubscriptionState.Subscribed && costDiff<=100000)//subRequest.Amount == cost)
             {
                 //initialize recipient of the transaction
                 string[] to = new string[1];

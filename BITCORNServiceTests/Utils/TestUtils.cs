@@ -178,6 +178,8 @@ namespace BITCORNServiceTests.Utils
             {
                 dbContext.Database.ExecuteSqlRaw("delete socialidentity");
                 dbContext.Database.ExecuteSqlRaw("delete subtx");
+                dbContext.Database.ExecuteSqlRaw("delete corndeposit");
+
                 var referral = dbContext.UserReferral.FirstOrDefault(u => u.UserId == user.UserId);
                 
                 if(referral!=null)
