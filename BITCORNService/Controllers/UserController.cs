@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using BITCORNService.Models;
 using BITCORNService.Reflection;
 using BITCORNService.Utils;
+using BITCORNService.Utils.Auth;
 using BITCORNService.Utils.DbActions;
 using BITCORNService.Utils.LockUser;
 using BITCORNService.Utils.Models;
@@ -114,6 +115,7 @@ namespace BITCORNService.Controllers
 
         [ServiceFilter(typeof(CacheUserAttribute))]
         [HttpPost("ban")]
+        [Authorize(Policy = AuthScopes.BanUser)]
         public async Task<ActionResult<object>> Ban([FromBody] BanUserRequest request)
         {
             if (this.GetCachedUser() != null)

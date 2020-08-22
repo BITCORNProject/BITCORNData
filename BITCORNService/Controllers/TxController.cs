@@ -7,6 +7,7 @@ using System.Text;
 using System.Threading.Tasks;
 using BITCORNService.Models;
 using BITCORNService.Utils;
+using BITCORNService.Utils.Auth;
 using BITCORNService.Utils.DbActions;
 using BITCORNService.Utils.LockUser;
 using BITCORNService.Utils.Models;
@@ -19,7 +20,7 @@ using Microsoft.Extensions.Configuration;
 using Newtonsoft.Json;
 namespace BITCORNService.Controllers
 {
-    [Authorize]
+    [Authorize(Policy = AuthScopes.SendTransaction)]
     [ServiceFilter(typeof(LockUserAttribute))]
     [Route("api/[controller]")]
     [ApiController]

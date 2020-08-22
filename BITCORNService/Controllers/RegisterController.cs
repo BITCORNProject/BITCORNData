@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using BITCORNService.Models;
 using BITCORNService.Platforms;
 using BITCORNService.Utils;
+using BITCORNService.Utils.Auth;
 using BITCORNService.Utils.DbActions;
 using BITCORNService.Utils.LockUser;
 using BITCORNService.Utils.Models;
@@ -29,6 +30,7 @@ namespace BITCORNService.Controllers
             _configuration = configuration;
         }
         [ServiceFilter(typeof(CacheUserAttribute))]
+        [Authorize(Policy = AuthScopes.AddUser)]
         [HttpPost("newuser")]
         public async Task<FullUser> RegisterNewUser([FromBody]Auth0User auth0User, [FromQuery] string referral = null)
         {
@@ -115,6 +117,7 @@ namespace BITCORNService.Controllers
             }
         }
 
+        [Authorize(Policy = AuthScopes.ChangeUser)]
         [ServiceFilter(typeof(CacheUserAttribute))]
         [HttpPost]
         public async Task<PlatformSyncResponse> Register([FromBody] RegistrationData registrationData)

@@ -5,6 +5,7 @@ using System.Net;
 using System.Threading.Tasks;
 using BITCORNService.Models;
 using BITCORNService.Utils;
+using BITCORNService.Utils.Auth;
 using BITCORNService.Utils.DbActions;
 using BITCORNService.Utils.LockUser;
 using BITCORNService.Utils.Models;
@@ -30,6 +31,7 @@ namespace BITCORNService.Controllers
             _dbContext = dbContext;
         }
 
+        [Authorize(Policy = AuthScopes.ChangeUser)]
         [HttpPost("new")]
         public async Task<ActionResult<SubscriptionResponse>> New([FromBody] SubRequest subRequest)
         {

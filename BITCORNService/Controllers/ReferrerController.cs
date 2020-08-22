@@ -5,6 +5,7 @@ using System.Net;
 using System.Threading.Tasks;
 using BITCORNService.Models;
 using BITCORNService.Utils;
+using BITCORNService.Utils.Auth;
 using BITCORNService.Utils.DbActions;
 using BITCORNService.Utils.Models;
 using Microsoft.AspNetCore.Authorization;
@@ -28,6 +29,7 @@ namespace BITCORNService.Controllers
         }
         // POST: api/Referrer
         [HttpPost]
+        [Authorize(Policy = AuthScopes.ChangeUser)]
         public async Task<HttpStatusCode> Post([FromBody] ReferralUpload referralUpload)
         {
             if (!_dbContext.Referrer.Any(r =>r.UserId == referralUpload.UserId))
