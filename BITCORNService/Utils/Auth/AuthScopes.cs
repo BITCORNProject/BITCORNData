@@ -14,6 +14,8 @@ namespace BITCORNService.Utils.Auth
         public const string ChangeUser = "user:change";
         public const string AddUser = "user:add";
         public const string BanUser = "user:ban";
-
+        public const string ReadUser = "user:read";
+        public const string CreateOrder = "order:create";
+        public const string AuthorizeOrder = "order:authorize";
     }
 }
