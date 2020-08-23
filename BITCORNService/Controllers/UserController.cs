@@ -34,9 +34,11 @@ namespace BITCORNService.Controllers
             _dbContext = dbContext;
             _config = config;
         }
+        
         // POST: api/User   
         [ServiceFilter(typeof(CacheUserAttribute))]
         [HttpPost("{id}")]
+        [Authorize(Policy = AuthScopes.ReadUser)]
         public async Task<ActionResult<FullUser>> Post([FromRoute] string id)
         {
             if (this.GetCachedUser() != null)
@@ -54,7 +56,9 @@ namespace BITCORNService.Controllers
                 return StatusCode(404);
             }
         }
-        
+
+
+        [Authorize(Policy = AuthScopes.ReadUser)]
         [HttpGet("userid/{id}")]
         public async Task<ActionResult<int>> UserId(string id)
         {
@@ -67,6 +71,8 @@ namespace BITCORNService.Controllers
             return StatusCode(404);
         }
 
+
+        [Authorize(Policy = AuthScopes.ReadTransaction)]
         [HttpGet("transactions/{id}/{offset}/{amount}/{txTypes}")]
         public async Task<ActionResult<object>> Transactions(string id,int offset,int amount,string txTypes= null)
         {
@@ -84,6 +90,7 @@ namespace BITCORNService.Controllers
 
         [ServiceFilter(typeof(CacheUserAttribute))]
         [HttpPost("{id}/[action]")]
+        [Authorize(Policy = AuthScopes.ReadUser)]
         public async Task<ActionResult<FullUserAndReferrer>> FullUser([FromRoute] string id)
         {
             if (this.GetCachedUser() != null)
@@ -105,6 +112,7 @@ namespace BITCORNService.Controllers
 
         [ServiceFilter(typeof(CacheUserAttribute))]
         [HttpGet("me")]
+        [Authorize(Policy = AuthScopes.ReadUser)]
         public ActionResult<FullUser> Me()
         {
             User user = null;
@@ -152,12 +160,15 @@ namespace BITCORNService.Controllers
         }
         [ServiceFilter(typeof(CacheUserAttribute))]
         [HttpGet("{name}/[action]")]
+        [Authorize(Policy = AuthScopes.ReadUser)]
         public async Task<bool> Check(string name)
         {
             if (this.GetCachedUser() != null)
                 throw new InvalidOperationException();
             return await _dbContext.User.AnyAsync(u => u.Username == name);
         }
+
+        [Authorize(Policy = AuthScopes.ChangeUser)]
         [ServiceFilter(typeof(CacheUserAttribute))]
         [HttpPut("[action]")]
         public async Task<bool> Update([FromBody] Auth0IdUsername auth0IdUsername)

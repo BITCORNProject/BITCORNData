@@ -19,7 +19,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace BITCORNService.Controllers
 {
-	[Authorize]
+	[Authorize(Policy = AuthScopes.ReadUser)]
 	[Route("api/game/[controller]")]
 	[ApiController]
 	public class BattlegroundsController : ControllerBase
