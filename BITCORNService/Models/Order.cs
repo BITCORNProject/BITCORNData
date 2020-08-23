@@ -13,5 +13,7 @@
         public string OrderId { get; set; }
         
         public int OrderState { get; set; }
+
+        public int? TxId { get; set; }
     }
 }
