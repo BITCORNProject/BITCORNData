@@ -43,8 +43,12 @@ namespace BITCORNService.Utils.LockUser
             if (split.Length == 1)
             {
                 var user= await dbContext.Auth0Query(claim.Value).FirstOrDefaultAsync();
-                if(user!=null)
+                if (user != null)
+                {
                     context.HttpContext.Items.Add("user", user);
+                    context.HttpContext.Items.Add("usermode", 0);
+
+                }
                 return user;
             }
             else

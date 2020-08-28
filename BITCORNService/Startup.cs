@@ -62,6 +62,14 @@ namespace BITCORNService
                 options.AddPolicy(AuthScopes.BanUser,
                     policy => policy.Requirements.Add(new RequireScope(AuthScopes.BanUser, auth0Domain)));
 
+                options.AddPolicy(AuthScopes.ReadUser, 
+                    policy => policy.Requirements.Add(new RequireScope(AuthScopes.ReadUser, auth0Domain)));
+
+                options.AddPolicy(AuthScopes.CreateOrder,
+                    policy => policy.Requirements.Add(new RequireScope(AuthScopes.CreateOrder, auth0Domain)));
+
+                options.AddPolicy(AuthScopes.AuthorizeOrder,
+                    policy => policy.Requirements.Add(new RequireScope(AuthScopes.AuthorizeOrder, auth0Domain)));
             });
 
             services.AddSingleton<IAuthorizationHandler, RequireScopeHandler>();

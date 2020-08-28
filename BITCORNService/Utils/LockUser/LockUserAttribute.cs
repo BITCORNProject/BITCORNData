@@ -42,7 +42,11 @@ namespace BITCORNService.Utils.LockUser
                     }
                     user = await query.FirstOrDefaultAsync();
                     if (user != null)
+                    {
                         context.HttpContext.Items.Add("user", user);
+
+                        context.HttpContext.Items.Add("usermode", 1);
+                    }
                 }
             }
             catch (Exception e)

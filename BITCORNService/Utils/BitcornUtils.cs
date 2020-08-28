@@ -72,6 +72,15 @@ namespace BITCORNService.Utils
             return null;
         }
 
+        public static int? GetUserMode(this ControllerBase controller)
+        {
+            if (controller.HttpContext.Items.TryGetValue("usermode", out object val))
+            {
+                return (int)val;
+            }
+            return null;
+        }
+
         public static async Task<Dictionary<string,User>> ToPlatformDictionary(PlatformId[] platformId,BitcornContext dbContext)
         {
             var query = GetUsersForPlatform(platformId,dbContext);

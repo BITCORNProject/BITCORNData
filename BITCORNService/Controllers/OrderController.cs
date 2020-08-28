@@ -20,7 +20,7 @@ namespace BITCORNService.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    [Authorize]
+    //[Authorize]
     public class OrderController : ControllerBase
     {
         private readonly BitcornContext _dbContext;
@@ -31,24 +31,30 @@ namespace BITCORNService.Controllers
             _configuration = configuration;
         }
 
-        [Authorize(Policy = AuthScopes.CreateOrder)]
+
+        [Authorize(Policy = AuthScopes.AuthorizeOrder)]
+        //[Authorize(Policy = AuthScopes.CreateOrder)]
         [ServiceFilter(typeof(CacheUserAttribute))]
-        [HttpPost]
+        [HttpPost("read")]
         /// <summary>
         /// reads stored order by id
         /// </summary>
         public async Task<ActionResult<object>> ReadOrder([FromBody]ReadOrderRequest orderRequest)
         {
-            if (this.GetCachedUser() != null)
-                throw new InvalidOperationException();
+            try
+            { 
+                var checkOrder = await GetOrder(orderRequest.OrderId);
+                if (checkOrder == null) return StatusCode(404);
 
-            var checkOrder = await GetOrder(orderRequest.OrderId);
-            if (checkOrder == null) return StatusCode(404);
-
-            var (order, client) = checkOrder.Value;
-            if (client.ClientId != orderRequest.ClientId) return StatusCode(400);
-            return new OrderOutput(order,client);
-
+                var (order, client) = checkOrder.Value;
+                if (client.ClientId != orderRequest.ClientId) return StatusCode(400);
+                return new OrderOutput(order, client);
+            }
+            catch(Exception e)
+            {
+                Console.WriteLine(e);
+                throw e;
+            }
         }
 
         /// <summary>
@@ -56,8 +62,8 @@ namespace BITCORNService.Controllers
         /// </summary>
         [Authorize(Policy = AuthScopes.CreateOrder)]
         [ServiceFilter(typeof(CacheUserAttribute))]
-        [HttpPost]
-        public async Task<ActionResult> ValidateTransaction([FromBody]ValidateOrderTransactionRequest orderRequest)
+        [HttpPost("validate")]
+        public async Task<ActionResult> ValidateTransaction([FromBody] ValidateOrderTransactionRequest orderRequest)
         {
             if (this.GetCachedUser() != null)
                 throw new InvalidOperationException();
@@ -66,15 +72,15 @@ namespace BITCORNService.Controllers
             if (checkOrder == null) return StatusCode(404);
 
             var (order, client) = checkOrder.Value;
-            if (client.ClientId != orderRequest.ClientId) return StatusCode(400);
+            //if (client.ClientId != orderRequest.ClientId) return StatusCode(400);
 
-            if (orderRequest.TxId == order.TxId) return Ok();
+            if (order.TxId != null && orderRequest.TxId == order.TxId) return Ok();
             return StatusCode(400);
         }
 
         [Authorize(Policy = AuthScopes.CreateOrder)]
         [ServiceFilter(typeof(CacheUserAttribute))]
-        [HttpPost]
+        [HttpPost("create")]
         /// <summary>
         /// called from client server to create an order tht the user will authorize
         /// </summary>
@@ -95,6 +101,7 @@ namespace BITCORNService.Controllers
                     order.OrderName = orderRequest.OrderName;
                     order.OrderId = Guid.NewGuid().ToString();
                     order.OrderState = 0;
+                    order.CreatedAt = DateTime.Now;
 
                     _dbContext.Order.Add(order);
                     await _dbContext.SaveAsync();
@@ -112,13 +119,15 @@ namespace BITCORNService.Controllers
        
         [Authorize(Policy = AuthScopes.AuthorizeOrder)]
         [ServiceFilter(typeof(LockUserAttribute))]
-        [HttpPost]
+        [HttpPost("authorize")]
         /// <summary>
         /// called from client server to create an order tht the user will authorize
         /// </summary>
         public async Task<ActionResult<int>> AuthorizeOrder([FromBody]AuthorizeOrderRequest orderRequest)
         {
             var user = (this.GetCachedUser());
+            if (this.GetUserMode() != null && this.GetUserMode() == 1) throw new NotImplementedException();
+
             if (user != null && !user.IsBanned)
             {
                 var checkOrder = await GetOrder(orderRequest.OrderId);
@@ -128,6 +137,7 @@ namespace BITCORNService.Controllers
                 var (order, client) = checkOrder.Value;
                
                 if (order.OrderState != 0) return StatusCode((int)HttpStatusCode.BadRequest);
+                if (order.ClientId != orderRequest.ClientId) return StatusCode((int)HttpStatusCode.BadRequest);
 
                 var recipientUser = await _dbContext.JoinUserModels()
                     .FirstOrDefaultAsync((u) => u.UserId == client.RecipientUser);
@@ -146,7 +156,7 @@ namespace BITCORNService.Controllers
                     {
                         order.TxId = processInfo.Transactions[0].TxId;
                         order.OrderState = 1;
-
+                        order.CompletedAt = DateTime.Now;
                         await _dbContext.SaveAsync();
                         return order.TxId.Value;
                     }
@@ -196,7 +206,8 @@ namespace BITCORNService.Controllers
         public class AuthorizeOrderRequest
         {
             public string OrderId { get; set; }
-            public string PlatformId { get; set; }
+            
+            public string ClientId { get; set; }
         }
 
         public class ReadOrderRequest
@@ -208,7 +219,7 @@ namespace BITCORNService.Controllers
         {
             public int TxId { get; set; }
             public string OrderId { get; set; }
-            public string ClientId { get; set; }
+
         }
         public class CreateOrderRequest
         {
