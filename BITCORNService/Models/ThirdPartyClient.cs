@@ -8,5 +8,8 @@ namespace BITCORNService.Models
         public string ClientId { get; set; }
         public string ClientName { get; set; }
         public int? RecipientUser { get; set; }
+
+        public decimal AcceptedCostDiff { get; set; }
+        public string Domain { get; set; }
     }
 }

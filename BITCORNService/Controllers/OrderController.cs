@@ -42,13 +42,30 @@ namespace BITCORNService.Controllers
         public async Task<ActionResult<object>> ReadOrder([FromBody]ReadOrderRequest orderRequest)
         {
             try
-            { 
+            {
+                
+                var user = (this.GetCachedUser());
+                if (this.GetUserMode() != null && this.GetUserMode() == 1) throw new NotImplementedException();
+                if (user != null && user.IsBanned) return StatusCode((int)HttpStatusCode.Forbidden);
+                
                 var checkOrder = await GetOrder(orderRequest.OrderId);
-                if (checkOrder == null) return StatusCode(404);
-
+                if (checkOrder == null) return StatusCode((int)HttpStatusCode.NotFound);
+               
                 var (order, client) = checkOrder.Value;
                 if (client.ClientId != orderRequest.ClientId) return StatusCode(400);
-                return new OrderOutput(order, client);
+
+                if (order.OrderState != 0) return StatusCode((int)HttpStatusCode.Gone);
+                var items = await _dbContext.OrderItem.Where(e=>e.OrderId==order.OrderId).ToArrayAsync();
+             
+                var cornPrice = await ProbitApi.GetCornPriceAsync();
+                return new
+                {
+                    orderInfo = new OrderOutput(order, client, items),
+                    cornPrice,
+                    totalCornPrice = items.Select(e => e.CornAmount).Sum(),
+                    totalUsdPrice = items.Select(e => e.UsdAmount).Sum(),
+                    userName = user.UserIdentity.Auth0Nickname
+                };
             }
             catch(Exception e)
             {
@@ -65,17 +82,32 @@ namespace BITCORNService.Controllers
         [HttpPost("validate")]
         public async Task<ActionResult> ValidateTransaction([FromBody] ValidateOrderTransactionRequest orderRequest)
         {
-            if (this.GetCachedUser() != null)
-                throw new InvalidOperationException();
+            try
+            {
+                if (this.GetCachedUser() != null)
+                    throw new InvalidOperationException();
 
-            var checkOrder = await GetOrder(orderRequest.OrderId);
-            if (checkOrder == null) return StatusCode(404);
+                var checkOrder = await GetOrder(orderRequest.OrderId);
+                if (checkOrder == null) return StatusCode(404);
 
-            var (order, client) = checkOrder.Value;
-            //if (client.ClientId != orderRequest.ClientId) return StatusCode(400);
+                var (order, client) = checkOrder.Value;
+                if (order.OrderState != 1) return StatusCode((int)HttpStatusCode.Gone);
+                //if (client.ClientId != orderRequest.ClientId) return StatusCode(400);
 
-            if (order.TxId != null && orderRequest.TxId == order.TxId) return Ok();
-            return StatusCode(400);
+                if (order.TxId != null && orderRequest.TxId == order.TxId)
+                {
+                    order.OrderState = 2;
+                    await _dbContext.SaveAsync();
+                    return Ok();
+
+                }
+                return StatusCode(400);
+            }
+            catch(Exception e)
+            {
+                await BITCORNLogger.LogError(_dbContext,e,JsonConvert.SerializeObject(orderRequest));
+                return StatusCode(500);
+            }
         }
 
         [Authorize(Policy = AuthScopes.CreateOrder)]
@@ -96,16 +128,30 @@ namespace BITCORNService.Controllers
                 {
                     var order = new Order();
                     order.ClientId = client.ClientId;
-                    order.Amount = orderRequest.Amount;
-                    order.OrderDescription = orderRequest.OrderDescription;
-                    order.OrderName = orderRequest.OrderName;
                     order.OrderId = Guid.NewGuid().ToString();
+                    var cornPrice = await ProbitApi.GetCornPriceAsync();
+                    OrderItem[] items = new OrderItem[orderRequest.Items.Length];
+                    for (int i = 0; i < orderRequest.Items.Length; i++)
+                    {
+                        var orderItem = new OrderItem();
+                        orderItem.Name = orderRequest.Items[i].Name;
+                        orderItem.OrderId = order.OrderId;
+
+                        var usdAmount = orderRequest.Items[i].AmountUsd;
+                        var cornAmount = usdAmount / cornPrice;
+                        orderItem.CornAmount = cornAmount;
+                        orderItem.UsdAmount = orderRequest.Items[i].AmountUsd;
+                        items[i] = orderItem;
+                        _dbContext.OrderItem.Add(orderItem);
+                    }
+
                     order.OrderState = 0;
                     order.CreatedAt = DateTime.Now;
 
                     _dbContext.Order.Add(order);
                     await _dbContext.SaveAsync();
-                    return new OrderOutput(order,client);
+                    return new OrderOutput(order, client, items);
+                   
                 }
 
                 return StatusCode(400);
@@ -123,48 +169,84 @@ namespace BITCORNService.Controllers
         /// <summary>
         /// called from client server to create an order tht the user will authorize
         /// </summary>
-        public async Task<ActionResult<int>> AuthorizeOrder([FromBody]AuthorizeOrderRequest orderRequest)
+        public async Task<ActionResult<object>> AuthorizeOrder([FromBody]AuthorizeOrderRequest orderRequest)
         {
-            var user = (this.GetCachedUser());
-            if (this.GetUserMode() != null && this.GetUserMode() == 1) throw new NotImplementedException();
-
-            if (user != null && !user.IsBanned)
+            try
             {
-                var checkOrder = await GetOrder(orderRequest.OrderId);
-                
-                if (checkOrder == null) return StatusCode((int)HttpStatusCode.BadRequest);
-                
-                var (order, client) = checkOrder.Value;
-               
-                if (order.OrderState != 0) return StatusCode((int)HttpStatusCode.BadRequest);
-                if (order.ClientId != orderRequest.ClientId) return StatusCode((int)HttpStatusCode.BadRequest);
+                var user = (this.GetCachedUser());
+                if (this.GetUserMode() != null && this.GetUserMode() == 1) throw new NotImplementedException();
 
-                var recipientUser = await _dbContext.JoinUserModels()
-                    .FirstOrDefaultAsync((u) => u.UserId == client.RecipientUser);
-
-                if (recipientUser != null)
+                if (user != null)
                 {
-                    var processInfo = await TxUtils.PrepareTransaction(user,
-                        recipientUser,
-                        order.Amount,
-                        client.ClientId,
-                        "app:order",
-                        _dbContext);
-
-                    var paymentSuccess = await processInfo.ExecuteTransaction(_dbContext);
-                    if (paymentSuccess)
+                    if (user.IsBanned)
                     {
-                        order.TxId = processInfo.Transactions[0].TxId;
-                        order.OrderState = 1;
-                        order.CompletedAt = DateTime.Now;
-                        await _dbContext.SaveAsync();
-                        return order.TxId.Value;
+                        return StatusCode(403);
                     }
 
-                }
-            }
+                    var checkOrder = await GetOrder(orderRequest.OrderId);
 
-            return StatusCode((int)HttpStatusCode.BadRequest);
+                    if (checkOrder == null) return StatusCode(404);
+                    var (order, client) = checkOrder.Value;
+
+                    if (order.OrderState != 0) return StatusCode((int)HttpStatusCode.Gone);
+                    if (order.ClientId != orderRequest.ClientId) return StatusCode((int)HttpStatusCode.BadRequest);
+
+                    var recipientUser = await _dbContext.JoinUserModels()
+                        .FirstOrDefaultAsync((u) => u.UserId == client.RecipientUser);
+                    var orderItems = await _dbContext.OrderItem.Where(e => e.OrderId == order.OrderId).ToArrayAsync();
+                    var cornPrice = await ProbitApi.GetCornPriceAsync();
+                    var cornOrderSum = orderItems.Select(e => e.CornAmount).Sum();
+                    var cornCurrentSum = orderItems.Select(e => e.UsdAmount / cornPrice).Sum();
+                    var costDiff = Math.Abs(cornCurrentSum - cornOrderSum);
+
+                    if (costDiff <= client.AcceptedCostDiff)
+                    {
+
+                        if (recipientUser != null)
+                        {
+                            var processInfo = await TxUtils.PrepareTransaction(user,
+                                recipientUser,
+                                cornOrderSum,
+                                client.ClientId,
+                                "app:order",
+                                _dbContext);
+
+                            var paymentSuccess = await processInfo.ExecuteTransaction(_dbContext);
+                            if (paymentSuccess)
+                            {
+                                order.TxId = processInfo.Transactions[0].TxId;
+                                order.OrderState = 1;
+                                order.CompletedAt = DateTime.Now;
+                                await _dbContext.SaveAsync();
+                                return (new
+                                {
+                                    txId = order.TxId.Value,
+                                    amount = cornOrderSum
+                                });
+                            }
+                            else
+                            {
+                                return new
+                                {
+                                    txId = -1
+                                };
+                            }
+
+                        }
+                    }
+                    else
+                    {
+                        return StatusCode((int)HttpStatusCode.PaymentRequired);
+                    }
+                }
+
+                return StatusCode((int)HttpStatusCode.BadRequest);
+            }
+            catch(Exception e)
+            {
+                await BITCORNLogger.LogError(_dbContext,e,JsonConvert.SerializeObject(orderRequest));
+                return StatusCode(500);
+            }
         }
         /// <summary>
         /// selects order, thirpartyclient
@@ -188,18 +270,22 @@ namespace BITCORNService.Controllers
         {
             public string ClientName { get; set; }
             public string ClientId { get; set; }
-            public string OrderName { get; set; }
-            public string OrderDescription { get; set; }
-            public decimal Amount { get; set; }
             public string OrderId { get; set; }
-            public OrderOutput(Order order, ThirdPartyClient client)
+            public string Domain { get; set; }
+
+            public object[] Items { get; set; }
+            public OrderOutput(Order order, ThirdPartyClient client, OrderItem[] items)
             {
                 ClientId = client.ClientId;
                 ClientName = client.ClientName;
                 OrderId = order.OrderId;
-                OrderName = order.OrderName;
-                OrderDescription = order.OrderDescription;
-                Amount = order.Amount;
+                Domain = client.Domain;
+                this.Items = items.Select(e=>new {
+                    cornAmount=e.CornAmount,
+                    usdAmount=e.UsdAmount,
+                    name=e.Name,
+                  
+                }).ToArray();
             }
         }
 
@@ -223,13 +309,15 @@ namespace BITCORNService.Controllers
         }
         public class CreateOrderRequest
         {
-            public decimal Amount { get; set; }
-
-            public string OrderName { get; set; }
-
-            public string OrderDescription { get; set; }
+            public OrderItemRequest[] Items { get; set; }
         
             public string ClientId { get; set; }
+        }
+
+        public class OrderItemRequest
+        {
+            public string Name { get; set; }
+            public decimal AmountUsd { get; set; }
         }
 
         

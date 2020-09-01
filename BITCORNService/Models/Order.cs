@@ -7,12 +7,7 @@ namespace BITCORNService.Models
     {
         [Key]
         public string OrderId { get; set; }
-
-        public decimal Amount { get; set; }
-
-        public string OrderName { get; set; }
-
-        public string OrderDescription { get; set; }
+        
 
         public string ClientId { get; set; }
         

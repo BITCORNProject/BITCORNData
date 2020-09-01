@@ -35,6 +35,8 @@ namespace BITCORNService.Models
         public virtual DbSet<SubscriptionTier> SubscriptionTier { get; set; }
         public virtual DbSet<SubTx> SubTx { get; set; }
         public virtual DbSet<Order> Order { get; set; }
+        public virtual DbSet<OrderItem> OrderItem { get; set; }
+
         public virtual DbSet<ThirdPartyClient> ThirdPartyClient { get; set; }
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {
