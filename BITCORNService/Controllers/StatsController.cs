@@ -3,6 +3,7 @@ using System.Linq;
 using System.Net;
 using System.Threading.Tasks;
 using BITCORNService.Models;
+using BITCORNService.Utils.Auth;
 using BITCORNService.Utils.DbActions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -10,7 +11,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace BITCORNService.Controllers
 {
-    [Authorize]
+    [Authorize(Policy = AuthScopes.ReadUser)]
     [Route("api/[controller]")]
     [ApiController]
     public class StatsController : ControllerBase

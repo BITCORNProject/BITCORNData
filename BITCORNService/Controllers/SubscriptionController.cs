@@ -5,6 +5,7 @@ using System.Net;
 using System.Threading.Tasks;
 using BITCORNService.Models;
 using BITCORNService.Utils;
+using BITCORNService.Utils.Auth;
 using BITCORNService.Utils.DbActions;
 using BITCORNService.Utils.LockUser;
 using BITCORNService.Utils.Models;
@@ -30,6 +31,7 @@ namespace BITCORNService.Controllers
             _dbContext = dbContext;
         }
 
+        [Authorize(Policy = AuthScopes.ChangeUser)]
         [HttpPost("new")]
         public async Task<ActionResult<SubscriptionResponse>> New([FromBody] SubRequest subRequest)
         {
@@ -58,6 +60,8 @@ namespace BITCORNService.Controllers
             return StatusCode((int)HttpStatusCode.BadRequest);
         }
 
+
+        [Authorize(Policy = AuthScopes.ReadUser)]
         [HttpGet("available/{subscriptionName}")]
         public async Task<ActionResult<List<AvailableSubscriptionResponse>>> Available([FromRoute] string subscriptionName = null)
         {
@@ -120,6 +124,8 @@ namespace BITCORNService.Controllers
             }
         }
 
+
+        [Authorize(Policy = AuthScopes.ReadUser)]
         [HttpGet("user/{platformId}/{subscriptionName}")]
         public async Task<ActionResult<object>> GetUserSubscriptions([FromRoute] string platformId, [FromRoute] string subscriptionName = null)
         {
@@ -178,6 +184,8 @@ namespace BITCORNService.Controllers
             }
         }
 
+
+        [Authorize(Policy = AuthScopes.ReadUser)]
         [HttpGet("hassubscribed/{subscriptionName}/{platformId}")]
         public async Task<ActionResult<bool>> IsSubbed([FromRoute] string platformId, [FromRoute] string subscriptionName, [FromQuery] string subTier = null)
         {

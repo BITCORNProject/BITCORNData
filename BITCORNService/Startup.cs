@@ -1,8 +1,10 @@
 using System;
 using BITCORNService.Games.Models;
 using BITCORNService.Models;
+using BITCORNService.Utils.Auth;
 using BITCORNService.Utils.LockUser;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.EntityFrameworkCore;
@@ -39,6 +41,41 @@ namespace BITCORNService
                 options.Authority = auth0Domain;
                 options.Audience = audience;
             });
+
+            services.AddAuthorization(options => {
+
+                options.AddPolicy(AuthScopes.SendTransaction,
+                    policy => policy.Requirements.Add(new RequireScope(AuthScopes.SendTransaction, auth0Domain)));
+                
+                options.AddPolicy(AuthScopes.ReadTransaction,
+                   policy => policy.Requirements.Add(new RequireScope(AuthScopes.ReadTransaction, auth0Domain)));
+
+                options.AddPolicy(AuthScopes.Deposit,
+                    policy => policy.Requirements.Add(new RequireScope(AuthScopes.Deposit, auth0Domain)));
+
+                options.AddPolicy(AuthScopes.Withdraw,
+                    policy => policy.Requirements.Add(new RequireScope(AuthScopes.Withdraw, auth0Domain)));
+
+                options.AddPolicy(AuthScopes.ChangeUser,
+                    policy => policy.Requirements.Add(new RequireScope(AuthScopes.ChangeUser, auth0Domain)));
+
+                options.AddPolicy(AuthScopes.AddUser,
+                    policy => policy.Requirements.Add(new RequireScope(AuthScopes.AddUser, auth0Domain)));
+
+                options.AddPolicy(AuthScopes.BanUser,
+                    policy => policy.Requirements.Add(new RequireScope(AuthScopes.BanUser, auth0Domain)));
+
+                options.AddPolicy(AuthScopes.ReadUser, 
+                    policy => policy.Requirements.Add(new RequireScope(AuthScopes.ReadUser, auth0Domain)));
+
+                options.AddPolicy(AuthScopes.CreateOrder,
+                    policy => policy.Requirements.Add(new RequireScope(AuthScopes.CreateOrder, auth0Domain)));
+
+                options.AddPolicy(AuthScopes.AuthorizeOrder,
+                    policy => policy.Requirements.Add(new RequireScope(AuthScopes.AuthorizeOrder, auth0Domain)));
+            });
+
+            services.AddSingleton<IAuthorizationHandler, RequireScopeHandler>();
             services.AddScoped<LockUserAttribute>();
             services.AddScoped<CacheUserAttribute>();
             services.AddSingleton(Configuration);

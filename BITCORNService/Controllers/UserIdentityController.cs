@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authorization;
 using BITCORNService.Utils.LockUser;
+using BITCORNService.Utils.Auth;
 
 namespace BITCORNService.Controllers
 {
@@ -33,6 +34,7 @@ namespace BITCORNService.Controllers
 
         [ServiceFilter(typeof(CacheUserAttribute))]
         [HttpDelete]
+        [Authorize(Policy = AuthScopes.ChangeUser)]
         public async Task<IActionResult> Delete([FromBody] RegistrationData registrationData)
         {
             if (this.GetCachedUser() != null)

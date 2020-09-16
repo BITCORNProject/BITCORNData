@@ -4,8 +4,10 @@ using System.Net;
 using System.Threading.Tasks;
 using BITCORNService.Models;
 using BITCORNService.Utils;
+using BITCORNService.Utils.Auth;
 using BITCORNService.Utils.DbActions;
 using BITCORNService.Utils.LockUser;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
@@ -25,7 +27,7 @@ namespace BITCORNService.Controllers
         }
         // POST: api/WalletDownload
         [HttpPost]
-
+        [Authorize(Policy = AuthScopes.ChangeUser)]
         public async Task<ActionResult> Post([FromBody] WalletDownload walletDownload)
         {
             return await Download(walletDownload, DateTime.Now);

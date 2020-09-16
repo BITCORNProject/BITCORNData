@@ -43,6 +43,16 @@ namespace BITCORNService.Utils
             return await GetUserForPlatform(platformId,dbContext).Select(u=>u.UserIdentity).FirstOrDefaultAsync();
         }
 
+        public static string GetAppId(this ControllerBase controller,IConfiguration config)
+        {
+            return "JyNM71Tg1b76GScmVpp31KQqFWfY5xbq";
+            var identity = controller.HttpContext.User.Identities.First();
+            var claim = identity.Claims.FirstOrDefault(c => c.Type == config["Config:IdKey"]);
+            if (claim == default(Claim)) return null;
+            var split = claim.Value.Split('@');
+            return split[0];
+        }
+
         public static IQueryable<User> GetUserForPlatform(PlatformId platformId, BitcornContext dbContext)
         {
             switch (platformId.Platform)
@@ -68,6 +78,15 @@ namespace BITCORNService.Utils
             if(controller.HttpContext.Items.TryGetValue("user",out object val))
             {
                 return (User)val;
+            }
+            return null;
+        }
+
+        public static int? GetUserMode(this ControllerBase controller)
+        {
+            if (controller.HttpContext.Items.TryGetValue("usermode", out object val))
+            {
+                return (int)val;
             }
             return null;
         }

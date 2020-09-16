@@ -6,6 +6,7 @@ using BITCORNService.Games;
 using BITCORNService.Games.Models;
 using BITCORNService.Models;
 using BITCORNService.Utils;
+using BITCORNService.Utils.Auth;
 using BITCORNService.Utils.DbActions;
 using BITCORNService.Utils.LockUser;
 using Microsoft.AspNetCore.Authorization;
@@ -15,7 +16,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace BITCORNService.Controllers
 {
-    [Authorize]
+    [Authorize(Policy = AuthScopes.ReadUser)]
     [Route("api/[controller]")]
     [ApiController]
     public class UserAvatarController : ControllerBase

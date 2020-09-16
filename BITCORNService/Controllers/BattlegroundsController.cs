@@ -9,6 +9,7 @@ using BITCORNService.Games;
 using BITCORNService.Games.Models;
 using BITCORNService.Models;
 using BITCORNService.Utils;
+using BITCORNService.Utils.Auth;
 using BITCORNService.Utils.DbActions;
 using BITCORNService.Utils.LockUser;
 using BITCORNService.Utils.Tx;
@@ -19,7 +20,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace BITCORNService.Controllers
 {
-	[Authorize]
+	[Authorize(Policy = AuthScopes.ReadUser)]
 	[Route("api/game/[controller]")]
 	[ApiController]
 	public class BattlegroundsController : ControllerBase

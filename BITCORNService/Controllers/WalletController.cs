@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using BITCORNService.Models;
 using BITCORNService.Reflection;
 using BITCORNService.Utils;
+using BITCORNService.Utils.Auth;
 using BITCORNService.Utils.LockUser;
 using BITCORNService.Utils.Models;
 using BITCORNService.Utils.Wallet;
@@ -33,6 +34,7 @@ namespace BITCORNService.Controllers
         //API: /api/wallet/createcornaddy/{id}
         [ServiceFilter(typeof(CacheUserAttribute))]
         [HttpPost("CreateCornaddy")]
+        [Authorize(Policy = AuthScopes.ChangeUser)]
         public async Task<ActionResult<FullUser>> CreateCornaddy([FromBody] CreateCornaddyRequest request)
         {
             try
@@ -76,6 +78,7 @@ namespace BITCORNService.Controllers
         //called by the wallet servers only
         [ServiceFilter(typeof(CacheUserAttribute))]
         [HttpPost("deposit")]
+        [Authorize(Policy = AuthScopes.Deposit)]
         public async Task<ActionResult> Deposit([FromBody] WalletDepositRequest request)
         {
             try
@@ -114,6 +117,7 @@ namespace BITCORNService.Controllers
         //API: /api/wallet/withdraw
         [ServiceFilter(typeof(LockUserAttribute))]
         [HttpPost("withdraw")]
+        [Authorize(Policy = AuthScopes.Withdraw)]
         public async Task<ActionResult<object>> Withdraw([FromBody] WithdrawRequest request)
         {
             

@@ -3,6 +3,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using BITCORNService.Models;
 using BITCORNService.Utils;
+using BITCORNService.Utils.Auth;
 using BITCORNService.Utils.DbActions;
 using BITCORNService.Utils.LockUser;
 using BITCORNService.Utils.Tx;
@@ -12,7 +13,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace BITCORNService.Controllers
 {
-    [Authorize]
+    [Authorize(Policy = AuthScopes.ReadUser)]
     [Route("api/[controller]")]
     [ApiController]
     public class UserWalletController : ControllerBase
