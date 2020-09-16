@@ -46,6 +46,9 @@ namespace BITCORNService
 
                 options.AddPolicy(AuthScopes.SendTransaction,
                     policy => policy.Requirements.Add(new RequireScope(AuthScopes.SendTransaction, auth0Domain)));
+                
+                options.AddPolicy(AuthScopes.ReadTransaction,
+                   policy => policy.Requirements.Add(new RequireScope(AuthScopes.ReadTransaction, auth0Domain)));
 
                 options.AddPolicy(AuthScopes.Deposit,
                     policy => policy.Requirements.Add(new RequireScope(AuthScopes.Deposit, auth0Domain)));
