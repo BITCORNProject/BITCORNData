@@ -45,7 +45,6 @@ namespace BITCORNService.Utils
 
         public static string GetAppId(this ControllerBase controller,IConfiguration config)
         {
-            return "JyNM71Tg1b76GScmVpp31KQqFWfY5xbq";
             var identity = controller.HttpContext.User.Identities.First();
             var claim = identity.Claims.FirstOrDefault(c => c.Type == config["Config:IdKey"]);
             if (claim == default(Claim)) return null;
