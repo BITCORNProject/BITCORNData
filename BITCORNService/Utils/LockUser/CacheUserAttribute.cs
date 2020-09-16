@@ -4,6 +4,7 @@ using System.Security.Claims;
 using System.Threading.Tasks;
 using BITCORNService.Models;
 using BITCORNService.Utils.DbActions;
+using BITCORNService.Utils.Models;
 using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -49,6 +50,32 @@ namespace BITCORNService.Utils.LockUser
                     context.HttpContext.Items.Add("usermode", 0);
 
                 }
+                else
+                {
+                    if (claim.Value.Contains("auth0|"))
+                    {
+                        try
+                        {
+                            user = Controllers.RegisterController.CreateUser(new Auth0User()
+                            {
+                                Auth0Id = claim.Value,
+                                Auth0Nickname = ""
+                            }, 0);
+                            dbContext.User.Add(user);
+                            await dbContext.SaveAsync();
+                            context.HttpContext.Items.Add("user", user);
+                            context.HttpContext.Items.Add("usermode", 0);
+                        }
+                        catch (Exception e)
+                        {
+                            user = null;
+                            await BITCORNLogger.LogError(dbContext,e,claim.Value);
+                            return null;
+                        }
+                    }
+                }
+                //await BITCORNLogger.LogError(dbContext, new Exception(""),
+                    //Newtonsoft.Json.JsonConvert.SerializeObject(new { userId = claim.Value, isNull=user==null }));
                 return user;
             }
             else

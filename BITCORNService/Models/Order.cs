@@ -18,5 +18,9 @@ namespace BITCORNService.Models
         public DateTime CreatedAt { get; set; }
 
         public DateTime? CompletedAt { get; set; }
+
+        public int ReadBy { get; set; }
+
+        public string ClientOrderId { get; set; }
     }
 }

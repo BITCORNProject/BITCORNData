@@ -11,5 +11,16 @@ namespace BITCORNService.Models
 
         public decimal AcceptedCostDiff { get; set; }
         public string Domain { get; set; }
+        public int? OrderMaxSize { get; set; }
+
+        public decimal? OrderMaxCost { get; set; }
+
+        public string ValidationKey { get; set; }
+
+        public string Redirect { get; set; }
+
+        public string Capture { get; set; }
+
+        public string  PostFormat { get; set; }
     }
 }

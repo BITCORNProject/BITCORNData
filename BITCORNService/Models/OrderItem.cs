@@ -9,5 +9,7 @@ namespace BITCORNService.Models
         public decimal CornAmount { get; set; }
         public decimal UsdAmount { get; set; }
         public string Name { get; set; }
+        public int Quantity { get; set; }
+        public string ClientItemId { get; set; }
     }
 }
