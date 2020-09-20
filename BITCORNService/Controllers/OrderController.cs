@@ -320,7 +320,7 @@ namespace BITCORNService.Controllers
                                 recipientUser,
                                 cornOrderSum,
                                 client.ClientId,
-                                "app:order",
+                                "$tipcorn",
                                 _dbContext);
 
                             var paymentSuccess = await processInfo.ExecuteTransaction(_dbContext);
