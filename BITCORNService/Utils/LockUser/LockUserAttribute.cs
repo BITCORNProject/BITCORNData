@@ -23,8 +23,37 @@ namespace BITCORNService.Utils.LockUser
         public async Task OnActionExecutionAsync(ActionExecutingContext context, ActionExecutionDelegate next)
         {
             User user = await CacheUserAttribute.ReadUser(_config, _dbContext, context);
+            
             try
             {
+                try
+                {
+                    var appId = context.HttpContext.GetAppId(_config);
+                    if (!string.IsNullOrEmpty(appId))
+                    {
+                        var thirdPartyClient = await _dbContext.ThirdPartyClient.AnyAsync(a => a.ClientId == appId);
+                        if (thirdPartyClient)
+                        {
+                            context.Result = new ContentResult()
+                            {
+                                StatusCode = (int)HttpStatusCode.Forbidden,
+                                Content = JsonConvert.SerializeObject(new
+                                {
+                                    refused = "Server refuses to serve this request: invalid headers"
+                                })
+                            };
+                            await BITCORNLogger.LogError(_dbContext, new Exception("Forbidden request for app id:" + appId), appId);
+                            return;
+                        }
+                    }
+                }
+                catch(Exception e)
+                {
+                    await BITCORNLogger.LogError(_dbContext,e ,null);
+
+                    throw e;
+                }
+
                 if (user == null)
                 {
                     var query = LockUserAttributeUtils.GetUserFromHeader(context, _dbContext);
