@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using System.Security.Claims;
 using System.Text;
 using System.Threading;
@@ -260,6 +261,92 @@ namespace BITCORNService.Utils
             //call for twitter username
             //call for discord username
             return fullUser;
+        }
+        static string FirstLower(string s)
+        {
+            if (string.IsNullOrEmpty(s))
+                return s;
+            return s[0].ToString().ToLower() + s.Substring(1);
+        }
+        static void AppendUserOutput<T>(Dictionary<string,object> output,Type[] validTypes,T instance,params string[] ignoreNames)
+        {
+            try
+            {
+                var userProperties = typeof(T).GetProperties(BindingFlags.Public | BindingFlags.Instance);
+                foreach (var userProp in userProperties)
+                {
+
+                    if (validTypes.Contains(userProp.PropertyType))
+                    {
+                        var name = FirstLower(userProp.Name);
+                        if (!ignoreNames.Contains(name))
+                        {
+                            output.Add(name, userProp.GetValue(instance));
+                        }
+                    }
+                }
+            }
+            catch(Exception e)
+            {
+                int i = 0;
+            }
+        }
+
+        public static object SelectUserProperties(User user,
+            UserIdentity userIdentity,
+            UserWallet userWallet,
+            UserStat userStats,
+            UserReferral userReferral,
+            Referrer referrer, 
+            bool guestView)
+        {
+            Dictionary<string, object> output = new Dictionary<string, object>();
+            
+            AppendUserOutput(output,new Type[] {
+                typeof(int),
+                typeof(string),
+                typeof(DateTime?),
+                typeof(bool)
+            },user);
+
+            if (!guestView)
+            {
+                AppendUserOutput(output,
+                    new Type[] { typeof(string) },
+                    userIdentity);
+            }
+            else
+            {
+                output.Add("auth0Id", userIdentity.Auth0Id);
+                output.Add("auth0Nickname", userIdentity.Auth0Nickname);
+                //Auth0Id = userIdentity.Auth0Id,
+                //Auth0Nickname = userIdentity.Auth0Nickname,
+            }
+            
+            if (!guestView)
+            {
+                AppendUserOutput(output, new Type[] { typeof(decimal?), typeof(int?), typeof(string) }, userWallet);
+            }
+            if (!guestView)
+            {
+                AppendUserOutput(output, new Type[] { typeof(decimal?), typeof(int?), typeof(string) }, userStats);
+
+            }
+            if (!guestView&&referrer != null)
+            {
+                AppendUserOutput(output, new Type[] { typeof(decimal?), typeof(int?), typeof(string), typeof(DateTime?), typeof(int) }, referrer,"userId");
+               
+            }
+
+            if (!guestView&&userReferral != null)
+            {
+                AppendUserOutput(output, new Type[] { typeof(decimal), typeof(int), typeof(string), typeof(int) }, userReferral,"userId");
+
+            }
+            
+
+
+            return output;
         }
 
         public static FullUserAndReferrer GetFullUserAndReferer(User user, UserIdentity userIdentity, UserWallet userWallet, UserStat userStats,UserReferral userReferral = null ,Referrer referrer = null)

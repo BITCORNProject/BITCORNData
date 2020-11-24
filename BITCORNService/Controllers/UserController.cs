@@ -111,6 +111,29 @@ namespace BITCORNService.Controllers
         }
 
         [ServiceFilter(typeof(CacheUserAttribute))]
+        [HttpPost("{id}/[action]")]
+        [Authorize(Policy = AuthScopes.ReadUser)]
+        public async Task<ActionResult<object>> SelectProperties([FromRoute] string id,[FromQuery]string reader)
+        {
+            if (this.GetCachedUser() != null)
+                throw new InvalidOperationException();
+            if (string.IsNullOrWhiteSpace(id)) throw new ArgumentNullException("id");
+
+            var platformId = BitcornUtils.GetPlatformId(id);
+            var user = await BitcornUtils.GetUserForPlatform(platformId, _dbContext).FirstOrDefaultAsync();
+            if (user != null)
+            {
+                var referral = _dbContext.Referrer.FirstOrDefault(r => r.UserId == user.UserId);
+                bool isGuest = id != reader;
+                return BitcornUtils.SelectUserProperties(user, user.UserIdentity, user.UserWallet, user.UserStat, user.UserReferral, referral, isGuest);
+            }
+            else
+            {
+                return StatusCode(404);
+            }
+        }
+
+        [ServiceFilter(typeof(CacheUserAttribute))]
         [HttpGet("me")]
         [Authorize(Policy = AuthScopes.ReadUser)]
         public ActionResult<FullUser> Me()
