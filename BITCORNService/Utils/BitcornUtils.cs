@@ -215,7 +215,7 @@ namespace BITCORNService.Utils
             sb.Append(")");
             return sb.ToString();
         }
-
+        //TODO: depricate this nonsense
         public static FullUser GetFullUser(User user, UserIdentity userIdentity, UserWallet userWallet, UserStat userStats)
         {
             var fullUser = new FullUser()
@@ -268,7 +268,7 @@ namespace BITCORNService.Utils
                 return s;
             return s[0].ToString().ToLower() + s.Substring(1);
         }
-        static void AppendUserOutput<T>(Dictionary<string,object> output,Type[] validTypes,T instance,params string[] ignoreNames)
+        public static void AppendUserOutput<T>(Dictionary<string,object> output,Type[] validTypes,T instance,params string[] ignoreNames)
         {
             try
             {
@@ -348,7 +348,7 @@ namespace BITCORNService.Utils
 
             return output;
         }
-
+        //TODO: depricate this nonsense
         public static FullUserAndReferrer GetFullUserAndReferer(User user, UserIdentity userIdentity, UserWallet userWallet, UserStat userStats,UserReferral userReferral = null ,Referrer referrer = null)
         {
             var fullUser = new FullUserAndReferrer()

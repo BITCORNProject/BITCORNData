@@ -57,6 +57,62 @@ namespace BITCORNService.Controllers
             }
         }
 
+        [ServiceFilter(typeof(CacheUserAttribute))]
+        
+        [HttpGet("{id}/socialconnections")]
+        [Authorize(Policy = AuthScopes.ReadUser)]
+        public async Task<ActionResult<object>> GetSocialConnections([FromRoute] string id, [FromQuery] string reader)
+        {
+            if (this.GetCachedUser() != null)
+                throw new InvalidOperationException();
+            if (string.IsNullOrWhiteSpace(id)) throw new ArgumentNullException("id");
+
+            var platformId = BitcornUtils.GetPlatformId(id);
+            var user = await BitcornUtils.GetUserForPlatform(platformId, _dbContext).FirstOrDefaultAsync();
+            if (user != null)
+            {
+                return new
+                {
+                    cornAddy = user.UserWallet.CornAddy,
+                    twitchId = user.UserIdentity.TwitchId,
+                    twitchUsername = user.UserIdentity.TwitchUsername,
+                    discordId = user.UserIdentity.DiscordId,
+                    discordUsername = user.UserIdentity.DiscordUsername,
+                    twitterId = user.UserIdentity.TwitchId,
+                    twitterUsername = user.UserIdentity.TwitterUsername,
+                    redditId = user.UserIdentity.RedditId,
+                    redditUsername = user.UserIdentity.RedditUsername
+                };
+            }
+            else
+            {
+                return StatusCode(404);
+            }
+        }
+
+        [ServiceFilter(typeof(CacheUserAttribute))]
+
+        [HttpGet("{id}/socialmetrics")]
+        [Authorize(Policy = AuthScopes.ReadUser)]
+        public async Task<ActionResult<object>> GetSocialMetrics([FromRoute] string id, [FromQuery] string reader)
+        {
+            if (this.GetCachedUser() != null)
+                throw new InvalidOperationException();
+            if (string.IsNullOrWhiteSpace(id)) throw new ArgumentNullException("id");
+
+            var platformId = BitcornUtils.GetPlatformId(id);
+            var user = await BitcornUtils.GetUserForPlatform(platformId, _dbContext).FirstOrDefaultAsync();
+            if (user != null)
+            {
+                Dictionary<string, object> output = new Dictionary<string, object>();
+                BitcornUtils.AppendUserOutput(output, new Type[] { typeof(decimal?), typeof(int?)}, user.UserStat);
+                return output;
+            }
+            else
+            {
+                return StatusCode(404);
+            }
+        }
 
         [Authorize(Policy = AuthScopes.ReadUser)]
         [HttpGet("userid/{id}")]
@@ -102,6 +158,7 @@ namespace BITCORNService.Controllers
             if (user != null)
             {
                 var referral = _dbContext.Referrer.FirstOrDefault(r => r.UserId == user.UserId);
+                //
                 return BitcornUtils.GetFullUserAndReferer(user, user.UserIdentity, user.UserWallet, user.UserStat, user.UserReferral, referral);
             }
             else
@@ -110,6 +167,56 @@ namespace BITCORNService.Controllers
             }
         }
 
+        [ServiceFilter(typeof(CacheUserAttribute))]
+        [HttpGet("{id}/referralinfo")]
+        [Authorize(Policy = AuthScopes.ReadUser)]
+        public async Task<ActionResult<object>> GetReferralInfo([FromRoute] string id, [FromQuery] string reader)
+        {
+            if (this.GetCachedUser() != null)
+                throw new InvalidOperationException();
+            if (string.IsNullOrWhiteSpace(id)) throw new ArgumentNullException("id");
+
+            var platformId = BitcornUtils.GetPlatformId(id);
+            var user = await BitcornUtils.GetUserForPlatform(platformId, _dbContext).FirstOrDefaultAsync();
+            if (user != null)
+            {
+                var referrer = await _dbContext.Referrer.FirstOrDefaultAsync(r => r.UserId == user.UserId);
+                var userReferral = await _dbContext.UserReferral.FirstOrDefaultAsync(r=>r.UserId==user.UserId);
+                Dictionary<string, object> output = new Dictionary<string, object>();
+                if (referrer != null)
+                {
+                    BitcornUtils.AppendUserOutput(output, new Type[] { typeof(decimal?), typeof(int?), typeof(string), typeof(DateTime?), typeof(int) }, referrer, "userId","referralId");
+                    /*fullUser.ReferralId = referrer.ReferralId;
+                    fullUser.Amount = referrer.Amount;
+                    fullUser.Tier = referrer.Tier;
+                    fullUser.ETag = referrer.ETag;
+                    fullUser.Key = referrer.Key;
+                    fullUser.YtdTotal = referrer.YtdTotal;*/
+                }
+
+                if (userReferral != null)
+                {
+                    BitcornUtils.AppendUserOutput(output, new Type[] { typeof(decimal), typeof(int), typeof(string),typeof(DateTime?),typeof(int?) }, userReferral, "userId");
+                    /*
+                    fullUser.WalletDownloadDate = userReferral.WalletDownloadDate;
+                    fullUser.MinimumBalanceDate = userReferral.MinimumBalanceDate;
+                    fullUser.SyncDate = userReferral.SyncDate;
+                    fullUser.SignupReward = userReferral.SignupReward;
+                    fullUser.Bonus = userReferral.Bonus;
+                    fullUser.ReferrerBonus = userReferral.ReferrerBonus;
+                    */
+                }
+
+                return output;
+                //
+                //return BitcornUtils.GetFullUserAndReferer(user, user.UserIdentity, user.UserWallet, user.UserStat, user.UserReferral, referral);
+            }
+            else
+            {
+                return StatusCode(404);
+            }
+        }
+        /* */
         [ServiceFilter(typeof(CacheUserAttribute))]
         [HttpPost("{id}/[action]")]
         [Authorize(Policy = AuthScopes.ReadUser)]
