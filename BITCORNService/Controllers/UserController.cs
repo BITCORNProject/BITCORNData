@@ -58,7 +58,32 @@ namespace BITCORNService.Controllers
         }
 
         [ServiceFilter(typeof(CacheUserAttribute))]
-        
+
+        [HttpGet("{id}/nicknames")]
+        [Authorize(Policy = AuthScopes.ReadUser)]
+        public async Task<ActionResult<object>> NickNames([FromRoute] string id, [FromQuery] string reader)
+        {
+            if (this.GetCachedUser() != null)
+                throw new InvalidOperationException();
+            if (string.IsNullOrWhiteSpace(id)) throw new ArgumentNullException("id");
+
+            var platformId = BitcornUtils.GetPlatformId(id);
+            var user = await BitcornUtils.GetUserForPlatform(platformId, _dbContext).FirstOrDefaultAsync();
+            if(user!=null)
+            {
+                return new
+                {
+                    auth0Nickname = user.UserIdentity.Auth0Nickname
+
+                };
+            }
+            else
+            {
+                return StatusCode(404);
+            }
+        }
+
+        [ServiceFilter(typeof(CacheUserAttribute))]
         [HttpGet("{id}/socialconnections")]
         [Authorize(Policy = AuthScopes.ReadUser)]
         public async Task<ActionResult<object>> GetSocialConnections([FromRoute] string id, [FromQuery] string reader)
