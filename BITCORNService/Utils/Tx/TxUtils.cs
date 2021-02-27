@@ -12,6 +12,7 @@ using BITCORNService.Utils.Models;
 using BITCORNService.Utils.Stats;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Newtonsoft.Json;
 
 namespace BITCORNService.Utils.Tx
@@ -142,9 +143,9 @@ namespace BITCORNService.Utils.Tx
                 }
                 return txs.Length;
             }
-            catch(Exception e)
+            catch (Exception e)
             {
-                await BITCORNLogger.LogError(dbContext,e,JsonConvert.SerializeObject(platformId));
+                await BITCORNLogger.LogError(dbContext, e, JsonConvert.SerializeObject(platformId));
                 return 0;
             }
             finally
@@ -158,7 +159,7 @@ namespace BITCORNService.Utils.Tx
 
         public static async Task<User> GetBitcornhub(BitcornContext dbContext)
         {
-            return await dbContext.JoinUserModels().FirstOrDefaultAsync(u => u.UserId == BitcornHubPK);            
+            return await dbContext.JoinUserModels().FirstOrDefaultAsync(u => u.UserId == BitcornHubPK);
         }
 
         public static async Task<bool> SendFromBitcornhub(User to, decimal amount, string platform, string txType, BitcornContext dbContext)
@@ -169,9 +170,9 @@ namespace BITCORNService.Utils.Tx
         public static async Task<TxReceipt> SendFromBitcornhubGetReceipt(User to, decimal amount, string platform, string txType, BitcornContext dbContext)
         {
             var processInfo = await PrepareTransaction(await GetBitcornhub(dbContext), to, amount, platform, txType, dbContext);
-            if(await processInfo.ExecuteTransaction(dbContext))
+            if (await processInfo.ExecuteTransaction(dbContext))
             {
-                
+
                 return processInfo.Transactions[0];
             }
             return null;
@@ -179,15 +180,15 @@ namespace BITCORNService.Utils.Tx
         public static async Task<TxReceipt> SendToBitcornhub(User from, decimal amount, string platform, string txType, BitcornContext dbContext)
         {
             var processInfo = await PrepareTransaction(from, await GetBitcornhub(dbContext), amount, platform, txType, dbContext);
-            if(await processInfo.ExecuteTransaction(dbContext))
+            if (await processInfo.ExecuteTransaction(dbContext))
             {
-               
+
                 return processInfo.Transactions[0];
             }
             return null;
         }
 
-        public static async Task<bool> ExecuteTransaction(this TxProcessInfo processInfo,BitcornContext dbContext)
+        public static async Task<bool> ExecuteTransaction(this TxProcessInfo processInfo, BitcornContext dbContext)
         {
             var sql = new StringBuilder();
             if (processInfo.WriteTransactionOutput(sql))
@@ -205,13 +206,45 @@ namespace BITCORNService.Utils.Tx
         public static async Task<TxProcessInfo> PrepareTransaction(User from, User to, decimal amount, string platform, string txType, BitcornContext dbContext)
         {
             var request = new TxRequest(from, amount, platform, txType, $"userid|{to.UserId}");
-            return await ProcessRequest(request,dbContext);
+            return await ProcessRequest(request, dbContext);
         }
         public static async Task<bool> SendFrom(User from, User to, decimal amount, string platform, string txType, BitcornContext dbContext)
         {
             var processInfo = await PrepareTransaction(from, to, amount, platform, txType, dbContext);
             return await processInfo.ExecuteTransaction(dbContext);
         }
+
+
+        public static bool AreTransactionsEnabled(IConfiguration conf)
+        {
+            try
+            {
+                var value = conf["Config:TxEnabled"];
+                return bool.Parse(value);
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        public static async Task<bool> ShouldLockWallet(BitcornContext dbContext, User user, decimal add)
+        {
+          
+            var nowDayAgo = DateTime.Now;
+            nowDayAgo = nowDayAgo.AddHours(-24);
+            var spent = await dbContext.CornTx.Where(x => x.SenderId == user.UserId && x.Timestamp > nowDayAgo).SumAsync(x => x.Amount);
+            if (spent + add > 10_000_000)
+            {
+                user.UserWallet.IsLocked = true;
+                var cmd = $"UPDATE [{nameof(UserWallet)}] set [{nameof(UserWallet.IsLocked)}] = 1 where [{nameof(UserWallet)}].{nameof(UserWallet.UserId)} = {user.UserId}";
+                dbContext.Database.ExecuteSqlRaw(cmd);
+                return true;
+            }
+
+            return false;
+        }
+
         /// <summary>
         /// method to prepare a transaction, calling this method will not move fund immediately 
         /// </summary>
@@ -234,9 +267,23 @@ namespace BITCORNService.Utils.Tx
             //calculate total amount of corn being sent
             var totalAmountRequired = toArray.Length * req.Amount;
             bool canExecuteAll = false;
+
             //check if sender has enough corn to execute all transactions
             if (info.From != null && info.From.UserWallet.Balance >= totalAmountRequired)
-                canExecuteAll = true;
+            {
+                if (info.From.UserWallet.IsLocked != null && info.From.UserWallet.IsLocked == true)
+                {
+                    canExecuteAll = false;
+                }
+                else
+                {
+                    if (!(await ShouldLockWallet(dbContext, info.From, totalAmountRequired)))
+                    {
+                        canExecuteAll = true;
+                    }
+                }
+            }
+
             //get platform ids of recipients
             foreach (var to in toArray)
             {
@@ -248,9 +295,9 @@ namespace BITCORNService.Utils.Tx
             }
             var platformIdArray = platformIds.ToArray();
             //get recipients query
-            var userQuery = BitcornUtils.GetUsersForPlatform(platformIdArray,dbContext).AsNoTracking();
+            var userQuery = BitcornUtils.GetUsersForPlatform(platformIdArray, dbContext).AsNoTracking();
             //convert into dictionary mapped by their platformid
-            var users = await BitcornUtils.ToPlatformDictionary(platformIdArray,userQuery,dbContext);
+            var users = await BitcornUtils.ToPlatformDictionary(platformIdArray, userQuery, dbContext);
             //create list for receipts
             var output = new List<TxReceipt>();
             //create group transaction id
@@ -258,7 +305,7 @@ namespace BITCORNService.Utils.Tx
 
             var sql = new StringBuilder();
             //get corn usdt price at this time
-            var cornUsdtPrice = (await ProbitApi.GetCornPriceAsync());
+            var cornUsdtPrice = (await ProbitApi.GetCornPriceAsync(dbContext));
             foreach (var to in platformIdArray)
             {
                 var receipt = new TxReceipt();
@@ -315,18 +362,18 @@ namespace BITCORNService.Utils.Tx
             var list = new List<ColumnValuePair>() { new ColumnValuePair(column, value) };
             return ModifyNumbers(table, list, operation, primaryKeyName, primaryKeyValues);
         }
-        
+
         public static string ModifyNumbers(string table, List<ColumnValuePair> setters, char operation, string primaryKeyName, params int[] primaryKeyValues)
         {
             StringBuilder sql = new StringBuilder();
-           
+
             if (!char.Equals('+', operation) && !char.Equals('-', operation))
                 throw new ArgumentException("invalid operation:" + operation);
 
             sql.Append($" UPDATE [{table}] SET ");
             for (int i = 0; i < setters.Count; i++)
             {
-              
+
                 var item = setters[i];
                 object value = null;
                 if (item.Value is decimal)
@@ -343,7 +390,7 @@ namespace BITCORNService.Utils.Tx
                     sql.Append(',');
                 }
                 sql.Append($" {item.Column} = {item.Column} {operation} {value} ");
-            
+
             }
 
             sql.Append($" where [{table}].{primaryKeyName}  ");
@@ -375,8 +422,12 @@ namespace BITCORNService.Utils.Tx
         /// <param name="txType">information about this transaction</param>
         /// <param name="txId">group transaction id</param>
         /// <returns>receipt of transaction, returns null if transaction will not be made</returns>
-        public static CornTx VerifyTx(User from, User to, decimal cornUsdt, decimal amount,string platform,string txType,string txId)
+        public static CornTx VerifyTx(User from, User to, decimal cornUsdt, decimal amount, string platform, string txType, string txId)
         {
+            if (from.UserWallet.IsLocked != null && from.UserWallet.IsLocked.Value)
+            {
+                return null;
+            }
             if (amount <= 0)
                 return null;
             if (from == null || to == null)
@@ -396,11 +447,11 @@ namespace BITCORNService.Utils.Tx
                 tx.Timestamp = DateTime.Now;
                 tx.Platform = platform;
                 tx.UsdtPrice = cornUsdt;
-                tx.TotalUsdtValue = tx.Amount * tx.UsdtPrice; 
+                tx.TotalUsdtValue = tx.Amount * tx.UsdtPrice;
                 return tx;
             }
             return null;
         }
-      
+
     }
 }

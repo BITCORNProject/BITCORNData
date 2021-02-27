@@ -66,6 +66,8 @@ namespace BITCORNService.Utils
                     return dbContext.Auth0Query(platformId.Id);
                 case "twitch":
                     return dbContext.TwitchQuery(platformId.Id);
+                case "stream":
+                    return dbContext.TwitchQuery(platformId.Id);
                 case "discord":
                     return dbContext.DiscordQuery(platformId.Id);
                 case "twitter":
@@ -110,6 +112,8 @@ namespace BITCORNService.Utils
                     return await query.ToDictionaryAsync(u => u.UserIdentity.Auth0Id, u => u);
                 case "twitch":
                     return await query.ToDictionaryAsync(u => u.UserIdentity.TwitchId, u => u);
+                case "stream":
+                    return await query.ToDictionaryAsync(u => u.UserIdentity.TwitchId, u => u);
                 case "discord":
                     return await query.ToDictionaryAsync(u => u.UserIdentity.DiscordId, u => u);
                 case "twitter":
@@ -132,6 +136,9 @@ namespace BITCORNService.Utils
                     return dbContext.Auth0ManyQuery(ids);
                 case "twitch":
                     return dbContext.TwitchManyQuery(ids);
+                case "stream":
+                    return dbContext.TwitchManyQuery(ids);
+
                 case "discord":
                     return dbContext.DiscordManyQuery(ids);
                 case "twitter":
@@ -174,6 +181,7 @@ namespace BITCORNService.Utils
                 case "twitch":
                     userIdentity.TwitchId = null;
                     userIdentity.TwitchUsername = null;
+                    userIdentity.TwitchRefreshToken = null;
                     await dbContext.SaveAsync();
                     break;
                 case "discord":
@@ -190,6 +198,11 @@ namespace BITCORNService.Utils
                     userIdentity.RedditId = null;
                     await dbContext.SaveAsync();
                     break;
+                case "stream":
+                    userIdentity.TwitchRefreshToken = null;
+                    await dbContext.SaveAsync();
+                    break;
+
                 default:
                     throw new Exception($"User {platformId.Platform}|{platformId.Id} could not be found");
             }
@@ -220,6 +233,7 @@ namespace BITCORNService.Utils
         {
             var fullUser = new FullUser()
             {
+                Mfa = user.MFA,
                 Username = user.Username,
                 UserId = user.UserId,
                 Avatar = user.Avatar,
@@ -353,6 +367,7 @@ namespace BITCORNService.Utils
         {
             var fullUser = new FullUserAndReferrer()
             {
+                Mfa = user.MFA,
                 //user
                 Username = user.Username,
                 UserId = user.UserId,

@@ -27,9 +27,10 @@ namespace BITCORNService.Utils.Stats
 
                 case "twitter":
                     return received.TwitterUsername;
-
+                case "BITCORNFarms":
+                    return received.Auth0Nickname;
                 default:
-                    return "null";
+                    return received.Auth0Nickname;
 
             }
         }
@@ -51,12 +52,15 @@ namespace BITCORNService.Utils.Stats
                     TwitchUsername = user.TwitchUsername,
                     DiscordUsername = user.DiscordUsername,
                     TwitterUsername = user.TwitterUsername,
-                    RedditUsername = user.RedditUsername
+                    RedditUsername = user.RedditUsername,
+                    Auth0Id = user.Auth0Id,
+                    Auth0Nickname = user.Auth0Nickname
 
                 });
 
             var sent = await sentQuery.ToArrayAsync();
             var sentGrouping = sent.GroupBy(data => data.TxGroupId);
+            
             foreach (var tx in sentGrouping)
             {
 
@@ -73,6 +77,7 @@ namespace BITCORNService.Utils.Stats
                     output.Amount += received.Amount.Value;
                     output.TxType = received.TxType;
                     output.Recipients.Add(GetUsername(received));
+                    output.RecipientIds.Add(received.Auth0Id);
                 }
 
                 records.Add(output);
@@ -97,8 +102,10 @@ namespace BITCORNService.Utils.Stats
                     TwitchUsername = user.TwitchUsername,
                     DiscordUsername = user.DiscordUsername,
                     TwitterUsername = user.TwitterUsername,
-                    RedditUsername = user.RedditUsername
-
+                    RedditUsername = user.RedditUsername,
+                    Auth0Id = user.Auth0Id,
+                    
+                    Auth0Nickname = user.Auth0Nickname
                 });
 
             var receivedData = await receivedQuery.ToArrayAsync();
@@ -115,6 +122,7 @@ namespace BITCORNService.Utils.Stats
                 output.TxType = received.TxType;
                 output.CornAddy = received.CornAddy;
                 output.Recipients.Add(GetUsername(received));
+                output.RecipientIds.Add(received.Auth0Id);
                 records.Add(output);
             }
             return records.ToArray();
@@ -123,10 +131,8 @@ namespace BITCORNService.Utils.Stats
         public static async Task<TxRecordOutput[]> ListTransactions(BitcornContext dbContext, int user, int offset, int limit, string[] txTypes)
         {
             var transactions = await CornTxUtils.GetFullTransactionIds(dbContext, user, offset, limit, txTypes);
-            
             List<TxRecordOutput> outputs = new List<TxRecordOutput>();
             outputs.AddRange(await ListSentTransactions(dbContext, user, transactions));
-            
             outputs.AddRange(await ListReceivedTransactions(dbContext, user, transactions));
             
             outputs.Sort((a, b) => b.Time.CompareTo(a.Time));
@@ -143,7 +149,7 @@ namespace BITCORNService.Utils.Stats
 
                 if (txTypes != null && txTypes.Length > 0)
                 {
-                    txTypes = txTypes.Where(tx => tx == "$withdraw" || tx == "$rain" || tx == "$tipcorn" || tx == "receive").ToArray();
+                    txTypes = txTypes.Where(tx => tx == "$withdraw" || tx == "$rain" || tx == "$tipcorn" || tx == "receive" ||tx == "app:order" || tx=="faucet").ToArray();
                     txTypesDefined = txTypes.Length > 0;
                 }
                 var sql = new StringBuilder($"(select distinct  {nameof(CornTx.TxGroupId)} from  ");

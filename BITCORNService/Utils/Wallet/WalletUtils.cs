@@ -41,7 +41,7 @@ namespace BITCORNService.Utils.Wallet
             return 1;
 
         }
-        
+
         public static async Task<string> GetWalletServerAccessToken(IConfiguration configuration)
         {
 
@@ -82,7 +82,7 @@ namespace BITCORNService.Utils.Wallet
         {
             return await dbContext.WalletServer.FirstOrDefaultAsync(w => w.Index == index);
         }
-      
+
         static async Task CreateCornaddyInternal(BitcornResponse cornResponse, BitcornContext dbContext, WalletServer walletServer, UserWallet userWallet, string accessToken)
         {
 
@@ -94,10 +94,10 @@ namespace BITCORNService.Utils.Wallet
                     var address = response.GetParsedContent();
                     userWallet.CornAddy = address;
                     userWallet.WalletServer = walletServer.Index;
-                 
+
                     cornResponse.WalletObject = address;
                     await dbContext.SaveAsync();
-                    
+
                 }
                 //we got an error, fetch the internal wallet error code and figure out what to do
                 else
@@ -118,6 +118,12 @@ namespace BITCORNService.Utils.Wallet
                 var index = await GetWalletIndexAsync(dbContext);
 
                 var server = await dbContext.GetWalletServer(index);
+                if (server == null)
+                {
+                    cornResponse.WalletAvailable = false;
+                    return cornResponse;
+
+                }
 
                 //wallet server has been disabled, find the first server that has been enabled
                 if (!server.Enabled)
@@ -149,7 +155,7 @@ namespace BITCORNService.Utils.Wallet
         {
             return !string.IsNullOrEmpty(accessToken);
         }
-        public static async Task<CornTx> DebitWithdrawTx(string cornaddy,string txId, User user, WalletServer server, decimal amount, BitcornContext dbContext, string platform, int emptyUser)
+        public static async Task<CornTx> DebitWithdrawTx(string cornaddy, string txId, User user, WalletServer server, decimal amount, BitcornContext dbContext, string platform, int emptyUser)
         {
             if (user.UserWallet.Balance >= amount)
             {
@@ -169,7 +175,7 @@ namespace BITCORNService.Utils.Wallet
                 log.SenderId = user.UserId;
                 log.CornAddy = cornaddy;
 
-                var price = log.UsdtPrice = await ProbitApi.GetCornPriceAsync();
+                var price = log.UsdtPrice = await ProbitApi.GetCornPriceAsync(dbContext);
                 log.TotalUsdtValue = price * amount;
                 dbContext.CornTx.Add(log);
                 await dbContext.SaveAsync();
@@ -177,13 +183,13 @@ namespace BITCORNService.Utils.Wallet
             }
             return null;
         }
-        public static async Task<BitcornResponse> Withdraw(BitcornContext dbContext, IConfiguration configuration,User user,string cornAddy,decimal amount,string platform)
+        public static async Task<BitcornResponse> Withdraw(BitcornContext dbContext, IConfiguration configuration, User user, string cornAddy, decimal amount, string platform)
         {
             var cornResponse = new BitcornResponse();
             cornResponse.WalletAvailable = true;
             try
             {
-             
+
                 if (user.IsBanned)
                 {
                     return cornResponse;
@@ -192,6 +198,17 @@ namespace BITCORNService.Utils.Wallet
                 {
                     return cornResponse;
                 }
+
+                if(user.UserWallet.IsLocked != null && user.UserWallet.IsLocked.Value)
+                {
+                    return cornResponse;
+                }
+
+                if ((await TxUtils.ShouldLockWallet(dbContext, user, amount)))
+                {
+                    return cornResponse;
+                }
+
 
                 var server = await dbContext.GetWalletServer(user.UserWallet);
                 if (!server.Enabled || !server.WithdrawEnabled)
@@ -241,14 +258,14 @@ namespace BITCORNService.Utils.Wallet
                     }
                 }
             }
-            catch(Exception e)
+            catch (Exception e)
             {
                 throw e;
             }
 
             return cornResponse;
         }
-                
+
         public static async Task<CornTx[]> Deposit(BitcornContext dbContext, WalletDepositRequest request, IConfiguration configuration)
         {
             var receipts = new List<CornTx>();
@@ -268,7 +285,7 @@ namespace BITCORNService.Utils.Wallet
 
                     if (!isLogged)
                     {
-                       
+
                         var wallet = await dbContext.WalletByAddress(address);
                         if (wallet != null)
                         {
@@ -285,7 +302,7 @@ namespace BITCORNService.Utils.Wallet
                             cornTx.TxType = TransactionType.receive.ToString();
                             cornTx.Platform = "wallet-server";
                             cornTx.TxGroupId = Guid.NewGuid().ToString();
-                            var price = cornTx.UsdtPrice = await ProbitApi.GetCornPriceAsync();
+                            var price = cornTx.UsdtPrice = await ProbitApi.GetCornPriceAsync(dbContext);
                             cornTx.TotalUsdtValue = price * amount;
 
                             var deposit = new CornDeposit();
@@ -294,7 +311,7 @@ namespace BITCORNService.Utils.Wallet
 
                             sql.Append(TxUtils.ModifyNumber(nameof(UserWallet), nameof(UserWallet.Balance), amount, '+', nameof(UserWallet.UserId), wallet.UserId));
                             sql.Append(TxUtils.ModifyNumber(nameof(WalletServer), nameof(WalletServer.ServerBalance), amount, '+', nameof(WalletServer.Id), server.Id));
-                           
+
                             dbContext.CornTx.Add(cornTx);
                             dbContext.CornDeposit.Add(deposit);
                             receipts.Add(cornTx);
@@ -311,7 +328,7 @@ namespace BITCORNService.Utils.Wallet
             }
             catch (Exception e)
             {
-                await BITCORNLogger.LogError(dbContext, e,JsonConvert.SerializeObject(request));
+                await BITCORNLogger.LogError(dbContext, e, JsonConvert.SerializeObject(request));
             }
             return receipts.ToArray();
         }

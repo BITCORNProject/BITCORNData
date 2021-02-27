@@ -32,7 +32,7 @@ namespace BITCORNService.Utils.LockUser
 
         public static bool Release(User user)
         {
-            if (user!=null)
+            if (user != null)
                 return Release(user.UserId);
             return false;
         }
@@ -43,6 +43,33 @@ namespace BITCORNService.Utils.LockUser
             {
                 return _LockedUsers.Remove(userId);
             }
+        }
+    }
+    public static class StaticLockCollection
+    {
+        static HashSet<string> _Locked = new HashSet<string>();
+        public static bool Release(string s)
+        {
+            lock (_Locked)
+            {
+                return _Locked.Remove(s);
+            }
+        }
+
+        public static bool Lock(string s)
+        {
+            lock (_Locked)
+            {
+                var locked = _Locked.Contains(s);
+
+                if (locked)
+                {
+                    return false;
+                }
+
+                return _Locked.Add(s);
+            }
+
         }
     }
 }

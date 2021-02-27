@@ -1,4 +1,6 @@
-﻿namespace BITCORNService.Models
+﻿using System;
+
+namespace BITCORNService.Models
 {
     public class SubTx
     {
@@ -7,4 +9,5 @@
         public int UserSubscriptionId { get; set; }
         public int? ReferralTxId { get; set; }
     }
+ 
 }

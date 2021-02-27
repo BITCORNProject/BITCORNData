@@ -17,7 +17,7 @@ namespace BITCORNService
                 .ConfigureWebHostDefaults(webBuilder =>
                 {
                     webBuilder.UseStartup<Startup>();
-                    webBuilder.UseSentry();
+                    //webBuilder.UseSentry();
                 });
     }
 }

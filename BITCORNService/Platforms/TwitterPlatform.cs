@@ -40,9 +40,14 @@ namespace BITCORNService.Platforms
                 }
                 if (twitterDbUser?.UserIdentity.Auth0Id != null)
                 {
+                    var obj = GetSyncOutput(creationTime, twitterDbUser, false);
+                    obj.ProfileAlreadySynced = true;
+                    return obj;
+                    /*
                     var e = new Exception($"Auth0Id already exists for user {platformId.Id}");
                     await BITCORNLogger.LogError(_dbContext, e, JsonConvert.SerializeObject(registrationData));
                     throw e;
+                    */
                 }
                 var ex = new Exception($"Failed to register twitter id for user {platformId.Id} {auth0Id}");
                 await BITCORNLogger.LogError(_dbContext, ex, JsonConvert.SerializeObject(registrationData));

@@ -6,6 +6,7 @@ using System.Linq.Expressions;
 using System.Reflection;
 using System.Threading.Tasks;
 using BITCORNService.Models;
+using BITCORNService.Utils.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
 using Serilog;
@@ -32,8 +33,23 @@ namespace BITCORNService.Utils.DbActions
                         UserWallet = wallet,
                         UserStat = userStat,
                         UserIdentity = identity,
-
+                        MFA = user.MFA,
+                        IsSocketConnected = user.IsSocketConnected
                     });
+        }
+
+        public static IQueryable<LivestreamQueryResponse> GetLivestreams(this BitcornContext dbContext)
+        {
+            return (from identity in dbContext.UserIdentity
+                         join user in dbContext.User on identity.UserId equals user.UserId
+                         join stream in dbContext.UserLivestream on identity.UserId equals stream.UserId
+                         select new LivestreamQueryResponse
+                         {
+                             UserId = user.UserId,
+
+                             UserIdentity = identity,
+                             Stream = stream
+                         });
         }
 
         public static IQueryable<User> Auth0ManyQuery(this BitcornContext dbContext, HashSet<string> ids)

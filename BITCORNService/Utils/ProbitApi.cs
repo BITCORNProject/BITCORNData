@@ -4,6 +4,8 @@ using System.Globalization;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using BITCORNService.Models;
+using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using RestSharp;
@@ -26,20 +28,35 @@ namespace BITCORNService.Utils
             return Convert.ToDecimal(tickers.data[0].last, CultureInfo.InvariantCulture);
         }
 
-        public static async Task<decimal> GetCornPriceAsync()
+        public static async Task<decimal> GetCornPriceAsync(BitcornContext dbContext)
         {
+            var cornPrice = dbContext.Price.FirstOrDefault(p => p.Symbol == "CORN");
+
             try
             {
+
                 var cornBtc = await GetPrice("CORN-BTC");
                 var btcUsdt = await GetPrice("BTC-USDT");
-                return cornBtc * btcUsdt;
-             
+                var price = cornBtc * btcUsdt;
+                //cornPrice.LatestPrice = price;
+                await dbContext.Database.ExecuteSqlRawAsync($"update [{nameof(Price)}] set [{nameof(Price.LatestPrice)}] = {price} where [{nameof(Price.Symbol)}] = 'CORN'");
+                return price;
             }
-            catch
+            catch (Exception e)
             {
-
+                if (cornPrice != null)
+                    return cornPrice.LatestPrice;
                 return -1;
             }
+
+        }
+
+        public static async Task<(decimal,decimal,decimal)> GetPricesAsync()
+        {
+            var cornBtc = await GetPrice("CORN-BTC");
+            var btcUsdt = await GetPrice("BTC-USDT");
+            var cornPrice = cornBtc * btcUsdt;
+            return (cornBtc, btcUsdt, cornPrice);
 
         }
     }

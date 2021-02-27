@@ -66,7 +66,7 @@ namespace BITCORNService.Controllers
 		public async Task<ActionResult<object>> Join([FromBody] BattlegroundsJoinGameRequest request)
 		{
 			var sender = this.GetCachedUser();
-			if (sender != null && sender.IsAdmin())
+			if (sender != null)// && sender.IsAdmin()
 			{
 				var platformId = BitcornUtils.GetPlatformId(request.UserPlatformId);
 				var player = await BitcornUtils.GetUserForPlatform(platformId, _dbContext).AsNoTracking().FirstOrDefaultAsync();
@@ -138,7 +138,7 @@ namespace BITCORNService.Controllers
 			try
 			{
 				var sender = this.GetCachedUser();
-				if (sender != null && sender.IsAdmin())
+				if (sender != null)// && sender.IsAdmin())
 				{
 					var activeGame = await _dbContext.GameInstance.FirstOrDefaultAsync(g => g.HostId == sender.UserId && g.Active);
 					if (activeGame == null)
@@ -273,7 +273,7 @@ namespace BITCORNService.Controllers
 			try
 			{
 				var sender = this.GetCachedUser();
-				if (sender != null && sender.IsAdmin())
+				if (sender != null)// && sender.IsAdmin())
 				{
 					var activeGame = await _dbContext.GameInstance.FirstOrDefaultAsync(g => g.HostId == sender.UserId && g.Active);
 					if (activeGame != null)

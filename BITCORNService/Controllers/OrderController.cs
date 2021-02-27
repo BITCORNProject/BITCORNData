@@ -80,7 +80,7 @@ namespace BITCORNService.Controllers
                 }
 
 
-                var cornPrice = await ProbitApi.GetCornPriceAsync();
+                var cornPrice = await ProbitApi.GetCornPriceAsync(_dbContext);
                 var cornOrderSum = orderItems.Select(e => e.CornAmount).Sum();
                 var cornCurrentSum = orderItems.Select(e => e.UsdAmount / cornPrice).Sum();
                 var costDiff = Math.Abs(cornCurrentSum - cornOrderSum);
@@ -212,7 +212,7 @@ namespace BITCORNService.Controllers
                         }
                     }
                     
-                    var cornPrice = await ProbitApi.GetCornPriceAsync();
+                    var cornPrice = await ProbitApi.GetCornPriceAsync(_dbContext);
                     if (client.OrderMaxCost != null)
                     {
                        
@@ -306,7 +306,7 @@ namespace BITCORNService.Controllers
 
                     var recipientUser = await _dbContext.JoinUserModels()
                         .FirstOrDefaultAsync((u) => u.UserId == client.RecipientUser);
-                    var cornPrice = await ProbitApi.GetCornPriceAsync();
+                    var cornPrice = await ProbitApi.GetCornPriceAsync(_dbContext);
                     var cornOrderSum = orderItems.Select(e => e.CornAmount).Sum();
                     var cornCurrentSum = orderItems.Select(e => e.UsdAmount / cornPrice).Sum();
                     var costDiff = Math.Abs(cornCurrentSum - cornOrderSum);

@@ -18,6 +18,9 @@ namespace BITCORNService.Models
         public string Username { get; set; }
         public string Avatar { get; set; }
         public bool IsBanned { get; set; }
+
+        public bool MFA { get; set; }
+        public bool IsSocketConnected { get; set; }
         public DateTime? CreationTime { get; set; }
         public virtual UserIdentity UserIdentity { get; set; }
         public virtual UserStat UserStat { get; set; }

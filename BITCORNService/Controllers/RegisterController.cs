@@ -32,11 +32,15 @@ namespace BITCORNService.Controllers
         [ServiceFilter(typeof(CacheUserAttribute))]
         [Authorize(Policy = AuthScopes.AddUser)]
         [HttpPost("newuser")]
-        public async Task<FullUser> RegisterNewUser([FromBody]Auth0User auth0User, [FromQuery] string referral = null)
+        public async Task<ActionResult<FullUser>> RegisterNewUser([FromBody]Auth0User auth0User, [FromQuery] string referral = null)
         {
             if (this.GetCachedUser() != null)
                 throw new InvalidOperationException();
             if (auth0User == null) throw new ArgumentNullException();
+            if(!StaticLockCollection.Lock(auth0User.Auth0Id))
+            {
+                return StatusCode(UserLockCollection.UserLockedReturnCode);
+            }
 
             var existingUserIdentity = await _dbContext.Auth0Query(auth0User.Auth0Id).Select(u => u.UserIdentity).FirstOrDefaultAsync();
 
@@ -45,6 +49,7 @@ namespace BITCORNService.Controllers
                 var user = _dbContext.User.FirstOrDefault(u => u.UserId == existingUserIdentity.UserId);
                 var userWallet = _dbContext.UserWallet.FirstOrDefault(u => u.UserId == existingUserIdentity.UserId);
                 var userStat = _dbContext.UserStat.FirstOrDefault(u => u.UserId == existingUserIdentity.UserId);
+                StaticLockCollection.Release(auth0User.Auth0Id);
                 return BitcornUtils.GetFullUser(user, existingUserIdentity, userWallet, userStat);
             }
 
@@ -98,7 +103,7 @@ namespace BITCORNService.Controllers
                                     {
                                         referrerStat.TotalReferralRewardsUsdt = 0;
                                     }
-                                    referrerStat.TotalReferralRewardsUsdt += (referralPayoutTotal * (await ProbitApi.GetCornPriceAsync()));
+                                    referrerStat.TotalReferralRewardsUsdt += (referralPayoutTotal * (await ProbitApi.GetCornPriceAsync(_dbContext)));
                                 }
                                 user.UserReferral.SignupReward = DateTime.Now;
                             }
@@ -114,6 +119,10 @@ namespace BITCORNService.Controllers
             {
                 await BITCORNLogger.LogError(_dbContext, e, JsonConvert.SerializeObject(auth0User));
                 throw e;
+            }
+            finally
+            {
+                StaticLockCollection.Release(auth0User.Auth0Id);
             }
         }
 
@@ -150,7 +159,7 @@ namespace BITCORNService.Controllers
             }
             catch (Exception e)
             {
-                throw new Exception($"registration failed for {registrationData}");
+                throw new Exception($"registration failed for {JsonConvert.SerializeObject(registrationData)}");
             }
             throw new Exception("HOW THE FUCK DID YOU GET HERE");
         }

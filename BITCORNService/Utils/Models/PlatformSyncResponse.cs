@@ -8,5 +8,6 @@ namespace BITCORNService.Utils.Models
         public FullUser User { get; set; }
         public bool IsMigration { get; set; }
         public DateTime? SocialCreationTime { get; set; }
+        public bool ProfileAlreadySynced { get; set; }
     }
 }

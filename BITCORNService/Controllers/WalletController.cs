@@ -7,8 +7,10 @@ using BITCORNService.Models;
 using BITCORNService.Reflection;
 using BITCORNService.Utils;
 using BITCORNService.Utils.Auth;
+using BITCORNService.Utils.DbActions;
 using BITCORNService.Utils.LockUser;
 using BITCORNService.Utils.Models;
+using BITCORNService.Utils.Tx;
 using BITCORNService.Utils.Wallet;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -46,13 +48,16 @@ namespace BITCORNService.Controllers
                 var platformId = BitcornUtils.GetPlatformId(request.Id);
 
                 var user = await BitcornUtils.GetUserForPlatform(platformId, _dbContext).FirstOrDefaultAsync();
-                
+
                 if (user != null)
                 {
                     var walletResponse = await WalletUtils.CreateCornaddy(_dbContext, user.UserWallet, _configuration);
                     if (!walletResponse.WalletAvailable)
                     {
-                        return StatusCode((int)HttpStatusCode.ServiceUnavailable);
+                        user.UserWallet.CornAddy = "<no enabled wallets found>";
+                        await _dbContext.SaveAsync();
+                        return StatusCode(200);
+                        //return StatusCode((int)HttpStatusCode.ServiceUnavailable);
                     }
                     return BitcornUtils.GetFullUser(user, user.UserIdentity, user.UserWallet, user.UserStat);
                 }
@@ -61,9 +66,9 @@ namespace BITCORNService.Controllers
                     return StatusCode(500);
                 }
             }
-            catch(Exception e)
+            catch (Exception e)
             {
-                await BITCORNLogger.LogError(_dbContext,e, JsonConvert.SerializeObject(request));
+                await BITCORNLogger.LogError(_dbContext, e, JsonConvert.SerializeObject(request));
                 throw e;
             }
         }
@@ -72,7 +77,33 @@ namespace BITCORNService.Controllers
         [HttpGet("server/{index}")]
         public async Task<WalletServer> Server([FromRoute] int index)
         {
-            return await _dbContext.WalletServer.FirstOrDefaultAsync((s)=>s.Index==index);
+            return await _dbContext.WalletServer.FirstOrDefaultAsync((s) => s.Index == index);
+        }
+
+        [HttpPost("lockall")]
+        public async Task<ActionResult> LockAll()
+        {
+            var servers = await _dbContext.WalletServer.ToArrayAsync();
+            for (int i = 0; i < servers.Length; i++)
+            {
+                servers[i].Enabled = false;
+                servers[i].WithdrawEnabled = false;
+            }
+            await _dbContext.SaveAsync();
+            return StatusCode(200);
+        }
+
+        [HttpGet("prices")]
+        public async Task<ActionResult<object>> GetPrices()
+        {
+            var prices = await ProbitApi.GetPricesAsync();
+            //(cornBtc, btcUsdt, cornPrice);
+            return new
+            {
+                cornBtc = prices.Item1,
+                btcUsdt = prices.Item2,
+                cornPrice = prices.Item3
+            };
         }
         //API: /api/wallet/deposit
         //called by the wallet servers only
@@ -114,60 +145,105 @@ namespace BITCORNService.Controllers
 
         }
 
+        async Task FillColumns(Dictionary<string, object> response, WithdrawRequest request, User user)
+        {
+            if (request.Columns.Length > 0)
+            {
+                var columns = await UserReflection.GetColumns(_dbContext, request.Columns, new int[] { user.UserId });
+                if (columns.Count > 0)
+                {
+                    foreach (var item in columns.First().Value)
+                    {
+                        response.Add(item.Key, item.Value);
+                    }
+                }
+            }
+        }
+
         //API: /api/wallet/withdraw
         [ServiceFilter(typeof(LockUserAttribute))]
         [HttpPost("withdraw")]
         [Authorize(Policy = AuthScopes.Withdraw)]
         public async Task<ActionResult<object>> Withdraw([FromBody] WithdrawRequest request)
         {
-            
+
             try
             {
                 var platformId = BitcornUtils.GetPlatformId(request.Id);
                 var user = this.GetCachedUser();//await BitcornUtils.GetUserForPlatform(platformId, _dbContext).FirstOrDefaultAsync();
-                
+
                 var response = new Dictionary<string, object>();
                 if (user != null)
                 {
-                    var withdrawResult = await WalletUtils.Withdraw(_dbContext, _configuration, user, request.CornAddy, request.Amount, platformId.Platform);
-                    response.Add("usererror", withdrawResult.UserError);
-                    response.Add("walletavailable", withdrawResult.WalletAvailable);
-                    response.Add("txid", withdrawResult.WalletObject);
-                    if (request.Columns.Length > 0)
+                    if (user.UserWallet.IsLocked != null && user.UserWallet.IsLocked.Value)
                     {
-                        var columns = await UserReflection.GetColumns(_dbContext, request.Columns, new int[] { user.UserId });
-                        if (columns.Count > 0)
+                        return StatusCode(420);
+                    }
+
+                    if (user.MFA)
+                    {
+                        if (user.UserWallet.Balance < 10_000_000)
                         {
-                            foreach (var item in columns.First().Value)
+
+
+                            var withdrawResult = await WalletUtils.Withdraw(_dbContext, _configuration, user, request.CornAddy, request.Amount, platformId.Platform);
+                            response.Add("usererror", withdrawResult.UserError);
+                            response.Add("walletavailable", withdrawResult.WalletAvailable);
+                            response.Add("txid", withdrawResult.WalletObject);
+                            await FillColumns(response, request, user);
+                            if (withdrawResult.WalletObject != null && request.Amount > 100000)
                             {
-                                response.Add(item.Key, item.Value);
+                                await BitcornUtils.TxTracking(_configuration, new
+                                {
+                                    txid = withdrawResult.WalletObject,
+                                    time = DateTime.Now,
+                                    method = "withdraw",
+                                    platform = platformId.Platform,
+                                    amount = request.Amount,
+                                    userid = user.UserId,
+                                    twitchUsername = user.UserIdentity.TwitchUsername,
+                                    discordUsername = user.UserIdentity.DiscordUsername,
+                                    cornaddy = request.CornAddy,
+                                });
                             }
                         }
-                    }
-                    if (withdrawResult.WalletObject != null && request.Amount > 100000)
-                    {
-                        await BitcornUtils.TxTracking(_configuration, new
+                        else
                         {
-                            txid = withdrawResult.WalletObject,
-                            time = DateTime.Now,
-                            method = "withdraw",
-                            platform = platformId.Platform,
-                            amount = request.Amount,
-                            userid = user.UserId,
-                            twitchUsername = user.UserIdentity.TwitchUsername,
-                            discordUsername = user.UserIdentity.DiscordUsername,
-                            cornaddy = request.CornAddy,
-                        });
+                            response.Add("usererror", false);
+                            response.Add("walletavailable", false);
+                            response.Add("txid", null);
+                            await FillColumns(response, request, user);
+                            await BitcornUtils.TxTracking(_configuration, new
+                            {
+
+                                message = "Withdraw cancelled, manual withdraw required.",
+                                time = DateTime.Now,
+
+                                platform = platformId.Platform,
+                                amount = request.Amount,
+                                userid = user.UserId,
+                                twitchUsername = user.UserIdentity.TwitchUsername,
+                                discordUsername = user.UserIdentity.DiscordUsername,
+                                cornaddy = request.CornAddy,
+                            });
+                        }
+                    }
+                    else
+                    {
+                        await FillColumns(response, request, user);
+                        response.Add("usererror", false);
+                        response.Add("walletavailable", false);
+                        response.Add("txid", null);
                     }
                 }
                 return response;
             }
-            catch(Exception e)
+            catch (Exception e)
             {
-                await BITCORNLogger.LogError(_dbContext,e, JsonConvert.SerializeObject(request));
+                await BITCORNLogger.LogError(_dbContext, e, JsonConvert.SerializeObject(request));
                 throw e;
             }
-        
+
         }
     }
 }

@@ -142,7 +142,7 @@ namespace BITCORNServiceTests.ControllerTests
                     Auth0Id = testId
                 }, "0");
 
-                Assert.Equal(testName, response.Auth0Nickname);
+                Assert.Equal(testName, response.Value.Auth0Nickname);
             }
             finally
             {

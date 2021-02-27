@@ -16,7 +16,7 @@ namespace BITCORNService.Models
         public string DiscordId { get; set; }
         public string TwitterId { get; set; }
         public string RedditId { get; set; }
-
+        public string TwitchRefreshToken { get; set; }
         public virtual User User { get; set; }
     }
 }

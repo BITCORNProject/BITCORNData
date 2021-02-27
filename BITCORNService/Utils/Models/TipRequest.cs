@@ -29,6 +29,8 @@ namespace BITCORNService.Utils.Models
 
         [JsonIgnore]
         public User FromUser { get; set; }
+        public string IrcTarget { get; set; }
+
 
     }
 }

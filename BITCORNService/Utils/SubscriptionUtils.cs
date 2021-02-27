@@ -53,9 +53,9 @@ namespace BITCORNService.Utils
             return Math.Ceiling(tier.CostUsdt.Value / cornUsdt);
         }
 
-        public static async Task<decimal> CalculateUsdtToCornCost(SubscriptionTier tier)
+        public static async Task<decimal> CalculateUsdtToCornCost(BitcornContext dbContext,SubscriptionTier tier)
         {
-            var price = await ProbitApi.GetCornPriceAsync();
+            var price = await ProbitApi.GetCornPriceAsync(dbContext);
             return CalculateUsdtToCornCost(price, tier);
         }
         public static async Task<SubscriptionResponse> Subscribe(BitcornContext dbContext, User user, SubRequest subRequest)
@@ -105,7 +105,7 @@ namespace BITCORNService.Utils
             //if tier usdt cost has been initialized, the corn cost has to be calculated
             if (requestedTierInfo.CostUsdt != null && requestedTierInfo.CostUsdt > 0)
             {
-                cost = await CalculateUsdtToCornCost(requestedTierInfo);
+                cost = await CalculateUsdtToCornCost(dbContext,requestedTierInfo);
             }
             // check if cost is initialized properly
             else if (requestedTierInfo.CostCorn != null && requestedTierInfo.CostCorn > 0)
@@ -124,7 +124,7 @@ namespace BITCORNService.Utils
             {
                 //set data to existing subscriptions array
                 existingSubscriptions = await GetUserSubscriptions(dbContext, user)
-                    .Where(t => t.SubscriptionTier.SubscriptionId == subInfo.SubscriptionId).ToArrayAsync();
+                    .Where(t => t.SubscriptionTier.SubscriptionId == subInfo.SubscriptionId ).ToArrayAsync();
             }
             //initialize reference to existing subtierinfo
             UserSubcriptionTierInfo existingSubscription = null;
@@ -329,7 +329,7 @@ namespace BITCORNService.Utils
                     referrerUser.UserStat.TotalReferralRewardsCorn += referralShare;
                     //inceremnt total received usdt rewards
                     referrerUser.UserStat.TotalReferralRewardsUsdt +=
-                        ((referralShare) * (await ProbitApi.GetCornPriceAsync()));
+                        ((referralShare) * (await ProbitApi.GetCornPriceAsync(dbContext)));
                     //execute transaction
                     if (await TxUtils.ExecuteTransaction(referralShareTx, dbContext))
                     {

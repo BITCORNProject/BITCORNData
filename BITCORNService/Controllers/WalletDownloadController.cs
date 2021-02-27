@@ -51,6 +51,8 @@ namespace BITCORNService.Controllers
                     {
                         walletDownload.ReferralUserId = _dbContext.Referrer
                             .FirstOrDefault(r => r.ReferralId == Convert.ToInt32(userReferral.ReferralId))?.UserId;
+                        walletDownload.ReferralCode = userReferral.ReferralId.ToString();
+                      
                     }
                     catch (Exception e)
                     {
