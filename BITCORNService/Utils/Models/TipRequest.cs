@@ -16,9 +16,13 @@ namespace BITCORNService.Utils.Models
         public string Platform { get; set; }
 
         public string[] Columns { get; set; }
+        public string IrcMessage { get; set; }
 
-        string ITxRequest.TxType => "$tipcorn";
-
+        string ITxRequest.TxType => GetTxType();
+        protected virtual string GetTxType()
+        {
+            return "$tipcorn";
+        }
         IEnumerable<string> ITxRequest.To
         {
             get
@@ -32,5 +36,32 @@ namespace BITCORNService.Utils.Models
         public string IrcTarget { get; set; }
 
 
+    }
+
+    public class ChannelPointsRedemptionRequest : TipRequest
+    {
+        public int ChannelPointAmount { get; set; }
+        protected override string GetTxType()
+        {
+            return "channel-points";
+        }
+    }
+
+    public class ChannelSubRequest : TipRequest
+    {
+        public  string SubTier { get; set; }
+        protected override string GetTxType()
+        {
+            return "sub-event";
+        }
+    }
+
+    public class BitDonationRequest : TipRequest
+    {
+        public decimal BitAmount { get; set; }
+        protected override string GetTxType()
+        {
+            return "bit-donation";
+        }
     }
 }

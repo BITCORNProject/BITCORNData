@@ -40,6 +40,13 @@ namespace BITCORNService.Utils.DbActions
 
         public static IQueryable<LivestreamQueryResponse> GetLivestreams(this BitcornContext dbContext)
         {
+
+            return dbContext.JoinUserModels().Join(dbContext.UserLivestream, (user) => user.UserId, (stream) => stream.UserId, (user, stream) => new LivestreamQueryResponse
+            {
+                User = user,
+                Stream = stream
+            });
+            /*
             return (from identity in dbContext.UserIdentity
                          join user in dbContext.User on identity.UserId equals user.UserId
                          join stream in dbContext.UserLivestream on identity.UserId equals stream.UserId
@@ -49,7 +56,7 @@ namespace BITCORNService.Utils.DbActions
 
                              UserIdentity = identity,
                              Stream = stream
-                         });
+                         });*/
         }
 
         public static IQueryable<User> Auth0ManyQuery(this BitcornContext dbContext, HashSet<string> ids)
@@ -59,7 +66,14 @@ namespace BITCORNService.Utils.DbActions
 
         public static IQueryable<User> TwitchManyQuery(this BitcornContext dbContext, HashSet<string> ids)
         {
-            return JoinUserModels(dbContext).Where(u => ids.Contains(u.UserIdentity.TwitchId));
+            return JoinUserModels(dbContext).Where(u => !string.IsNullOrEmpty(u.UserIdentity.TwitchId) && ids.Contains(u.UserIdentity.TwitchId));
+        }
+
+        public static IQueryable<User> TwitchUsernameManyQuery(this BitcornContext dbContext, HashSet<string> ids)
+        {
+            ids = ids.Select(x => x.ToLower()).ToHashSet();
+
+            return JoinUserModels(dbContext).Where(u => !string.IsNullOrEmpty(u.UserIdentity.TwitchUsername) && ids.Contains(u.UserIdentity.TwitchUsername.ToLower()));
         }
 
         public static IQueryable<User> DiscordManyQuery(this BitcornContext dbContext, HashSet<string> ids)
@@ -91,8 +105,15 @@ namespace BITCORNService.Utils.DbActions
 
         public static IQueryable<User> TwitchQuery(this BitcornContext dbContext, string twitchId)
         {
-            return JoinUserModels(dbContext).Where(u => u.UserIdentity.TwitchId == twitchId);
+            return JoinUserModels(dbContext).Where(u => !string.IsNullOrEmpty(u.UserIdentity.TwitchId) && u.UserIdentity.TwitchId == twitchId);
         }
+
+        public static IQueryable<User> TwitchUsernameQuery(this BitcornContext dbContext, string twitchUsername)
+        {
+            twitchUsername = twitchUsername.ToLower();
+            return JoinUserModels(dbContext).Where(u => !string.IsNullOrEmpty(u.UserIdentity.TwitchUsername) && u.UserIdentity.TwitchUsername.ToLower() == twitchUsername);
+        }
+
         public static IQueryable<User> TwitterQuery(this BitcornContext dbContext, string twitterId)
         {
             return JoinUserModels(dbContext).Where(u => u.UserIdentity.TwitterId == twitterId);
@@ -114,7 +135,7 @@ namespace BITCORNService.Utils.DbActions
 
         public static async Task<User> TwitchAsync(this BitcornContext dbContext, string twitchId)
         {
-            return await TwitchQuery(dbContext,twitchId).FirstOrDefaultAsync();
+            return await TwitchQuery(dbContext, twitchId).FirstOrDefaultAsync();
         }
         public static async Task<User> TwitterAsync(this BitcornContext dbContext, string twitterId)
         {
@@ -123,7 +144,7 @@ namespace BITCORNService.Utils.DbActions
 
         public static async Task<User> DiscordAsync(this BitcornContext dbContext, string discordId)
         {
-            return await DiscordQuery(dbContext,discordId).FirstOrDefaultAsync();
+            return await DiscordQuery(dbContext, discordId).FirstOrDefaultAsync();
         }
 
         public static async Task<User> RedditAsync(this BitcornContext dbContext, string redditId)
@@ -184,7 +205,7 @@ namespace BITCORNService.Utils.DbActions
             var parameter = Expression.Parameter(type, "p");
             var propertyAccess = Expression.MakeMemberAccess(parameter, property);
             var orderByExp = Expression.Lambda(propertyAccess, parameter);
-            MethodCallExpression resultExp = Expression.Call(typeof(Queryable), "OrderByDescending", new Type[] { type, property.PropertyType }, source.Expression, Expression.Quote(orderByExp)); 
+            MethodCallExpression resultExp = Expression.Call(typeof(Queryable), "OrderByDescending", new Type[] { type, property.PropertyType }, source.Expression, Expression.Quote(orderByExp));
             return source.Provider.CreateQuery<T>(resultExp);
         }
     }

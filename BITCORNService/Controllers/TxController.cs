@@ -100,10 +100,11 @@ namespace BITCORNService.Controllers
                         sql.Append(TxUtils.UpdateNumberIfTop(table, nameof(UserStat.LargestSentBitcornRain), processInfo.TotalAmount, pk, fromId));
                         if (!string.IsNullOrEmpty(rainRequest.IrcTarget))
                         {
-                            var ircTx = new IrcTarget();
+                            var ircTx = new IrcTransaction();
                             ircTx.IrcChannel = rainRequest.IrcTarget;
                             ircTx.TxGroupId = transactions.Where(x => x.Tx != null).FirstOrDefault().Tx.TxGroupId;
-                            _dbContext.IrcTarget.Add(ircTx);
+                            ircTx.IrcMessage = rainRequest.IrcMessage;
+                            _dbContext.IrcTransaction.Add(ircTx);
 
                             var liveStreamTable = nameof(UserLivestream);
                             var livestreamKey = nameof(UserLivestream.UserId);
@@ -120,6 +121,7 @@ namespace BITCORNService.Controllers
 
                         await _dbContext.Database.ExecuteSqlRawAsync(sql.ToString());
                         await _dbContext.SaveAsync(IsolationLevel.RepeatableRead);
+                        await TxUtils.OnPostTransaction(processInfo, _dbContext);
                     }
                     await TxUtils.AppendTxs(transactions, _dbContext, rainRequest.Columns);
 
@@ -159,6 +161,8 @@ namespace BITCORNService.Controllers
                 {
                     payout = stream.Tier3IdlePerMinute;//1;
                 }
+
+                if (payout <= 0) continue;
 
                 payout *= minutes;
                 sql.Append(TxUtils.ModifyNumber(nameof(UserWallet), nameof(UserWallet.Balance), payout, '+', pk, ids));
@@ -253,7 +257,7 @@ namespace BITCORNService.Controllers
                                 try
                                 {
                                     ret = await PerformPayout(streamQuery.stream, user, groupedUsers, request.Minutes);
-                                
+
                                 }
                                 catch (Exception ex)
                                 {
@@ -279,7 +283,7 @@ namespace BITCORNService.Controllers
                     }
                     else
                     {
-                        return new {msg="user null"};
+                        return new { msg = "user null" };
                     }
                     //var subChatters = existingSubs.Where(x => request.Chatters.Contains(x)).ToArray();
 
@@ -305,25 +309,34 @@ namespace BITCORNService.Controllers
                 throw e;
             }
         }
+
+
+        public class StreamActionRequest
+        {
+            public string[] Columns { get; set; }
+            public string Platform { get; set; }
+            public string From { get; set; }
+
+            public string Type { get; set; }
+            public string IrcMessage { get; set; }
+
+            public string IrcTarget { get; set; }
+
+        }
         [ServiceFilter(typeof(LockUserAttribute))]
-        [HttpPost("tipcorn")]
-        public async Task<ActionResult<TxReceipt[]>> Tipcorn([FromBody] TipRequest tipRequest)
+        [HttpPost("streamaction")]
+        public async Task<ActionResult<object>> StreamAction([FromBody] StreamActionRequest streamRequest)
         {
             if (!TxUtils.AreTransactionsEnabled(_configuration))
             {
                 return StatusCode(420);
             }
-
-            if (tipRequest == null) throw new ArgumentNullException();
-            if (tipRequest.From == null) throw new ArgumentNullException();
-            if (tipRequest.To == null) throw new ArgumentNullException();
-            if (tipRequest.To == tipRequest.From) return StatusCode((int)HttpStatusCode.BadRequest);
-            if (tipRequest.Amount <= 0) return StatusCode((int)HttpStatusCode.BadRequest);
-
             try
             {
+                TxReceipt receipt = null;
+
                 UserLivestream liveStream = null;
-                if (!string.IsNullOrEmpty(tipRequest.IrcTarget))
+                if (!string.IsNullOrEmpty(streamRequest.IrcTarget))
                 {
                     //var liveStream = await _dbContext.UserLivestream.FirstOrDefaultAsync(x => x.IrcTarget == tipRequest.IrcTarget);
                     var streamQuery = await _dbContext.UserLivestream
@@ -331,7 +344,7 @@ namespace BITCORNService.Controllers
                         {
                             stream,
                             identity
-                        }).FirstOrDefaultAsync(x => x.identity.TwitchId == tipRequest.IrcTarget);
+                        }).FirstOrDefaultAsync(x => x.identity.TwitchId == streamRequest.IrcTarget);
                     if (streamQuery != null)
                     {
                         if (!streamQuery.stream.EnableTransactions)
@@ -340,8 +353,573 @@ namespace BITCORNService.Controllers
                         }
 
                         liveStream = streamQuery.stream;
+
+
+                        var fromUser = this.GetCachedUser();
+                        var toUser = await _dbContext.JoinUserModels().FirstOrDefaultAsync(x => x.UserId == liveStream.UserId);
+                        if (fromUser != null && !fromUser.IsBanned)
+                        {
+                            if (streamRequest.Type == "tts")
+                            {
+                                if (liveStream.EnableTts)
+                                {
+
+                                    var costAmount = liveStream.BitcornPerTtsCharacter * streamRequest.IrcMessage.Length;
+                                    var streamAction = new UserStreamAction();
+                                    if (liveStream.BitcornPerTtsCharacter > 0 && toUser.UserId != fromUser.UserId)
+                                    {
+                                        var tx = await TxUtils.SendFromGetReceipt(fromUser, toUser, costAmount, "twitch", "tts", _dbContext);
+                                        if (tx != null)
+                                        {
+                                            streamAction.TxId = tx.TxId;
+                                            receipt = tx;
+                                        }
+                                    }
+
+
+                                    streamAction.RecipientUserId = liveStream.UserId;
+                                    streamAction.SenderUserId = fromUser.UserId;
+                                    streamAction.Timestamp = DateTime.Now;
+                                    streamAction.Type = "tts";
+                                    streamAction.Content = streamRequest.IrcMessage;
+                                    if (toUser.IsSocketConnected)
+                                    {
+                                        await LivestreamUtils.HandleTts(_dbContext, fromUser, toUser, streamAction, false);
+                                    }
+
+                                    _dbContext.UserStreamAction.Add(streamAction);
+
+                                    await _dbContext.SaveAsync();
+                                    if (receipt != null)
+                                    {
+                                        await TxUtils.AppendTxs(new TxReceipt[] { receipt }, _dbContext, streamRequest.Columns);
+                                    }
+
+                                    return new
+                                    {
+                                        ttsEnabled = true,
+                                        success = true,
+                                        receipt = receipt
+                                    };
+                                }
+                                else
+                                {
+
+                                    return new
+                                    {
+                                        ttsEnabled = false,
+                                        success = false,
+                                        receipt = receipt
+                                    };
+                                }
+                            }
+                        }
                     }
 
+                }
+
+                return new
+                {
+                    success = false,
+                    receipt = receipt
+                };
+            }
+            catch (Exception ex)
+            {
+                await BITCORNLogger.LogError(_dbContext, ex, "");
+                return StatusCode(500);
+            }
+        }
+
+        StatusCodeResult CheckRequest(TipRequest tipRequest, bool checkAmount = true)
+        {
+            if (!TxUtils.AreTransactionsEnabled(_configuration))
+            {
+                return StatusCode(420);
+            }
+
+
+            if (tipRequest == null) throw new ArgumentNullException();
+            if (tipRequest.From == null) throw new ArgumentNullException();
+            if (tipRequest.To == null) throw new ArgumentNullException();
+            if (tipRequest.To == tipRequest.From) return StatusCode((int)HttpStatusCode.BadRequest);
+            if (checkAmount)
+                if (tipRequest.Amount <= 0) return StatusCode((int)HttpStatusCode.BadRequest);
+            return null;
+        }
+
+        public class TransactionsNotEnabledException : Exception { }
+        async Task<UserLivestream> GetLivestream(TipRequest tipRequest)
+        {
+            UserLivestream liveStream = null;
+            if (!string.IsNullOrEmpty(tipRequest.IrcTarget))
+            {
+                //var liveStream = await _dbContext.UserLivestream.FirstOrDefaultAsync(x => x.IrcTarget == tipRequest.IrcTarget);
+                var streamQuery = await _dbContext.UserLivestream
+                    .Join(_dbContext.UserIdentity, x => x.UserId, x => x.UserId, (stream, identity) => new
+                    {
+                        stream,
+                        identity
+                    }).FirstOrDefaultAsync(x => x.identity.TwitchId == tipRequest.IrcTarget);
+                if (streamQuery != null)
+                {
+                    if (!streamQuery.stream.EnableTransactions)
+                    {
+                        throw new TransactionsNotEnabledException();
+                        //return StatusCode(420);
+                    }
+
+                    liveStream = streamQuery.stream;
+                }
+
+            }
+
+            return liveStream;
+        }
+
+        async Task<bool> ProcessUnclaimed(TxProcessInfo processInfo, TipRequest tipRequest)
+        {
+            if (processInfo.From != null && !processInfo.From.IsBanned && processInfo.Transactions[0].To == null)
+            {
+                if (processInfo.From.UserWallet.Balance >= tipRequest.Amount)
+                {
+                    var unclaimed = new UnclaimedTx();
+                    unclaimed.TxType = ((ITxRequest)tipRequest).TxType;
+                    unclaimed.Platform = tipRequest.Platform;
+                    unclaimed.ReceiverPlatformId = BitcornUtils.GetPlatformId(tipRequest.To).Id;
+                    unclaimed.Amount = tipRequest.Amount;
+                    unclaimed.Timestamp = DateTime.Now;
+                    unclaimed.SenderUserId = processInfo.From.UserId;
+                    unclaimed.Expiration = DateTime.Now.AddMinutes(TimeToClaimTipMinutes);
+                    unclaimed.Claimed = false;
+                    unclaimed.Refunded = false;
+
+                    _dbContext.UnclaimedTx.Add(unclaimed);
+                    await _dbContext.Database.ExecuteSqlRawAsync(TxUtils.ModifyNumber(nameof(UserWallet), nameof(UserWallet.Balance), tipRequest.Amount, '-', nameof(UserWallet.UserId), processInfo.From.UserId));
+                    await _dbContext.SaveAsync();
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        public class BuyCornRequest
+        {
+            public string Auth0Id { get; set; }
+            public string PaymentId { get; set; }
+            public string OrderId { get; set; }
+            public string Fingerprint { get; set; }
+            public string ReceiptNumber { get; set; }
+            public decimal UsdAmount { get; set; }
+            public decimal CornAmount { get; set; }
+        }
+        static HashSet<string> s_LockedPayments = new HashSet<string>();
+        static bool TryLockPayment(string l)
+        {
+            lock (s_LockedPayments)
+            {
+                if (s_LockedPayments.Contains(l))
+                {
+                    return false;
+                }
+
+                s_LockedPayments.Add(l);
+                return true;
+            }
+
+        }
+        public class CompleteBuyCornRequest
+        {
+            public string Auth0Id { get; set; }
+            public int CornPurchaseId { get; set; }
+            public string PaymentId { get; set; }
+        }
+
+        [ServiceFilter(typeof(CacheUserAttribute))]
+        [HttpPost("completebuycorn")]
+        public async Task<ActionResult<object>> CloseBuycorn([FromBody] CompleteBuyCornRequest completeRequest)
+        {
+            if (this.GetCachedUser() != null)
+                throw new InvalidOperationException();
+            if (!string.IsNullOrEmpty(completeRequest.PaymentId))
+            {
+                if (!TryLockPayment(completeRequest.PaymentId))
+                {
+                    return StatusCode(420);
+                }
+
+                try
+                {
+                    var platformId = BitcornUtils.GetPlatformId(completeRequest.Auth0Id);
+                    var user = await BitcornUtils.GetUserForPlatform(platformId, _dbContext).FirstOrDefaultAsync();
+                    if (user != null)
+                    {
+                        var purchase = await _dbContext.CornPurchase.Where(x => x.PaymentId == completeRequest.PaymentId && x.UserId == user.UserId).FirstOrDefaultAsync();
+                        if (purchase != null && purchase.CornTxId == null)
+                        {
+                            var value = await TxUtils.SendFromBitcornhubGetReceipt(user, purchase.CornAmount, "BITCORNFarms", "corn-purchase", _dbContext);
+                            if(value.Tx!=null)
+                            {
+                                purchase.CornTxId = value.TxId.Value;
+                                await _dbContext.SaveAsync();
+                                return new
+                                {
+                                    success = true,
+
+                                };
+                            }
+                        }
+                    }
+                    return new
+                    {
+                        success = false,
+                     
+                    };
+                }
+                catch (Exception ex)
+                {
+                    await BITCORNLogger.LogError(_dbContext, ex, JsonConvert.SerializeObject(completeRequest));
+                    return new
+                    {
+                        success = false
+                    };
+                }
+                finally
+                {
+                    lock (s_LockedPayments)
+                    {
+                        s_LockedPayments.Remove(completeRequest.PaymentId);
+                    }
+
+
+                }
+
+
+            }
+            return StatusCode(400);
+
+        }
+
+        [ServiceFilter(typeof(CacheUserAttribute))]
+        [HttpPost("prepbuycorn")]
+        public async Task<ActionResult<object>> Buycorn([FromBody] BuyCornRequest request)
+        {
+            if (this.GetCachedUser() != null)
+                throw new InvalidOperationException();
+
+            if (!string.IsNullOrEmpty(request.PaymentId))
+            {
+                if (!TryLockPayment(request.PaymentId))
+                {
+                    return StatusCode(420);
+                }
+
+                try
+                {
+                    var platformId = BitcornUtils.GetPlatformId(request.Auth0Id);
+                    var user = await BitcornUtils.GetUserForPlatform(platformId, _dbContext).FirstOrDefaultAsync();
+                    if (user != null)
+                    {
+                        var purchase = new CornPurchase();
+                        purchase.OrderId = request.OrderId;
+                        purchase.PaymentId = request.PaymentId;
+                        purchase.ReceiptNumber = request.ReceiptNumber;
+                        purchase.UsdAmount = request.UsdAmount;
+                        purchase.CornAmount = request.CornAmount;
+                        purchase.Fingerprint = request.Fingerprint;
+                        purchase.UserId = user.UserId;
+                        _dbContext.CornPurchase.Add(purchase);
+                        int count = await _dbContext.SaveAsync();
+                        return new
+                        {
+                            success = count > 0,
+                            purchaseCloseId = purchase.CornPurchaseId
+                        };
+                    }
+                    return new
+                    {
+                        success = false,
+                        purchaseCloseId = -1//purchase.CornPurchaseId
+                    };
+                }
+                catch (Exception ex)
+                {
+                    await BITCORNLogger.LogError(_dbContext, ex, JsonConvert.SerializeObject(request));
+                    return new
+                    {
+                        success = false
+                    };
+                }
+                finally
+                {
+                    lock (s_LockedPayments)
+                    {
+                        s_LockedPayments.Remove(request.PaymentId);
+                    }
+
+
+                }
+
+
+            }
+            return StatusCode(400);
+        }
+
+        [ServiceFilter(typeof(LockUserAttribute))]
+        [HttpPost("bitdonation")]
+        public async Task<ActionResult<TxReceipt[]>> BitDonation([FromBody] BitDonationRequest tipRequest)
+        {
+            var status = CheckRequest(tipRequest, false);
+            if (status != null) return status;
+
+            try
+            {
+                UserLivestream liveStream = null;
+                try
+                {
+                    liveStream = await GetLivestream(tipRequest);
+                }
+                catch (TransactionsNotEnabledException _)
+                {
+                    return StatusCode(420);
+                }
+
+                tipRequest.FromUser = this.GetCachedUser();
+                if (tipRequest.FromUser != null && !tipRequest.FromUser.IsBanned && liveStream.BitcornhubFunded)
+                {
+                    tipRequest.FromUser = await TxUtils.GetBitcornhub(_dbContext);
+                }
+                tipRequest.Amount = tipRequest.BitAmount * liveStream.BitcornPerBit;
+                var processInfo = await TxUtils.ProcessRequest(tipRequest, _dbContext);
+                var transactions = processInfo.Transactions;
+                if (transactions != null && transactions.Length > 0)
+                {
+
+                    StringBuilder sql = new StringBuilder();
+                    if (processInfo.WriteTransactionOutput(sql))
+                    {
+
+                        var receipt = transactions[0];
+                        if (receipt.Tx != null)
+                        {
+                            var to = receipt.To.User.UserStat;
+                            var from = receipt.From.User.UserStat;
+                            var amount = tipRequest.Amount;
+
+                            if (!string.IsNullOrEmpty(tipRequest.IrcTarget))
+                            {
+                                var ircTx = new IrcTransaction();
+                                ircTx.IrcChannel = tipRequest.IrcTarget;
+                                ircTx.TxGroupId = transactions[0].Tx.TxGroupId;
+                                ircTx.IrcMessage = tipRequest.IrcMessage;
+                                _dbContext.IrcTransaction.Add(ircTx);
+
+                            }
+
+                            await _dbContext.Database.ExecuteSqlRawAsync(sql.ToString());
+                            await _dbContext.SaveAsync(IsolationLevel.RepeatableRead);
+                            await TxUtils.OnPostTransaction(processInfo, _dbContext);
+                        }
+                    }
+                    else
+                    {
+                        await ProcessUnclaimed(processInfo, tipRequest);
+                    }
+
+                    await TxUtils.AppendTxs(transactions, _dbContext, tipRequest.Columns);
+
+                }
+                return transactions;
+            }
+            catch (Exception e)
+            {
+                await BITCORNLogger.LogError(_dbContext, e, JsonConvert.SerializeObject(tipRequest));
+                throw e;
+            }
+
+        }
+
+        [ServiceFilter(typeof(LockUserAttribute))]
+        [HttpPost("donation")]
+        public async Task<ActionResult<TxReceipt[]>> Donation([FromBody] ChannelSubRequest tipRequest)
+        {
+            var status = CheckRequest(tipRequest, false);
+            if (status != null) return status;
+
+            try
+            {
+                UserLivestream liveStream = null;
+                try
+                {
+                    liveStream = await GetLivestream(tipRequest);
+                }
+                catch (TransactionsNotEnabledException _)
+                {
+                    return StatusCode(420);
+                }
+
+                tipRequest.FromUser = this.GetCachedUser();
+                if (tipRequest.FromUser != null && !tipRequest.FromUser.IsBanned && liveStream.BitcornhubFunded)
+                {
+                    tipRequest.FromUser = await TxUtils.GetBitcornhub(_dbContext);
+                }
+                if (tipRequest.SubTier == "1000")
+                {
+                    tipRequest.Amount = liveStream.Tier1SubReward;
+                }
+
+                if (tipRequest.SubTier == "2000")
+                {
+                    tipRequest.Amount = liveStream.Tier2SubReward;
+                }
+
+                if (tipRequest.SubTier == "3000")
+                {
+                    tipRequest.Amount = liveStream.Tier3SubReward;
+                }
+
+                //tipRequest.Amount = tipRequest.UsdAmount * liveStream.BitcornPerDonation;
+                var processInfo = await TxUtils.ProcessRequest(tipRequest, _dbContext);
+                var transactions = processInfo.Transactions;
+                if (transactions != null && transactions.Length > 0)
+                {
+
+                    StringBuilder sql = new StringBuilder();
+                    if (processInfo.WriteTransactionOutput(sql))
+                    {
+
+                        var receipt = transactions[0];
+                        if (receipt.Tx != null)
+                        {
+                            var to = receipt.To.User.UserStat;
+                            var from = receipt.From.User.UserStat;
+                            var amount = tipRequest.Amount;
+
+                            if (!string.IsNullOrEmpty(tipRequest.IrcTarget))
+                            {
+                                var ircTx = new IrcTransaction();
+                                ircTx.IrcChannel = tipRequest.IrcTarget;
+                                ircTx.TxGroupId = transactions[0].Tx.TxGroupId;
+                                ircTx.IrcMessage = tipRequest.IrcMessage;
+                                _dbContext.IrcTransaction.Add(ircTx);
+
+                            }
+
+                            await _dbContext.Database.ExecuteSqlRawAsync(sql.ToString());
+                            await _dbContext.SaveAsync(IsolationLevel.RepeatableRead);
+                            await TxUtils.OnPostTransaction(processInfo, _dbContext);
+                        }
+                    }
+                    else
+                    {
+                        await ProcessUnclaimed(processInfo, tipRequest);
+                    }
+
+                    await TxUtils.AppendTxs(transactions, _dbContext, tipRequest.Columns);
+
+                }
+                return transactions;
+            }
+            catch (Exception e)
+            {
+                await BITCORNLogger.LogError(_dbContext, e, JsonConvert.SerializeObject(tipRequest));
+                throw e;
+            }
+
+        }
+
+        [ServiceFilter(typeof(LockUserAttribute))]
+        [HttpPost("channelpoints")]
+        public async Task<ActionResult<TxReceipt[]>> RedeemChannelpoints([FromBody] ChannelPointsRedemptionRequest tipRequest)
+        {
+            var status = CheckRequest(tipRequest, false);
+            if (status != null) return status;
+
+            try
+            {
+                UserLivestream liveStream = null;
+                try
+                {
+                    liveStream = await GetLivestream(tipRequest);
+                }
+                catch (TransactionsNotEnabledException _)
+                {
+                    return StatusCode(420);
+                }
+
+                tipRequest.FromUser = this.GetCachedUser();
+                if (tipRequest.FromUser != null && !tipRequest.FromUser.IsBanned && liveStream.BitcornhubFunded)
+                {
+                    tipRequest.FromUser = await TxUtils.GetBitcornhub(_dbContext);
+                }
+                tipRequest.Amount = tipRequest.ChannelPointAmount * liveStream.BitcornPerChannelpointsRedemption;
+                var processInfo = await TxUtils.ProcessRequest(tipRequest, _dbContext);
+                var transactions = processInfo.Transactions;
+                if (transactions != null && transactions.Length > 0)
+                {
+
+                    StringBuilder sql = new StringBuilder();
+                    if (processInfo.WriteTransactionOutput(sql))
+                    {
+
+                        var receipt = transactions[0];
+                        if (receipt.Tx != null)
+                        {
+                            var to = receipt.To.User.UserStat;
+                            var from = receipt.From.User.UserStat;
+                            var amount = tipRequest.Amount;
+
+                            if (!string.IsNullOrEmpty(tipRequest.IrcTarget))
+                            {
+                                var ircTx = new IrcTransaction();
+                                ircTx.IrcChannel = tipRequest.IrcTarget;
+                                ircTx.TxGroupId = transactions[0].Tx.TxGroupId;
+                                ircTx.IrcMessage = tipRequest.IrcMessage;
+                                _dbContext.IrcTransaction.Add(ircTx);
+
+                            }
+
+                            await _dbContext.Database.ExecuteSqlRawAsync(sql.ToString());
+                            await _dbContext.SaveAsync(IsolationLevel.RepeatableRead);
+                            await TxUtils.OnPostTransaction(processInfo, _dbContext);
+                        }
+                    }
+                    else
+                    {
+                        await ProcessUnclaimed(processInfo, tipRequest);
+                    }
+
+                    await TxUtils.AppendTxs(transactions, _dbContext, tipRequest.Columns);
+
+                }
+                return transactions;
+            }
+            catch (Exception e)
+            {
+                await BITCORNLogger.LogError(_dbContext, e, JsonConvert.SerializeObject(tipRequest));
+                throw e;
+            }
+
+        }
+
+        [ServiceFilter(typeof(LockUserAttribute))]
+        [HttpPost("tipcorn")]
+        public async Task<ActionResult<TxReceipt[]>> Tipcorn([FromBody] TipRequest tipRequest)
+        {
+            var status = CheckRequest(tipRequest);
+            if (status != null) return status;
+
+            try
+            {
+                UserLivestream liveStream = null;
+                try
+                {
+                    liveStream = await GetLivestream(tipRequest);
+                }
+                catch (TransactionsNotEnabledException _)
+                {
+                    return StatusCode(420);
                 }
 
                 tipRequest.FromUser = this.GetCachedUser();
@@ -379,10 +957,11 @@ namespace BITCORNService.Controllers
                             sql.Append(TxUtils.UpdateNumberIfTop(table, nameof(UserStat.LargestReceivedBitcornTip), amount, pk, to.UserId));
                             if (!string.IsNullOrEmpty(tipRequest.IrcTarget))
                             {
-                                var ircTx = new IrcTarget();
+                                var ircTx = new IrcTransaction();
                                 ircTx.IrcChannel = tipRequest.IrcTarget;
                                 ircTx.TxGroupId = transactions[0].Tx.TxGroupId;
-                                _dbContext.IrcTarget.Add(ircTx);
+                                ircTx.IrcMessage = tipRequest.IrcMessage;
+                                _dbContext.IrcTransaction.Add(ircTx);
                                 var liveStreamTable = nameof(UserLivestream);
                                 var livestreamKey = nameof(UserLivestream.UserId);
                                 //var stream = await _dbContext.UserLivestream.AsNoTracking().FirstOrDefaultAsync(x => x.IrcTarget == tipRequest.IrcTarget);
@@ -398,31 +977,14 @@ namespace BITCORNService.Controllers
                             }
                             await _dbContext.Database.ExecuteSqlRawAsync(sql.ToString());
                             await _dbContext.SaveAsync(IsolationLevel.RepeatableRead);
+                            await TxUtils.OnPostTransaction(processInfo, _dbContext);
                         }
                     }
                     else
                     {
-                        if (processInfo.From != null && !processInfo.From.IsBanned && processInfo.Transactions[0].To == null)
-                        {
-                            if (processInfo.From.UserWallet.Balance >= tipRequest.Amount)
-                            {
-                                var unclaimed = new UnclaimedTx();
-                                unclaimed.TxType = ((ITxRequest)tipRequest).TxType;
-                                unclaimed.Platform = tipRequest.Platform;
-                                unclaimed.ReceiverPlatformId = BitcornUtils.GetPlatformId(tipRequest.To).Id;
-                                unclaimed.Amount = tipRequest.Amount;
-                                unclaimed.Timestamp = DateTime.Now;
-                                unclaimed.SenderUserId = processInfo.From.UserId;
-                                unclaimed.Expiration = DateTime.Now.AddMinutes(TimeToClaimTipMinutes);
-                                unclaimed.Claimed = false;
-                                unclaimed.Refunded = false;
-
-                                _dbContext.UnclaimedTx.Add(unclaimed);
-                                await _dbContext.Database.ExecuteSqlRawAsync(TxUtils.ModifyNumber(nameof(UserWallet), nameof(UserWallet.Balance), tipRequest.Amount, '-', nameof(UserWallet.UserId), processInfo.From.UserId));
-                                await _dbContext.SaveAsync();
-                            }
-                        }
+                        await ProcessUnclaimed(processInfo, tipRequest);
                     }
+
                     await TxUtils.AppendTxs(transactions, _dbContext, tipRequest.Columns);
 
                 }

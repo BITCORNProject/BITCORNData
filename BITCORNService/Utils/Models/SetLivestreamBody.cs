@@ -18,9 +18,20 @@
         public decimal Tier1IdlePerMinute { get; set; }
 
         public decimal BitcornPerBit { get; set; }
-        public decimal BitcornPerDonation { get; set; }
-
+        
         public decimal BitcornPerChannelpointsRedemption { get; set; }
         public bool EnableChannelpoints { get; set; }
+        public bool EnableTts { get; set; }
+        public decimal BitcornPerTtsCharacter { get; set; }
+        public decimal Tier1SubReward { get; set; }
+        public decimal Tier2SubReward { get; set; }
+        public decimal Tier3SubReward { get; set; }
+    }
+    public class SetLivestreamGiveawayBody
+    {
+        public int Duration { get; set; }
+        public bool Open { get; set; }
+        public string Text { get; set; }
+        public decimal EntryFee { get; set; }
     }
 }

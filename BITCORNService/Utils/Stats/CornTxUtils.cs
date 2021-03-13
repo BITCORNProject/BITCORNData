@@ -54,13 +54,14 @@ namespace BITCORNService.Utils.Stats
                     TwitterUsername = user.TwitterUsername,
                     RedditUsername = user.RedditUsername,
                     Auth0Id = user.Auth0Id,
-                    Auth0Nickname = user.Auth0Nickname
+                    Auth0Nickname = user.Auth0Nickname,
+
 
                 });
 
             var sent = await sentQuery.ToArrayAsync();
             var sentGrouping = sent.GroupBy(data => data.TxGroupId);
-            
+
             foreach (var tx in sentGrouping)
             {
 
@@ -70,13 +71,14 @@ namespace BITCORNService.Utils.Stats
                 {
                     output.Action = "sent";
                     output.BlockchainTxId = received.BlockchainTxId;
-                    
+
                     output.CornAddy = received.CornAddy;
                     output.Platform = received.Platform;
                     output.Time = received.Timestamp.Value;
                     output.Amount += received.Amount.Value;
                     output.TxType = received.TxType;
                     output.Recipients.Add(GetUsername(received));
+                    output.GroupId = received.TxGroupId;
                     output.RecipientIds.Add(received.Auth0Id);
                 }
 
@@ -87,7 +89,7 @@ namespace BITCORNService.Utils.Stats
         }
         public static async Task<TxRecordOutput[]> ListReceivedTransactions(BitcornContext dbContext, int user, HashSet<string> transactions)
         {
-            var receivedQuery =dbContext.CornTx.Where(tx => tx.ReceiverId == user && transactions.Contains(tx.TxGroupId))
+            var receivedQuery = dbContext.CornTx.Where(tx => tx.ReceiverId == user && transactions.Contains(tx.TxGroupId))
                 .Join(dbContext.UserIdentity,
                 (CornTx tx) => tx.SenderId, (UserIdentity user) => user.UserId, (CornTx tx, UserIdentity user) => new ReceivedTx
                 {
@@ -104,7 +106,7 @@ namespace BITCORNService.Utils.Stats
                     TwitterUsername = user.TwitterUsername,
                     RedditUsername = user.RedditUsername,
                     Auth0Id = user.Auth0Id,
-                    
+
                     Auth0Nickname = user.Auth0Nickname
                 });
 
@@ -115,12 +117,13 @@ namespace BITCORNService.Utils.Stats
                 var output = new TxRecordOutput();
                 output.Action = "receive";
                 output.BlockchainTxId = received.BlockchainTxId;
-                
+
                 output.Platform = received.Platform;
                 output.Time = received.Timestamp.Value;
                 output.Amount = received.Amount.Value;
                 output.TxType = received.TxType;
                 output.CornAddy = received.CornAddy;
+                output.GroupId = received.TxGroupId;
                 output.Recipients.Add(GetUsername(received));
                 output.RecipientIds.Add(received.Auth0Id);
                 records.Add(output);
@@ -130,17 +133,56 @@ namespace BITCORNService.Utils.Stats
 
         public static async Task<TxRecordOutput[]> ListTransactions(BitcornContext dbContext, int user, int offset, int limit, string[] txTypes)
         {
-            var transactions = await CornTxUtils.GetFullTransactionIds(dbContext, user, offset, limit, txTypes);
-            List<TxRecordOutput> outputs = new List<TxRecordOutput>();
-            outputs.AddRange(await ListSentTransactions(dbContext, user, transactions));
-            outputs.AddRange(await ListReceivedTransactions(dbContext, user, transactions));
-            
-            outputs.Sort((a, b) => b.Time.CompareTo(a.Time));
+            try
+            {
+                var transactions = await CornTxUtils.GetFullTransactionIds(dbContext, user, offset, limit, txTypes);
+                List<TxRecordOutput> outputs = new List<TxRecordOutput>();
+                outputs.AddRange(await ListSentTransactions(dbContext, user, transactions));
+                outputs.AddRange(await ListReceivedTransactions(dbContext, user, transactions));
 
-            return outputs.Skip(offset).Take(limit).ToArray();
+                outputs.Sort((a, b) => b.Time.CompareTo(a.Time));
+
+                var allTransactions = outputs.Skip(offset).Take(limit).ToArray();
+                var mappedTransactions = allTransactions.GroupBy(x => x.GroupId).ToDictionary(x => x.Key, X => X.ToList());
+                var ircTransactions = await dbContext.IrcTransaction.Join(dbContext.UserIdentity, (ircTx) => ircTx.IrcChannel, (u) => u.TwitchId,
+                    (tx, u) => new { tx, u }
+                    ).Join(dbContext.UserLivestream, (select) => select.u.UserId, (stream) => stream.UserId, (select, stream) => new
+                    {
+                        tx = select.tx,
+                        u = select.u,
+                        stream = stream
+                    })
+                    .Where(x => x.stream.Public && transactions.Contains(x.tx.TxGroupId)).ToArrayAsync();
+
+                for (int i = 0; i < ircTransactions.Length; i++)
+                {
+                    var ircTx = ircTransactions[i];
+                    if (mappedTransactions.TryGetValue(ircTx.tx.TxGroupId, out var outputRecord))
+                    {
+                        if (outputRecord != null)
+                        {
+                            for (int j = 0; j < outputRecord.Count; j++)
+                            {
+                                outputRecord[j].Message = ircTx.tx.IrcMessage;
+                                if (!string.IsNullOrEmpty(ircTx.u.TwitchUsername))
+                                {
+                                    outputRecord[j].Channel = ircTx.u.TwitchUsername;
+                                }
+                                //outputRecord[j].
+                            }
+                        }
+                    }
+                }
+
+                return allTransactions;
+            }
+            catch (Exception ex)
+            {
+                throw ex;
+            }
         }
 
-        public static async Task<HashSet<string>> GetFullTransactionIds(BitcornContext dbContext, int user,int offset = 0,int limit = 100, string[] txTypes = null)
+        public static async Task<HashSet<string>> GetFullTransactionIds(BitcornContext dbContext, int user, int offset = 0, int limit = 100, string[] txTypes = null)
         {
             HashSet<string> transactions = new HashSet<string>();
             using (var command = dbContext.Database.GetDbConnection().CreateCommand())
@@ -149,7 +191,7 @@ namespace BITCORNService.Utils.Stats
 
                 if (txTypes != null && txTypes.Length > 0)
                 {
-                    txTypes = txTypes.Where(tx => tx == "$withdraw" || tx == "$rain" || tx == "$tipcorn" || tx == "receive" ||tx == "app:order" || tx=="faucet").ToArray();
+                    txTypes = txTypes.Where(tx => tx == "$withdraw" || tx == "$rain" || tx == "$tipcorn" || tx == "receive" || tx == "app:order" || tx == "faucet" || tx == "channel-points" || tx == "sub-event" || tx == "bit-donation").ToArray();
                     txTypesDefined = txTypes.Length > 0;
                 }
                 var sql = new StringBuilder($"(select distinct  {nameof(CornTx.TxGroupId)} from  ");
@@ -171,7 +213,7 @@ namespace BITCORNService.Utils.Stats
                 }
 
                 sql.Append(" ) t) ");
-                
+
                 command.CommandText = sql.ToString();
                 command.CommandType = CommandType.Text;
 

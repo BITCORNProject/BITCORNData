@@ -38,13 +38,17 @@ namespace BITCORNService.Models
         public virtual DbSet<OrderItem> OrderItem { get; set; }
 
         public virtual DbSet<ThirdPartyClient> ThirdPartyClient { get; set; }
-        public virtual DbSet<SocialComment> SocialComment { get; set; }
-        public virtual DbSet<SocialCommentInteraction> SocialCommentInteraction { get; set; }
+        //public virtual DbSet<SocialComment> SocialComment { get; set; }
+        //public virtual DbSet<SocialCommentInteraction> SocialCommentInteraction { get; set; }
         public virtual DbSet<UserLivestream> UserLivestream { get; set; }
-        public virtual DbSet<SocialFollow> SocialFollow { get; set; }
-        public virtual DbSet<SocialTag> SocialTag { get; set; }
+        //public virtual DbSet<SocialFollow> SocialFollow { get; set; }
+        //public virtual DbSet<SocialTag> SocialTag { get; set; }
         public virtual DbSet<UserMission> UserMission { get; set; }
-        public virtual DbSet<IrcTarget> IrcTarget { get; set; }
+        public virtual DbSet<IrcTransaction> IrcTransaction { get; set; }
+        public virtual DbSet<UserStreamAction> UserStreamAction { get; set; }
+        public virtual DbSet<UserTts> UserTts { get; set; }
+        //public virtual DbSet<UserGiveawayTicket> UserGiveawayTicket { get; set; }
+        public virtual DbSet<CornPurchase> CornPurchase { get; set; }
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {
         }

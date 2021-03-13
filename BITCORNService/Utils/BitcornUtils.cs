@@ -68,6 +68,9 @@ namespace BITCORNService.Utils
                     return dbContext.TwitchQuery(platformId.Id);
                 case "stream":
                     return dbContext.TwitchQuery(platformId.Id);
+                case "twitchusername":
+                    return dbContext.TwitchUsernameQuery(platformId.Id);
+
                 case "discord":
                     return dbContext.DiscordQuery(platformId.Id);
                 case "twitter":
@@ -112,6 +115,9 @@ namespace BITCORNService.Utils
                     return await query.ToDictionaryAsync(u => u.UserIdentity.Auth0Id, u => u);
                 case "twitch":
                     return await query.ToDictionaryAsync(u => u.UserIdentity.TwitchId, u => u);
+                case "twitchusername":
+                    return await query.ToDictionaryAsync(u => u.UserIdentity.TwitchUsername, u => u);
+
                 case "stream":
                     return await query.ToDictionaryAsync(u => u.UserIdentity.TwitchId, u => u);
                 case "discord":
@@ -136,6 +142,8 @@ namespace BITCORNService.Utils
                     return dbContext.Auth0ManyQuery(ids);
                 case "twitch":
                     return dbContext.TwitchManyQuery(ids);
+                case "twitchusername":
+                    return dbContext.TwitchUsernameManyQuery(ids);
                 case "stream":
                     return dbContext.TwitchManyQuery(ids);
 
@@ -333,6 +341,7 @@ namespace BITCORNService.Utils
             {
                 output.Add("auth0Id", userIdentity.Auth0Id);
                 output.Add("auth0Nickname", userIdentity.Auth0Nickname);
+                
                 //Auth0Id = userIdentity.Auth0Id,
                 //Auth0Nickname = userIdentity.Auth0Nickname,
             }

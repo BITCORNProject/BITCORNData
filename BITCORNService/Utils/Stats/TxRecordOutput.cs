@@ -15,5 +15,8 @@ namespace BITCORNService.Utils.Stats
         public string BlockchainTxId { get; set; }
         public string CornAddy { get; set; }
         public string Action { get; set; }
+        public string Message { get; set; }
+        public string GroupId { get; set; }
+        public string Channel { get; internal set; }
     }
 }

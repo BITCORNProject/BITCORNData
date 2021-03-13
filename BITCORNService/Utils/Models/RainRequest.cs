@@ -9,6 +9,7 @@ namespace BITCORNService.Utils.Models
 {
     public class RainRequest : ITxRequest
     {
+        public string IrcMessage { get; set; }
         public string From { get; set; }
 
         public decimal Amount { get; set; }

@@ -11,17 +11,16 @@ using Microsoft.EntityFrameworkCore;
 
 namespace BITCORNService.Reflection
 {
-    public static class UserReflection
+    public class UserReflectionContext
     {
-        public static Type[] UserModel = new Type[] {
-            typeof(User),
-            typeof(UserIdentity),
-            typeof(UserStat),
-            typeof(UserWallet)
-        };
-        public static Dictionary<string, Type> ColumnToTable { get; private set; }
-        public static Dictionary<Type, List<string>> TableColumns { get; private set; }
-        static void CacheReflection()
+        Type[] UserModel { get; set; }
+        public UserReflectionContext(Type[] userModel)
+        {
+            UserModel = userModel;
+        }
+        public Dictionary<string, Type> ColumnToTable { get; private set; }
+        public Dictionary<Type, List<string>> TableColumns { get; private set; }
+        public void CacheReflection()
         {
             if (ColumnToTable == null)
             {
@@ -52,7 +51,7 @@ namespace BITCORNService.Reflection
                                 nameLowerCase = property.Name.ToLower();
                                 name = property.Name;
                             }
-                            
+
                             if (!closedColumns.Contains(nameLowerCase))
                             {
                                 ColumnToTable.Add(nameLowerCase, model);
@@ -65,13 +64,47 @@ namespace BITCORNService.Reflection
                 }
             }
         }
-        public static async Task<Dictionary<int,Dictionary<string, object>>> GetColumns(BitcornContext dbContext, string[] columns, int[] primaryKeys)
-        {
+    }
+    public static class UserReflection
+    {
+        public static Type[] UserModel = new Type[] {
+            typeof(User),
+            typeof(UserIdentity),
+            typeof(UserStat),
+            typeof(UserWallet)
+        };
 
-            CacheReflection();
+        public static Type[] StreamerModel = new Type[] {
+            typeof(User),
+            typeof(UserIdentity),
+            typeof(UserStat),
+            typeof(UserWallet),
+            typeof(UserLivestream)
+        };
+
+        static UserReflectionContext _StandardReflectionModel = null;
+        public static async Task<Dictionary<int, Dictionary<string, object>>> GetColumns(BitcornContext dbContext, string[] columns, int[] primaryKeys, UserReflectionContext context = null)
+        {
+            if (context == null)
+            {
+                if (_StandardReflectionModel == null)
+                {
+                    _StandardReflectionModel = new UserReflectionContext(UserModel);
+
+                }
+
+                _StandardReflectionModel.CacheReflection();
+                context = _StandardReflectionModel;
+            }
+            else
+            {
+                context.CacheReflection();
+            }
+
+            //CacheReflection();
             if (columns == null)
             {
-                var output= new Dictionary<int, Dictionary<string, object>>();
+                var output = new Dictionary<int, Dictionary<string, object>>();
                 for (int i = 0; i < primaryKeys.Length; i++)
                 {
                     output.Add(primaryKeys[i], new Dictionary<string, object>());
@@ -82,13 +115,13 @@ namespace BITCORNService.Reflection
             string[] validColumns;
             if (columns.Length == 1 && columns[0] == "*")
             {
-                validColumns = TableColumns.SelectMany(u => u.Value).Distinct().ToArray();
+                validColumns = context.TableColumns.SelectMany(u => u.Value).Distinct().ToArray();
             }
             else
             {
-                var list = columns.Where(c => ColumnToTable.ContainsKey(c.ToLower())).Distinct().ToList();
+                var list = columns.Where(c => context.ColumnToTable.ContainsKey(c.ToLower())).Distinct().ToList();
                 string userIdKey = nameof(User.UserId).ToLower();
-                if (!list.Select(c=>c.ToLower()).Contains(userIdKey))
+                if (!list.Select(c => c.ToLower()).Contains(userIdKey))
                 {
                     list.Add(userIdKey);
                 }
@@ -96,12 +129,12 @@ namespace BITCORNService.Reflection
             }
             if (validColumns.Length > 0)
             {
-                string sql = GenerateSql(validColumns, primaryKeys);
+                string sql = GenerateSql(context, validColumns, primaryKeys);
                 return await RawSqlQuery(dbContext, sql);
             }
             return null;
         }
-        static string GenerateSql(string[] columns, int[] primaryKeyValues)
+        static string GenerateSql(UserReflectionContext context, string[] columns, int[] primaryKeyValues)
         {
             StringBuilder sql = new StringBuilder();
             List<string> uniqueTables = new List<string>();
@@ -113,21 +146,21 @@ namespace BITCORNService.Reflection
                     sql.Append(',');
                 }
                 string column = columns[i];
-                string table = ColumnToTable[column.ToLower()].Name;
+                string table = context.ColumnToTable[column.ToLower()].Name;
                 if (!uniqueTables.Contains(table))
                 {
                     uniqueTables.Add(table);
                 }
                 sql.Append('[');
                 sql.Append(table);
-                sql.Append("].");
+                sql.Append("].[");
                 sql.Append(column);
-                sql.Append(' ');
+                sql.Append("] ");
 
             }
             var firstTable = uniqueTables[0];
             var selectFirstTable = "[" + firstTable + "]";
-            
+
             sql.Append(" FROM ");
             sql.Append(selectFirstTable);
             sql.Append(' ');
@@ -168,7 +201,7 @@ namespace BITCORNService.Reflection
             }
             return sql.ToString();
         }
-        public static async Task<Dictionary<int,Dictionary<string, object>>> RawSqlQuery(BitcornContext dbContext, string query)
+        public static async Task<Dictionary<int, Dictionary<string, object>>> RawSqlQuery(BitcornContext dbContext, string query)
         {
             using (var command = dbContext.Database.GetDbConnection().CreateCommand())
             {
@@ -176,7 +209,7 @@ namespace BITCORNService.Reflection
                 command.CommandType = CommandType.Text;
 
                 dbContext.Database.OpenConnection();
-               Dictionary<int,Dictionary<string, object>> output = new Dictionary<int,Dictionary<string, object>>();
+                Dictionary<int, Dictionary<string, object>> output = new Dictionary<int, Dictionary<string, object>>();
                 using (var result = await command.ExecuteReaderAsync())
                 {
 
@@ -199,7 +232,7 @@ namespace BITCORNService.Reflection
                             }
                             table.Add(name, value);
                         }
-                    
+
                         output.Add((int)table[key], table);
                     }
                 }

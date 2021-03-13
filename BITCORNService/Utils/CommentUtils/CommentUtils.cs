@@ -10,6 +10,20 @@ namespace BITCORNService.Utils.CommentUtils
 {
     public static class CommentUtils
     {
+        public static IQueryable<UserIdentity> FindUsersByName(BitcornContext dbContext, string username)
+        {
+            var srcUsername = username.ToLower();
+            return dbContext.UserIdentity.Where((u) => u.Auth0Nickname.ToLower().Contains(username));
+
+        }
+
+        public static IQueryable<UserIdentity> FindUsersByName(BitcornContext dbContext, string[] usernames)
+        {
+            var srcUsernames = usernames.Select(x => x.ToLower()).ToArray();
+            return dbContext.UserIdentity.Where((u) => srcUsernames.Contains(u.Auth0Nickname.ToLower()));
+
+        }
+        /*
         public static SocialComment CreateComment(int userId, string message, string rootId, string parent = null)
         {
             var comment = new SocialComment();
@@ -57,25 +71,10 @@ namespace BITCORNService.Utils.CommentUtils
                         identity = identity
                     }
                     );
-            /*
-            return dbContext.SocialComment.Join(dbContext.UserIdentity, (SocialComment c) => c.UserId, (UserIdentity user) => user.UserId,
-                 (SocialComment c, UserIdentity u) => new ValueTuple<SocialComment,UserIdentity>(c,u));
-            */
+          
         }
 
-        public static IQueryable<UserIdentity> FindUsersByName(BitcornContext dbContext, string username)
-        {
-            var srcUsername = username.ToLower();
-            return dbContext.UserIdentity.Where((u) => u.Auth0Nickname.ToLower().Contains(username));
-
-        }
-
-        public static IQueryable<UserIdentity> FindUsersByName(BitcornContext dbContext, string[] usernames)
-        {
-            var srcUsernames = usernames.Select(x => x.ToLower()).ToArray();
-            return dbContext.UserIdentity.Where((u) => srcUsernames.Contains(u.Auth0Nickname.ToLower()));
-
-        }
+       
         public class SocialTagUserIdentity
         {
             public SocialTag Tag { get; set; }
@@ -228,5 +227,6 @@ namespace BITCORNService.Utils.CommentUtils
 
             return lastComment;
         }
+        */
     }
 }

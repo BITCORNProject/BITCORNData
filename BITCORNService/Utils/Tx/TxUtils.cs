@@ -4,6 +4,7 @@ using System.Globalization;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using BITCORNService.Controllers;
 using BITCORNService.Models;
 using BITCORNService.Reflection;
 using BITCORNService.Utils.DbActions;
@@ -197,10 +198,62 @@ namespace BITCORNService.Utils.Tx
                 if (rows > 0)
                 {
                     await dbContext.SaveAsync();
+                    try
+                    {
+                        await OnPostTransaction(processInfo, dbContext);
+                    }
+                    catch (Exception ex)
+                    {
+                        await BITCORNLogger.LogError(dbContext, ex, "failed to handle tx callback");
+                    }
                 }
                 return rows > 0;
             }
             return false;
+        }
+
+        public static async Task OnPostTransaction(TxProcessInfo processInfo, BitcornContext dbContext)
+        {
+            if (processInfo.Transactions != null)
+            {
+                decimal subtract = 0;
+                int txCount = 0;
+                var balanceUpdates = new List<object>();
+                foreach (var txInfo in processInfo.Transactions)
+                {
+                    if (txInfo.To != null && txInfo.To.User != null && txInfo.Tx != null)
+                    {
+                        txCount++;
+                        if (txInfo.To.User.IsSocketConnected)
+                        {
+                            var newBalance = txInfo.To.User.UserWallet.Balance + txInfo.Tx.Amount;
+                            balanceUpdates.Add(new
+                            {
+                                auth0Id = txInfo.To.User.UserIdentity.Auth0Id,
+                                balance = newBalance
+                            });
+                        }
+                        subtract += txInfo.Tx.Amount.Value;
+                    }
+                }
+
+                if (txCount > 0)
+                {
+                    if (processInfo.From != null && processInfo.From.IsSocketConnected)
+                    {
+                        balanceUpdates.Add(new
+                        {
+                            auth0Id = processInfo.From.UserIdentity.Auth0Id,
+                            balance = processInfo.From.UserWallet.Balance - subtract
+                        });
+                    }
+                }
+
+                if(balanceUpdates.Count>0)
+                {
+                    await WebSocketsController.TryBroadcastToBitcornfarms(dbContext, "update-balances", balanceUpdates);
+                }
+            }
         }
 
         public static async Task<TxProcessInfo> PrepareTransaction(User from, User to, decimal amount, string platform, string txType, BitcornContext dbContext)
@@ -212,6 +265,17 @@ namespace BITCORNService.Utils.Tx
         {
             var processInfo = await PrepareTransaction(from, to, amount, platform, txType, dbContext);
             return await processInfo.ExecuteTransaction(dbContext);
+        }
+
+        public static async Task<TxReceipt> SendFromGetReceipt(User from, User to, decimal amount, string platform, string txType, BitcornContext dbContext)
+        {
+            var processInfo = await PrepareTransaction(from, to, amount, platform, txType, dbContext);
+            if((await processInfo.ExecuteTransaction(dbContext)))
+            {
+                return processInfo.Transactions[0];
+            }
+
+            return null;
         }
 
 
@@ -230,7 +294,7 @@ namespace BITCORNService.Utils.Tx
 
         public static async Task<bool> ShouldLockWallet(BitcornContext dbContext, User user, decimal add)
         {
-          
+
             var nowDayAgo = DateTime.Now;
             nowDayAgo = nowDayAgo.AddHours(-24);
             var spent = await dbContext.CornTx.Where(x => x.SenderId == user.UserId && x.Timestamp > nowDayAgo).SumAsync(x => x.Amount);

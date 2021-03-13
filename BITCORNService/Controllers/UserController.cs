@@ -139,6 +139,9 @@ namespace BITCORNService.Controllers
             }
         }
 
+
+
+
         [Authorize(Policy = AuthScopes.ReadUser)]
         [HttpGet("userid/{id}")]
         public async Task<ActionResult<int>> UserId(string id)
@@ -165,6 +168,71 @@ namespace BITCORNService.Controllers
                 if (!string.IsNullOrEmpty(txTypes)) txTypesArr = txTypes.Split(" ");
 
                 return await Utils.Stats.CornTxUtils.ListTransactions(_dbContext, user.UserId, offset, amount, txTypesArr);
+            }
+            return StatusCode(404);
+        }
+
+        [Authorize(Policy = AuthScopes.ReadTransaction)]
+        [HttpGet("transactions/v2/{id}/{offset}/{amount}/{txTypes}")]
+        public async Task<ActionResult<object>> TransactionsV2(string id, int offset, int amount, string txTypes = null)
+        {
+            var platformId = BitcornUtils.GetPlatformId(id);
+            var user = await BitcornUtils.GetUserForPlatform(platformId, _dbContext).FirstOrDefaultAsync();
+            if (user != null)
+            {
+                string[] txTypesArr = null;
+                if (!string.IsNullOrEmpty(txTypes)) txTypesArr = txTypes.Split(" ");
+
+                var transactions = await Utils.Stats.CornTxUtils.ListTransactions(_dbContext, user.UserId, offset, amount, txTypesArr);
+                var startBalance = user.UserWallet.Balance;
+                //startBalance -= transactions.Where(x => x.Action == "sent").Sum(x => x.Amount);
+                var ticks = new List<object>();
+                if (transactions.Length > 0)
+                {
+                    foreach (var tx in transactions)
+                    {
+                        if (tx.Action == "sent")
+                        {
+                            startBalance -= tx.Amount;
+                        }
+                        else
+                        {
+                            startBalance += tx.Amount;
+                        }
+
+                        ticks.Add(new
+                        {
+                            time = tx.Time,
+                            value = startBalance
+                        });
+                    }
+                    /*
+                    ticks.Add(new
+                    {
+                        time = DateTime.Now,
+                        value = user.UserWallet.Balance
+                    });*/
+                    //ticks = ticks.Take(amount / 2).ToList();
+
+                    ticks.Reverse();
+
+                    /*
+                    var firstTime = transactions.Last().Time;
+                    ticks.Add(new { 
+                        time = firstTime.AddDays(-1),
+                        value = startBalance
+                    });
+                    */
+
+                }
+                /*
+                
+                */
+                return new
+                {
+                    Transactions = transactions,
+                    Ticks = ticks
+                };
             }
             return StatusCode(404);
         }
@@ -225,9 +293,9 @@ namespace BITCORNService.Controllers
             List<string> channels = new List<string>();
             foreach (var stream in streams)
             {
-                if (!string.IsNullOrEmpty(stream.UserIdentity.TwitchId))
+                if (!string.IsNullOrEmpty(stream.User.UserIdentity.TwitchId))
                 {
-                    channels.Add(stream.UserIdentity.TwitchUsername);
+                    channels.Add(stream.User.UserIdentity.TwitchUsername);
                 }
 
             }
@@ -248,6 +316,42 @@ namespace BITCORNService.Controllers
             public decimal Tier1IdlePerMinute { get; set; }
             public bool IsPartner { get; set; }
             public bool IrcPayments { get; set; }
+
+            public string GiveawayText { get; set; }
+            public DateTime? GiveawayEnd { get; set; }
+            public bool GiveawayOpen { get; set; }
+            public decimal GiveawayEntryFee { get; set; }
+            public string TwitchUsername { get; set; }
+            public bool hasTicket { get; set; }
+            public PublicLivestreamsResponse()
+            {
+
+            }
+
+            public PublicLivestreamsResponse(User user, UserLivestream stream, UserGiveawayTicket ticket)
+            {
+
+                AmountOfRainsSent = stream.AmountOfRainsSent;
+                AmountOfTipsSent = stream.AmountOfTipsSent;
+                TwitchId = user.UserIdentity.TwitchId;
+                TwitchUsername = user.UserIdentity.TwitchUsername;
+                TotalSentBitcornViaRains = stream.TotalSentBitcornViaRains;
+                TotalSentBitcornViaTips = stream.TotalSentBitcornViaTips;
+                IrcPayments = stream.IrcEventPayments;
+                Tier3IdlePerMinute = stream.Tier3IdlePerMinute;
+                Tier1IdlePerMinute = stream.Tier1IdlePerMinute;
+                Tier2IdlePerMinute = stream.Tier2IdlePerMinute;
+                IsPartner = stream.BitcornhubFunded;
+                Auth0Id = user.UserIdentity.Auth0Id;
+                GiveawayEnd = stream.GiveawayEnd;
+                GiveawayEntryFee = stream.GiveawayEntryFee;
+                GiveawayOpen = stream.GiveawayOpen;
+                GiveawayText = stream.GiveawayText;
+                if (ticket != null)
+                {
+                    hasTicket = true;
+                }
+            }
         }
 
         [ServiceFilter(typeof(CacheUserAttribute))]
@@ -259,22 +363,9 @@ namespace BITCORNService.Controllers
             var channels = new List<PublicLivestreamsResponse>();
             foreach (var entry in streams)
             {
-                if (!string.IsNullOrEmpty(entry.UserIdentity.TwitchId))
+                if (!string.IsNullOrEmpty(entry.User.UserIdentity.TwitchId))
                 {
-                    channels.Add(new PublicLivestreamsResponse
-                    {
-                        AmountOfRainsSent = entry.Stream.AmountOfRainsSent,
-                        AmountOfTipsSent = entry.Stream.AmountOfTipsSent,
-                        TwitchId = entry.UserIdentity.TwitchId,
-                        TotalSentBitcornViaRains = entry.Stream.TotalSentBitcornViaRains,
-                        TotalSentBitcornViaTips = entry.Stream.TotalSentBitcornViaTips,
-                        IrcPayments = entry.Stream.IrcEventPayments,
-                        Tier3IdlePerMinute = entry.Stream.Tier3IdlePerMinute,
-                        Tier1IdlePerMinute = entry.Stream.Tier1IdlePerMinute,
-                        Tier2IdlePerMinute = entry.Stream.Tier2IdlePerMinute,
-                        IsPartner = entry.Stream.BitcornhubFunded,
-                        Auth0Id = entry.UserIdentity.Auth0Id,
-                    });
+                    channels.Add(new PublicLivestreamsResponse(entry.User, entry.Stream, null));
                     //channels.Add(stream.UserIdentity.TwitchUsername);
                 }
 
@@ -290,10 +381,10 @@ namespace BITCORNService.Controllers
             {
                 public string IrcTarget { get; set; }
                 public string RefreshToken { get; set; }
-
+                public string ChannelPointCardId { get; set; }
             }
         }
- 
+
         [ServiceFilter(typeof(CacheUserAttribute))]
         [HttpPost("livestreams/updatetoken")]
         [Authorize(Policy = AuthScopes.ChangeUser)]
@@ -306,18 +397,24 @@ namespace BITCORNService.Controllers
                 return StatusCode(400);
             }
 
-            var userIds = request.Where(x => !string.IsNullOrEmpty(x.RefreshToken)).Select(x=>x.IrcTarget).ToArray();
+            var userIds = request.Where(x => !string.IsNullOrEmpty(x.RefreshToken)).Select(x => x.IrcTarget).ToArray();
 
-            var userIdentities = await _dbContext.UserIdentity.Where(u => userIds.Contains(u.TwitchId)).ToDictionaryAsync(x => x.TwitchId, x => x);
+            var userIdentities = await _dbContext.UserIdentity.Join(_dbContext.UserLivestream, (u) => u.UserId, (s) => s.UserId, (u, s) => new
+            {
+                identity = u,
+                stream = s
+            }).Where(u => userIds.Contains(u.identity.TwitchId)).ToDictionaryAsync(x => x.identity.TwitchId, x => x);
             int changeCount = 0;
             for (int i = 0; i < request.Length; i++)
             {
                 var req = request[i];
-                if (userIdentities.TryGetValue(req.IrcTarget, out var identity))
+                if (userIdentities.TryGetValue(req.IrcTarget, out var entry))
                 {
-                    if (!string.IsNullOrEmpty(identity.TwitchRefreshToken))
+                    if (!string.IsNullOrEmpty(entry.identity.TwitchRefreshToken))
                     {
-                        identity.TwitchRefreshToken = req.RefreshToken;
+                        entry.identity.TwitchRefreshToken = req.RefreshToken;
+                        entry.stream.ChannelPointCardId = req.ChannelPointCardId;
+
                         changeCount++;
                     }
                 }
@@ -352,47 +449,18 @@ namespace BITCORNService.Controllers
 
         }
 
-        object GetLivestreamSettingsForUser(UserIdentity userIdentity, UserLivestream stream)
-        {
-            return new
-            {
-                MinRainAmount = stream.MinRainAmount,
-                MinTipAmount = stream.MinTipAmount,
-                RainAlgorithm = stream.RainAlgorithm,
-                IrcTarget = userIdentity.TwitchId,//stream.Stream.IrcTarget,
-                TxMessages = stream.TxMessages,
-                TxCooldownPerUser = stream.TxCooldownPerUser,
-                EnableTransactions = stream.EnableTransactions,
-                IrcEventPayments = stream.IrcEventPayments,
-                BitcornhubFunded = stream.BitcornhubFunded,
-                BitcornPerBit = stream.BitcornPerBit,
-                BitcornPerDonation = stream.BitcornPerDonation,
-                TwitchRefreshToken = userIdentity.TwitchRefreshToken,
-                BitcornPerChannelpointsRedemption = stream.BitcornPerChannelpointsRedemption,
-                EnableChannelpoints = stream.EnableChannelpoints
-
-
-            };
-        }
 
         [ServiceFilter(typeof(CacheUserAttribute))]
         [HttpGet("livestreams/settings")]
         [Authorize(Policy = AuthScopes.ChangeUser)]
-        public async Task<ActionResult<object[]>> GetLivestreamSettings()
+        public async Task<ActionResult<object[]>> GetLivestreamSettings([FromQuery] string columns)
         {
-            var streams = await _dbContext.GetLivestreams().Where(e => e.Stream.Enabled).ToArrayAsync();
-            List<object> output = new List<object>();
-            foreach (var entry in streams)
+            string[] selectColumns = new string[0];
+            if (!string.IsNullOrEmpty(columns))
             {
-                if (!string.IsNullOrEmpty(entry.UserIdentity.TwitchId))
-                {
-                    output.Add(GetLivestreamSettingsForUser(entry.UserIdentity, entry.Stream));
-                    //channels.Add(stream.UserIdentity.TwitchUsername);
-                }
-
+                selectColumns = columns.Split(" ");
             }
-
-            return output.ToArray();
+            return await LivestreamUtils.GetLivestreamSettings(_dbContext, selectColumns);
         }
 
         [ServiceFilter(typeof(CacheUserAttribute))]
@@ -473,7 +541,7 @@ namespace BITCORNService.Controllers
         [ServiceFilter(typeof(CacheUserAttribute))]
         [HttpGet("{id}/publiclivestream")]
         [Authorize(Policy = AuthScopes.ChangeUser)]
-        public async Task<ActionResult<object>> GetPublicLivestream([FromRoute] string id)
+        public async Task<ActionResult<object>> GetPublicLivestream([FromRoute] string id, [FromQuery] string reader)
         {
             if (string.IsNullOrWhiteSpace(id)) throw new ArgumentNullException("id");
             var platformId = BitcornUtils.GetPlatformId(id);
@@ -483,29 +551,29 @@ namespace BITCORNService.Controllers
                 var liveStream = await _dbContext.UserLivestream.Where(x => x.UserId == user.UserId).FirstOrDefaultAsync();
                 if (liveStream != null && liveStream.Public && !string.IsNullOrEmpty(user.UserIdentity.TwitchId))
                 {
-                    return new
+                    UserGiveawayTicket readerTicket = null;
+                    /*
+                    if (!string.IsNullOrEmpty(reader))
                     {
-                        TwitchId = user.UserIdentity.TwitchId,
-                        TwitchUsername = user.UserIdentity.TwitchUsername,
-                        TotalSentBitcornViaRains = liveStream.TotalSentBitcornViaRains,
-                        TotalSentBitcornViaTips = liveStream.TotalSentBitcornViaTips,
-                        AmountOfRainsSent = liveStream.AmountOfRainsSent,
-                        AmountOfTipsSent = liveStream.AmountOfTipsSent
-                    };
+                        var readerPlatformId = BitcornUtils.GetPlatformId(reader);
+                        var readerUser = await BitcornUtils.GetUserForPlatform(readerPlatformId, _dbContext).FirstOrDefaultAsync();
+                        if (readerUser != null)
+                        {
+                            //var ticket = await _dbContext.UserGiveawayTicket.Where(x => x.UserId == readerUser.UserId && user.UserId == x.ChannelId).FirstOrDefaultAsync();
+                            if (ticket != null && ticket.GiveawayIndex == liveStream.GiveawayIndex)
+                            {
+                                readerTicket = ticket;
+                            }
+                        }
+                    }*/
+                    return new PublicLivestreamsResponse(user, liveStream, readerTicket);
                 }
             }
 
-            return new
-            {
-                TwitchId = "",
-                TwitchUsername = "",
-                TotalSentBitcornViaRains = 0,
-                TotalSentBitcornViaTips = 0,
-                AmountOfRainsSent = 0,
-                AmountOfTipsSent = 0
-            };
+            return new PublicLivestreamsResponse();
             //return StatusCode(404);
         }
+
 
         [ServiceFilter(typeof(CacheUserAttribute))]
         [HttpGet("{id}/livestream")]
@@ -514,17 +582,24 @@ namespace BITCORNService.Controllers
         {
             if (this.GetCachedUser() != null)
                 throw new InvalidOperationException();
-            var platformId = BitcornUtils.GetPlatformId(id);
-            var user = await BitcornUtils.GetUserForPlatform(platformId, _dbContext).FirstOrDefaultAsync();
-            if (user != null)
+            try
             {
-                var stream = await _dbContext.GetLivestreams().Where(e => e.UserId == user.UserId).FirstOrDefaultAsync();
-                if (stream != null)
-                    return stream.Stream;
+                var platformId = BitcornUtils.GetPlatformId(id);
+                var user = await BitcornUtils.GetUserForPlatform(platformId, _dbContext).FirstOrDefaultAsync();
+                if (user != null)
+                {
+                    var stream = await _dbContext.GetLivestreams().Where(e => e.User.UserId == user.UserId).FirstOrDefaultAsync();
+                    if (stream != null)
+                        return stream.Stream;
 
+                }
+
+                return StatusCode(404);
             }
-
-            return StatusCode(404);
+            catch (Exception ex)
+            {
+                return StatusCode(500);
+            }
         }
 
         [ServiceFilter(typeof(LockUserAttribute))]
@@ -535,7 +610,105 @@ namespace BITCORNService.Controllers
             return StatusCode(200);
         }
 
+        [ServiceFilter(typeof(CacheUserAttribute))]
+        [HttpGet("{id}/livestream/actions")]
+        [Authorize(Policy = AuthScopes.ChangeUser)]
+        public async Task<ActionResult<object>> GetStreamActions([FromRoute] string id)
+        {
+            var platformId = BitcornUtils.GetPlatformId(id);
+            var user = this.GetCachedUser();//await BitcornUtils.GetUserForPlatform(platformId, _dbContext).FirstOrDefaultAsync();
+            if (user != null)
+            {
+                var actions = await _dbContext.UserStreamAction.Where(x => x.RecipientUserId == user.UserId).ToArrayAsync();
+                for (int i = 0; i < actions.Length; i++)
+                {
+                    actions[i].Closed = true;
+                }
 
+                if (actions.Length > 0)
+                {
+                    await _dbContext.SaveAsync();
+                }
+
+                return actions;
+            }
+
+            return StatusCode(404);
+        }
+
+        [ServiceFilter(typeof(CacheUserAttribute))]
+        [HttpGet("{id}/livestream/tts")]
+        [Authorize(Policy = AuthScopes.ChangeUser)]
+        public async Task<ActionResult<object>> GetTts([FromRoute] string id)
+        {
+            try
+            {
+                var platformId = BitcornUtils.GetPlatformId(id);
+                var user = await BitcornUtils.GetUserForPlatform(platformId, _dbContext).FirstOrDefaultAsync();
+                if (user != null)
+                {
+                    var userTts = await _dbContext.UserTts.FirstOrDefaultAsync(x => x.UserId == user.UserId);
+                    if (userTts == null)
+                    {
+                        userTts = new UserTts();
+                        userTts.Rate = 1;
+                        userTts.Pitch = 1;
+                        userTts.Voice = 0;
+                        userTts.UserId = user.UserId;
+                        _dbContext.UserTts.Add(userTts);
+                        await _dbContext.SaveAsync();
+                    }
+
+                    return userTts;
+                }
+
+                return StatusCode(404);
+            }
+            catch (Exception ex)
+            {
+                throw ex;
+            }
+        }
+
+
+        [ServiceFilter(typeof(CacheUserAttribute))]
+        [HttpPost("{id}/livestream/tts")]
+        [Authorize(Policy = AuthScopes.ChangeUser)]
+        public async Task<ActionResult<object>> SetTts([FromRoute] string id, [FromBody] UserTts body)
+        {
+            if (string.IsNullOrWhiteSpace(id)) throw new ArgumentNullException("id");
+            try
+            {
+                var platformId = BitcornUtils.GetPlatformId(id);
+                var user = await BitcornUtils.GetUserForPlatform(platformId, _dbContext).FirstOrDefaultAsync();
+                if (user != null)
+                {
+                    var userTts = await _dbContext.UserTts.FirstOrDefaultAsync(x => x.UserId == user.UserId);
+                    if (userTts == null)
+                    {
+                        userTts = new UserTts();
+                        userTts.UserId = user.UserId;
+                        _dbContext.UserTts.Add(userTts);
+                    }
+
+                    userTts.Voice = body.Voice;
+                    userTts.Rate = body.Rate;
+                    userTts.Pitch = body.Pitch;
+
+                    await _dbContext.SaveAsync();
+                    return userTts;
+                }
+
+                return StatusCode(404);
+            }
+            catch (Exception ex)
+            {
+                throw ex;
+                //return StatusCode(404);
+
+            }
+        }
+      
 
         [ServiceFilter(typeof(LockUserAttribute))]
         [HttpPost("{id}/setlivestream")]
@@ -570,7 +743,9 @@ namespace BITCORNService.Controllers
                             TxMessages = body.TxMessages,
                             IrcEventPayments = body.IrcEventPayments,
                             BitcornPerBit = 0.1m,
-                            BitcornPerDonation = 1,
+                            Tier1SubReward = 420,
+                            Tier2SubReward = 4200,
+                            Tier3SubReward = 42000,
                             Tier1IdlePerMinute = 0.1m,
                             Tier2IdlePerMinute = 0.25m,
                             Tier3IdlePerMinute = 1m,
@@ -585,165 +760,233 @@ namespace BITCORNService.Controllers
                     }
                     else
                     {
-                        bool changes = false;
-                        if (body.Enabled != liveStream.Enabled)
+                        bool commit = true;
+                        if (liveStream.LastUpdateTime == null)
                         {
-                            changes = true;
-                            liveStream.Enabled = body.Enabled;
+                            liveStream.LastUpdateTime = DateTime.Now;
                         }
-
-                        if (body.Public != liveStream.Public)
+                        else
                         {
-                            liveStream.Public = body.Public;
-                            changes = true;
-                        }
-
-                        if (body.EnableTransactions != liveStream.EnableTransactions)
-                        {
-                            liveStream.EnableTransactions = body.EnableTransactions;
-                            changes = true;
-                        }
-                        /*
-                        if(user.UserIdentity.TwitchId =! liveStream.IrcTarget)
-                        {
-                            liveStream.IrcTarget = user.UserI
-                        }*/
-
-                        if ("#" + user.UserIdentity.TwitchUsername != liveStream.IrcTarget)
-                        {
-                            liveStream.IrcTarget = "#" + user.UserIdentity.TwitchUsername;
-                            changes = true;
-                        }
-
-                        if (body.MinRainAmount != liveStream.MinRainAmount)
-                        {
-                            liveStream.MinRainAmount = body.MinRainAmount;
-                            if (liveStream.MinRainAmount <= 0)
+                            if (DateTime.Now < liveStream.LastUpdateTime.Value.AddMilliseconds(100))
                             {
-                                liveStream.MinRainAmount = 1;
+                                commit = false;
                             }
-                            changes = true;
+                            else
+                            {
+                                liveStream.LastUpdateTime = DateTime.Now;
+                            }
                         }
 
-                        if (body.MinTipAmount != liveStream.MinTipAmount)
+                        if (commit)
                         {
-                            liveStream.MinTipAmount = body.MinTipAmount;
-                            if (liveStream.MinTipAmount <= 0)
+                            bool changes = false;
+                            if (body.Enabled != liveStream.Enabled)
                             {
-                                liveStream.MinTipAmount = 1;
+                                changes = true;
+                                liveStream.Enabled = body.Enabled;
                             }
 
-                            changes = true;
-                        }
-
-                        if (body.TxCooldownPerUser != liveStream.TxCooldownPerUser)
-                        {
-                            liveStream.TxCooldownPerUser = body.TxCooldownPerUser;
-                            if (liveStream.TxCooldownPerUser <= 0)
+                            if (body.Public != liveStream.Public)
                             {
-                                liveStream.TxCooldownPerUser = 0;
-                            }
-                            changes = true;
-                        }
-
-
-                        if (body.RainAlgorithm != liveStream.RainAlgorithm)
-                        {
-                            liveStream.RainAlgorithm = body.RainAlgorithm;
-                            if (liveStream.RainAlgorithm < 0)
-                            {
-                                liveStream.RainAlgorithm = 0;
+                                liveStream.Public = body.Public;
+                                changes = true;
                             }
 
-                            if (liveStream.RainAlgorithm > 1)
+                            if (body.EnableTransactions != liveStream.EnableTransactions)
                             {
-                                liveStream.RainAlgorithm = 1;
+                                liveStream.EnableTransactions = body.EnableTransactions;
+                                changes = true;
                             }
-                            changes = true;
-                        }
-
-                        if (body.TxMessages != liveStream.TxMessages)
-                        {
-                            liveStream.TxMessages = body.TxMessages;
-                            changes = true;
-                        }
-
-                        if (body.IrcEventPayments != liveStream.IrcEventPayments)
-                        {
-                            liveStream.IrcEventPayments = body.IrcEventPayments;
-                            changes = true;
-                        }
-
-                        if (body.Tier1IdlePerMinute != liveStream.Tier1IdlePerMinute)
-                        {
-                            liveStream.Tier1IdlePerMinute = body.Tier1IdlePerMinute;
-                            if (liveStream.Tier1IdlePerMinute <= 0)
-                                liveStream.Tier1IdlePerMinute = 0.1m;
-
-                            if (liveStream.Tier1IdlePerMinute > 1000) liveStream.Tier1IdlePerMinute = 1000;
-
-                            changes = true;
-                        }
-
-                        if (body.Tier2IdlePerMinute != liveStream.Tier2IdlePerMinute)
-                        {
-                            liveStream.Tier2IdlePerMinute = body.Tier2IdlePerMinute;
-                            if (liveStream.Tier2IdlePerMinute <= 0)
-                                liveStream.Tier2IdlePerMinute = 0.1m;
-
-                            if (liveStream.Tier2IdlePerMinute > 1000) liveStream.Tier2IdlePerMinute = 1000;
-                            changes = true;
-                        }
-
-                        if (body.Tier3IdlePerMinute != liveStream.Tier3IdlePerMinute)
-                        {
-                            liveStream.Tier3IdlePerMinute = body.Tier3IdlePerMinute;
-                            if (liveStream.Tier3IdlePerMinute <= 0)
-                                liveStream.Tier3IdlePerMinute = 0.3m;
-                            if (liveStream.Tier3IdlePerMinute > 1000) liveStream.Tier3IdlePerMinute = 1000;
-                            changes = true;
-                        }
-
-                        if (body.BitcornPerBit != liveStream.BitcornPerBit)
-                        {
-                            liveStream.BitcornPerBit = body.BitcornPerBit;
-                            if (liveStream.BitcornPerBit <= 0)
-                                liveStream.BitcornPerBit = 0.1m;
-                            changes = true;
-                        }
-
-
-                        if (body.BitcornPerDonation != liveStream.BitcornPerDonation)
-                        {
-                            liveStream.BitcornPerDonation = body.BitcornPerDonation;
-                            if (liveStream.BitcornPerDonation <= 0)
-                                liveStream.BitcornPerDonation = 0.1m;
-                            changes = true;
-                        }
-
-                        if (body.EnableChannelpoints != liveStream.EnableChannelpoints)
-                        {
-                            liveStream.EnableChannelpoints = body.EnableChannelpoints;
-                            changes = true;
-                        }
-
-                        if (body.BitcornPerChannelpointsRedemption != liveStream.BitcornPerChannelpointsRedemption)
-                        {
-                            liveStream.BitcornPerChannelpointsRedemption = body.BitcornPerChannelpointsRedemption;
-                            if (liveStream.BitcornPerChannelpointsRedemption <= .1m)
+                            /*
+                            if(user.UserIdentity.TwitchId =! liveStream.IrcTarget)
                             {
-                                liveStream.BitcornPerChannelpointsRedemption = .1m;
+                                liveStream.IrcTarget = user.UserI
+                            }*/
+
+                            if ("#" + user.UserIdentity.TwitchUsername != liveStream.IrcTarget)
+                            {
+                                liveStream.IrcTarget = "#" + user.UserIdentity.TwitchUsername;
+                                changes = true;
                             }
-                            changes = true;
-                        }
 
-                        if (changes)
-                        {
-                            await _dbContext.SaveAsync();
-                            await WebSocketsController.TryBroadcastToBitcornhub("update-livestream-settings", 
-                                GetLivestreamSettingsForUser(user.UserIdentity, liveStream));
-                        }
+                            if (body.MinRainAmount != liveStream.MinRainAmount)
+                            {
+                                liveStream.MinRainAmount = body.MinRainAmount;
+                                if (liveStream.MinRainAmount <= 0)
+                                {
+                                    liveStream.MinRainAmount = 1;
+                                }
+                                changes = true;
+                            }
 
+                            if (body.MinTipAmount != liveStream.MinTipAmount)
+                            {
+                                liveStream.MinTipAmount = body.MinTipAmount;
+                                if (liveStream.MinTipAmount <= 0)
+                                {
+                                    liveStream.MinTipAmount = 1;
+                                }
+
+                                changes = true;
+                            }
+
+                            if (body.TxCooldownPerUser != liveStream.TxCooldownPerUser)
+                            {
+                                liveStream.TxCooldownPerUser = body.TxCooldownPerUser;
+                                if (liveStream.TxCooldownPerUser <= 0)
+                                {
+                                    liveStream.TxCooldownPerUser = 0;
+                                }
+                                changes = true;
+                            }
+
+
+                            if (body.RainAlgorithm != liveStream.RainAlgorithm)
+                            {
+                                liveStream.RainAlgorithm = body.RainAlgorithm;
+                                if (liveStream.RainAlgorithm < 0)
+                                {
+                                    liveStream.RainAlgorithm = 0;
+                                }
+
+                                if (liveStream.RainAlgorithm > 1)
+                                {
+                                    liveStream.RainAlgorithm = 1;
+                                }
+                                changes = true;
+                            }
+
+                            if (body.TxMessages != liveStream.TxMessages)
+                            {
+                                liveStream.TxMessages = body.TxMessages;
+                                changes = true;
+                            }
+
+                            if (body.IrcEventPayments != liveStream.IrcEventPayments)
+                            {
+                                liveStream.IrcEventPayments = body.IrcEventPayments;
+                                changes = true;
+                            }
+
+                            bool allowFundedChanges = true;
+                            if (!liveStream.BitcornhubFunded || allowFundedChanges)
+                            {
+                                if (body.Tier1IdlePerMinute != liveStream.Tier1IdlePerMinute)
+                                {
+                                    liveStream.Tier1IdlePerMinute = body.Tier1IdlePerMinute;
+                                    if (liveStream.Tier1IdlePerMinute <= 0)
+                                        liveStream.Tier1IdlePerMinute = 0;
+
+                                    if (liveStream.Tier1IdlePerMinute > 1000) liveStream.Tier1IdlePerMinute = 1000;
+
+                                    changes = true;
+                                }
+
+                                if (body.Tier2IdlePerMinute != liveStream.Tier2IdlePerMinute)
+                                {
+                                    liveStream.Tier2IdlePerMinute = body.Tier2IdlePerMinute;
+                                    if (liveStream.Tier2IdlePerMinute <= 0)
+                                        liveStream.Tier2IdlePerMinute = 0;
+
+                                    if (liveStream.Tier2IdlePerMinute > 1000) liveStream.Tier2IdlePerMinute = 1000;
+                                    changes = true;
+                                }
+
+                                if (body.Tier3IdlePerMinute != liveStream.Tier3IdlePerMinute)
+                                {
+                                    liveStream.Tier3IdlePerMinute = body.Tier3IdlePerMinute;
+                                    if (liveStream.Tier3IdlePerMinute <= 0)
+                                        liveStream.Tier3IdlePerMinute = 0;
+                                    if (liveStream.Tier3IdlePerMinute > 1000) liveStream.Tier3IdlePerMinute = 1000;
+                                    changes = true;
+                                }
+
+                                if (body.BitcornPerBit != liveStream.BitcornPerBit)
+                                {
+                                    liveStream.BitcornPerBit = body.BitcornPerBit;
+                                    if (liveStream.BitcornPerBit <= 0)
+                                        liveStream.BitcornPerBit = 0;
+                                    changes = true;
+                                }
+
+
+                                if (body.Tier1SubReward != liveStream.Tier1SubReward)
+                                {
+                                    liveStream.Tier1SubReward = body.Tier1SubReward;
+                                    if (liveStream.Tier1SubReward <= 0)
+                                        liveStream.Tier1SubReward = 0;
+                                    changes = true;
+                                }
+
+                                if (body.Tier2SubReward != liveStream.Tier2SubReward)
+                                {
+                                    liveStream.Tier2SubReward = body.Tier2SubReward;
+                                    if (liveStream.Tier2SubReward <= 0)
+                                        liveStream.Tier2SubReward = 0;
+                                    changes = true;
+                                }
+
+                                if (body.Tier3SubReward != liveStream.Tier3SubReward)
+                                {
+                                    liveStream.Tier3SubReward = body.Tier3SubReward;
+                                    if (liveStream.Tier3SubReward <= 0)
+                                        liveStream.Tier3SubReward = 0;
+                                    changes = true;
+                                }
+
+                                if (body.BitcornPerChannelpointsRedemption != liveStream.BitcornPerChannelpointsRedemption)
+                                {
+                                    liveStream.BitcornPerChannelpointsRedemption = body.BitcornPerChannelpointsRedemption;
+                                    if (liveStream.BitcornPerChannelpointsRedemption <= 0m)
+                                    {
+                                        liveStream.BitcornPerChannelpointsRedemption = 0;
+                                    }
+                                    changes = true;
+                                }
+
+
+                                if (body.BitcornPerTtsCharacter != liveStream.BitcornPerTtsCharacter)
+                                {
+                                    liveStream.BitcornPerTtsCharacter = body.BitcornPerTtsCharacter;
+                                    if (liveStream.BitcornPerTtsCharacter <= 0) liveStream.BitcornPerTtsCharacter = 0;
+                                    changes = true;
+                                }
+
+                            }
+                            if (body.EnableChannelpoints != liveStream.EnableChannelpoints)
+                            {
+                                liveStream.EnableChannelpoints = body.EnableChannelpoints;
+                                changes = true;
+                            }
+
+
+
+                            if (body.EnableTts != liveStream.EnableTts)
+                            {
+                                liveStream.EnableTts = body.EnableTts;
+                                changes = true;
+                            }
+
+                            if (changes)
+                            {
+
+
+                                if (commit)
+                                {
+                                    var count = await _dbContext.SaveAsync();
+                                    //WebSocketsController.GetSocketArgs<string[]>("update-livestream-settings");
+                                    var columns = await UserReflection.GetColumns(_dbContext, WebSocketsController.BitcornhubSocketArgs, new int[] { user.UserId }, new UserReflectionContext(UserReflection.StreamerModel));
+                                    Dictionary<string, object> selects = null;
+                                    if (columns != null)
+                                    {
+                                        selects = columns.FirstOrDefault().Value;//.Add();
+                                    }
+
+                                    await WebSocketsController.TryBroadcastToBitcornhub(_dbContext, "update-livestream-settings",
+                                        LivestreamUtils.GetLivestreamSettingsForUser(user, liveStream, selects));
+                                }
+                            }
+                        }
 
 
                     }
@@ -763,41 +1006,7 @@ namespace BITCORNService.Controllers
             }
         }
         //  
-
-        [ServiceFilter(typeof(CacheUserAttribute))]
-        [HttpPost("notifications")]
-        [Authorize(Policy = AuthScopes.ReadUser)]
-        public async Task<ActionResult<object>> GetNotifications([FromBody] BulkAuth0Request body)
-        {
-            if (this.GetCachedUser() != null)
-                throw new InvalidOperationException();
-            var ids = body.Ids;
-            var users = await _dbContext.UserIdentity.Where(x => ids.Contains(x.Auth0Id)).ToArrayAsync();
-            var userIds = users.Select(x => x.UserId).ToArray();
-            var auth0IdDict = users.ToDictionary(x => x.UserId, x => x.Auth0Id);
-            var result = await CommentUtils.GetNotifications(_dbContext, userIds);
-            var output = new Dictionary<string, List<CommentUtils.TagSelect>>();
-            foreach (var item in auth0IdDict)
-            {
-                output.Add(item.Value, new List<CommentUtils.TagSelect>());
-            }
-
-            for (int i = 0; i < result.Length; i++)
-            {
-                var auth0Id = auth0IdDict[result[i].TaggedId];
-                if (!output.TryGetValue(auth0Id, out var list))
-                {
-                    list = new List<CommentUtils.TagSelect>();
-                    output.Add(auth0Id, list);
-                }
-
-                list.Add(result[i]);
-                //result[i].TaggedAuth0Id = auth0IdDict[result[i].TaggedId];
-            }
-
-            return output;
-        }
-
+      
         [ServiceFilter(typeof(CacheUserAttribute))]
         [HttpPost("balances")]
         [Authorize(Policy = AuthScopes.ReadUser)]
@@ -1038,117 +1247,7 @@ namespace BITCORNService.Controllers
 
             return StatusCode(404);
         }
-
-        [ServiceFilter(typeof(LockUserAttribute))]
-        [HttpPost("{id}/social/comment/{commentId}/delete")]
-        [Authorize(Policy = AuthScopes.ChangeUser)]
-        public async Task<ActionResult<SocialCommentResponse>> DeleteComment([FromRoute] string id, [FromRoute] string commentId, [FromQuery] string reader)
-        {
-            if (string.IsNullOrWhiteSpace(id)) throw new ArgumentNullException("id");
-
-            var platformId = BitcornUtils.GetPlatformId(id);
-            var user = this.GetCachedUser();//await BitcornUtils.GetUserForPlatform(platformId, _dbContext).FirstOrDefaultAsync();
-            if (user != null && !user.IsBanned)
-            {
-                var comment = await _dbContext.SocialComment.FirstOrDefaultAsync(x => x.CommentId == commentId);
-                if (comment != null)
-                {
-                    if (comment.UserId == user.UserId)
-                    {
-                        if (comment.IsListed)
-                        {
-                            comment.IsListed = false;
-                            await _dbContext.SaveAsync();
-                        }
-                    }
-                }
-                var tags = new JoinedSocialTag[0];
-                if (comment.IsListed)
-                {
-                    var queryResult = await CommentUtils.JoinTags(_dbContext).Where(c => c.Tag.CommentId == comment.CommentId).ToArrayAsync();
-                    tags = queryResult.Select(x => new JoinedSocialTag(x.Tag, x.Identity)).ToArray();
-                }
-
-                return new SocialCommentResponse(comment, user.UserIdentity, tags);
-            }
-
-            return StatusCode(404);
-        }
-
-        public class ReadNotificationsBody
-        {
-            public string CommentId { get; set; }
-        }
-
-        [ServiceFilter(typeof(CacheUserAttribute))]
-        [HttpPost("{id}/social/notifications")]
-        [Authorize(Policy = AuthScopes.ChangeUser)]
-        public async Task<ActionResult<object>> ReadNotifications([FromRoute] string id, [FromBody] ReadNotificationsBody body)
-        {
-
-            if (this.GetCachedUser() != null)
-                throw new InvalidOperationException();
-            if (string.IsNullOrWhiteSpace(id)) throw new ArgumentNullException("id");
-
-            var platformId = BitcornUtils.GetPlatformId(id);
-            var user = await BitcornUtils.GetUserForPlatform(platformId, _dbContext).FirstOrDefaultAsync();
-            if (user != null)
-            {
-                SocialTag[] tags = null;
-                if (body.CommentId == null)
-                {
-                    tags = await _dbContext.SocialTag.Where((s) => s.TagUserId == user.UserId && !s.Seen).ToArrayAsync();
-
-                }
-                else
-                {
-                    tags = await _dbContext.SocialTag.Where((s) => s.TagUserId == user.UserId && !s.Seen && s.CommentId == body.CommentId).ToArrayAsync();
-
-                }
-
-                for (int i = 0; i < tags.Length; i++)
-                {
-                    tags[i].Seen = true;
-                }
-
-                if (tags.Length > 0)
-                {
-                    await _dbContext.SaveAsync();
-                }
-                return await CommentUtils.GetNotifications(_dbContext, user);
-            }
-
-            return StatusCode(404);
-        }
-
-        [ServiceFilter(typeof(CacheUserAttribute))]
-        [HttpGet("{id}/social/notifications")]
-        [Authorize(Policy = AuthScopes.ChangeUser)]
-        public async Task<ActionResult<object>> GetNotifications([FromRoute] string id)
-        {
-
-            if (this.GetCachedUser() != null)
-                throw new InvalidOperationException();
-            if (string.IsNullOrWhiteSpace(id)) throw new ArgumentNullException("id");
-
-            var platformId = BitcornUtils.GetPlatformId(id);
-            var user = await BitcornUtils.GetUserForPlatform(platformId, _dbContext).FirstOrDefaultAsync();
-            if (user != null)
-            {
-                return await CommentUtils.GetNotifications(_dbContext, user);
-
-                /*
-                var tags = await _dbContext.SocialTag
-                    .Join(_dbContext.SocialComment)
-                    .Where(x=>x.TagUserId==user.UserId&&!x.Seen)
-                    
-                    .ToArrayAsync();
-                */
-            }
-
-            return StatusCode(404);
-        }
-
+     
         [ServiceFilter(typeof(CacheUserAttribute))]
         [HttpPost("{id}/setsocketconnected/{state}")]
         [Authorize(Policy = AuthScopes.ChangeUser)]
@@ -1185,470 +1284,7 @@ namespace BITCORNService.Controllers
                 throw ex;
             }
         }
-
-        [ServiceFilter(typeof(CacheUserAttribute))]
-        [HttpGet("{id}/social/follows/{followId}")]
-        [Authorize(Policy = AuthScopes.ChangeUser)]
-        public async Task<ActionResult<object>> IsFollowing([FromRoute] string id, [FromRoute] string followId)
-        {
-
-            if (this.GetCachedUser() != null)
-                throw new InvalidOperationException();
-            if (string.IsNullOrWhiteSpace(id)) throw new ArgumentNullException("id");
-
-            var platformId = BitcornUtils.GetPlatformId(id);
-            var user = await BitcornUtils.GetUserForPlatform(platformId, _dbContext).FirstOrDefaultAsync();
-            var followPlatformId = BitcornUtils.GetPlatformId(followId);
-            var followUser = await BitcornUtils.GetUserForPlatform(followPlatformId, _dbContext).FirstOrDefaultAsync();
-
-            if (user != null && !user.IsBanned)
-            {
-                var isFollowing = await _dbContext.SocialFollow.AnyAsync((f) => f.UserId == user.UserId && f.FollowId == followUser.UserId);
-                return new
-                {
-                    IsFollowing = isFollowing
-                };
-
-            }
-
-            return StatusCode(404);
-        }
-
-        [ServiceFilter(typeof(LockUserAttribute))]
-        [HttpPost("{id}/social/follow/{followId}/{doAction}")]
-        [Authorize(Policy = AuthScopes.ChangeUser)]
-        public async Task<ActionResult<object>> Follow([FromRoute] string id, [FromRoute] string followId, [FromRoute] string doAction)
-        {
-
-            if (string.IsNullOrWhiteSpace(id)) throw new ArgumentNullException("id");
-
-            var platformId = BitcornUtils.GetPlatformId(id);
-            var user = this.GetCachedUser();//await BitcornUtils.GetUserForPlatform(platformId, _dbContext).FirstOrDefaultAsync();
-            var followPlatformId = BitcornUtils.GetPlatformId(followId);
-            var followUser = await BitcornUtils.GetUserForPlatform(followPlatformId, _dbContext).FirstOrDefaultAsync();
-
-            if (user != null && followUser != null && !user.IsBanned)
-            {
-                var follow = await _dbContext.SocialFollow.FirstOrDefaultAsync((f) => f.UserId == user.UserId && f.FollowId == followUser.UserId);
-
-                if (doAction == "unfollow")
-                {
-                    if (follow != null)
-                    {
-                        _dbContext.Remove(follow);
-                        await _dbContext.SaveAsync();
-                    }
-
-                    return new
-                    {
-                        IsFollowing = false
-                    };
-                }
-                else if (doAction == "follow")
-                {
-                    if (follow == null)
-                    {
-                        follow = new SocialFollow();
-                        follow.FollowId = followUser.UserId;
-                        follow.UserId = user.UserId;
-                        _dbContext.SocialFollow.Add(follow);
-                        await _dbContext.SaveAsync();
-                    }
-
-                    return new
-                    {
-                        IsFollowing = true
-                    };
-
-                    //
-                }
-
-
-            }
-
-            return StatusCode(404);
-
-        }
-
-
-        [ServiceFilter(typeof(LockUserAttribute))]
-        [HttpPost("{id}/social/comment")]
-        [Authorize(Policy = AuthScopes.ChangeUser)]
-        public async Task<ActionResult<SocialCommentResponse>> CreateComment([FromRoute] string id, [FromBody] PostCommentBody body)
-        {
-            if (string.IsNullOrWhiteSpace(id)) throw new ArgumentNullException("id");
-            try
-            {
-                if (body.Message.Length > 250) return StatusCode(404);
-
-                var platformId = BitcornUtils.GetPlatformId(id);
-                var user = this.GetCachedUser();//await BitcornUtils.GetUserForPlatform(platformId, _dbContext).FirstOrDefaultAsync();
-                if (user != null && !user.IsBanned)
-                {
-                    if (string.IsNullOrEmpty(body.ParentId))
-                        body.ParentId = null;
-                    if (string.IsNullOrEmpty(body.MediaId))
-                        body.MediaId = null;
-
-                    string parentCommentId = null;
-                    string rootCommentId = null;
-                    string commentContext = null;
-                    string commentContextId = null;
-                    //bool isContextComment = false;
-                    if (!string.IsNullOrEmpty(body.ParentId))
-                    {
-                        var parentComment = await _dbContext.SocialComment.FirstOrDefaultAsync(x => x.CommentId == CommentUtils.GetId(body.ParentId));
-                        if (parentComment != null)
-                        {
-                            commentContext = parentComment.Context;
-                            commentContextId = parentComment.ContextId;
-                            parentCommentId = parentComment.CommentId;
-                            var rootComment = await CommentUtils.GetRootComment(_dbContext, parentComment);
-                            if (rootComment != null)
-                            {
-                                rootCommentId = rootComment.CommentId;
-                            }
-                        }
-
-                    }
-                    else
-                    {
-                        commentContext = body.Context;
-                        commentContextId = body.ContextId;
-                    }
-                    /*
-                    var timeCheck = DateTime.Now.AddSeconds(30);
-
-                    var inCooldown = await _dbContext.SocialComment
-                        .Where(s=>s.UserId==user.UserId && s.Timestamp<timeCheck).AnyAsync();
-
-                    if (inCooldown) return StatusCode(420);
-                    */
-                    var removeTagsSentFromClient = new Regex(string.Format("\\{0}.*?\\{1}", "<tag:", ">"));
-
-                    var rawMessage = removeTagsSentFromClient.Replace(body.Message, string.Empty);
-                    //CommentUtils.GetId(body.ParentId)
-                    var comment = CommentUtils.CreateComment(user.UserId, rawMessage, rootCommentId, parentCommentId);
-                    comment.Context = commentContext;
-                    comment.ContextId = commentContextId;
-                    /*
-                    if (!string.IsNullOrEmpty(body.ParentId) && isContextComment)
-                    {
-                        comment.Context = CommentUtils.GetContext(body.ParentId);
-                        //comment.CommentId = CommentUtils.GetId(body.Context);
-
-                    }
-                    */
-                    comment.MediaId = body.MediaId;
-
-                    var messageBuilder = new StringBuilder(rawMessage.ToLower());
-                    var splitMsg = body.Message.ToLower().Split(" ");
-
-                    var tags = splitMsg.Where(x => x.Length > 0 && x[0] == '@').Select(x => x.Remove(0, 1)).ToArray();
-                    var srcUsers = await CommentUtils.FindUsersByName(_dbContext, tags).Select((u) => new
-                    {
-                        UserId = u.UserId,
-                        NickName = u.Auth0Nickname,
-                        Auth0Id = u.Auth0Id,
-                        Identity = u
-                    }).ToDictionaryAsync(u => u.NickName.ToLower(), u => u);
-
-                    List<JoinedSocialTag> newTags = new List<JoinedSocialTag>();
-                    int tagIndex = 0;
-                    for (int i = 0; i < tags.Length; i++)
-                    {
-                        var srcTag = tags[i];
-                        if (srcUsers.TryGetValue(srcTag.ToLower(), out var obj))
-                        {
-                            var username = $"@{obj.NickName.ToLower()}";
-
-                            if (!messageBuilder.ToString().Contains(username)) continue;
-
-                            var tag = new SocialTag();
-                            tag.CommentId = comment.CommentId;
-                            tag.TagUserId = obj.UserId;
-                            tag.Seen = false;
-                            tag.Idx = tagIndex;
-
-                            var insertString = $"<tag:{tagIndex}>";
-                            messageBuilder.Replace(username, insertString);
-                            tagIndex++;
-                            newTags.Add(new JoinedSocialTag(tag, obj.Identity));
-                            _dbContext.SocialTag.Add(tag);
-                        }
-                    }
-
-
-                    comment.Message = messageBuilder.ToString();
-                    _dbContext.SocialComment.Add(comment);
-                    await _dbContext.SaveAsync();
-
-                    return new SocialCommentResponse(comment, user.UserIdentity, newTags);
-                }
-
-                return StatusCode(404);
-            }
-            catch (Exception e)
-            {
-                throw e;
-            }
-        }
-
-        [ServiceFilter(typeof(LockUserAttribute))]
-        [HttpPost("{id}/social/comment/{commentId}/interact/{type}")]
-        [Authorize(Policy = AuthScopes.ChangeUser)]
-        public async Task<ActionResult<SocialCommentResponse>> CommentInteraction([FromRoute] string id, [FromRoute] string commentId, [FromRoute] string type, [FromQuery] string reader)
-        {
-            if (string.IsNullOrWhiteSpace(id)) throw new ArgumentNullException("id");
-
-            var platformId = BitcornUtils.GetPlatformId(id);
-            var user = this.GetCachedUser();//await BitcornUtils.GetUserForPlatform(platformId, _dbContext).FirstOrDefaultAsync();
-            if (user != null && !user.IsBanned)
-            {
-                commentId = CommentUtils.GetId(commentId);
-                var comment = await _dbContext.SocialComment.Where(c => c.CommentId == commentId).FirstOrDefaultAsync();
-
-                if (comment != null)
-                {
-                    if (comment.UserId == TxUtils.BitcornHubPK) return StatusCode(404);
-
-                    int? previousInteractionType = null;
-                    SocialCommentInteraction previousInteraction = null;
-                    SocialCommentInteraction interaction = null;
-                    if (type != "tip")
-                    {
-                        previousInteraction =
-                            await _dbContext.SocialCommentInteraction
-                            .FirstOrDefaultAsync(c => c.CommentId == comment.CommentId
-                                && c.UserId == user.UserId
-                                && c.Type != 2);
-                    }
-
-                    if (previousInteraction != null)
-                    {
-                        interaction = previousInteraction;
-                        previousInteractionType = interaction.Type;
-                    }
-                    else
-                    {
-                        if (type != "undo")
-                        {
-                            interaction = new SocialCommentInteraction();
-                            interaction.UserId = user.UserId;
-                            interaction.CommentId = comment.CommentId;
-                            _dbContext.SocialCommentInteraction.Add(interaction);
-                            //await _dbContext.SaveAsync();
-                        }
-                    }
-
-
-                    if (type == "like")
-                    {
-                        interaction.Type = 1;
-                        if (previousInteractionType == -1)
-                        {
-                            comment.Dislikes--;
-                        }
-
-                        if (previousInteractionType != 1)
-                        {
-                            comment.Likes++;
-                        }
-
-                    }
-
-                    if (type == "dislike")
-                    {
-                        interaction.Type = -1;
-                        if (previousInteractionType == 1)
-                        {
-                            comment.Likes--;
-
-                        }
-
-                        if (previousInteractionType != -1)
-                        {
-                            comment.Dislikes++;
-                        }
-                    }
-
-
-                    if (type == "tip")
-                    {
-                        interaction.Type = 2;
-                        comment.TipCount++;
-                    }
-
-                    if (type == "undo")
-                    {
-
-                        if (previousInteractionType == 1)
-                        {
-                            comment.Likes--;
-                        }
-
-                        if (previousInteractionType == -1)
-                        {
-                            comment.Dislikes--;
-                        }
-
-                        interaction.Type = -10;
-
-                    }
-
-                    await _dbContext.SaveAsync();
-                    var tags = await CommentUtils.JoinTags(_dbContext)
-                        .Where(c => c.Tag.CommentId == comment.CommentId).ToArrayAsync();
-                    return new SocialCommentResponse(comment,
-                        await _dbContext.UserIdentity.FirstOrDefaultAsync(u => u.UserId == comment.UserId),
-                        tags.Select(x => new JoinedSocialTag(x.Tag, x.Identity)));
-                }
-            }
-
-            return StatusCode(404);
-        }
-
-
-
-
-
-        [ServiceFilter(typeof(CacheUserAttribute))]
-        [HttpGet("{id}/social/comments")]
-        [Authorize(Policy = AuthScopes.ReadUser)]
-        public async Task<ActionResult<SocialCommentResponse[]>> GetComments([FromRoute] string id, [FromQuery] string reader)
-        {
-            if (this.GetCachedUser() != null)
-                throw new InvalidOperationException();
-            if (string.IsNullOrWhiteSpace(id)) throw new ArgumentNullException("id");
-
-            var platformId = BitcornUtils.GetPlatformId(id);
-            var user = await BitcornUtils.GetUserForPlatform(platformId, _dbContext).FirstOrDefaultAsync();
-            if (user != null && !user.IsBanned)
-            {
-                var rootComments = await _dbContext.SocialComment.Where(c => c.UserId == user.UserId && c.ParentId == null && c.IsListed)
-                    .OrderByDescending(x => x.Timestamp)
-                    .Take(10)
-                    .ToArrayAsync();
-                var tagDict = await CommentUtils.GetAllTags(_dbContext, rootComments);
-                return rootComments.Select(x => new SocialCommentResponse(x, user.UserIdentity, tagDict[x.CommentId])).ToArray();
-                /*
-                var rootChecks = rootComments.Select(e=>e.CommentId).ToHashSet();
-                var subComments = await _dbContext.SocialComment.Where(c=>rootChecks.Contains(c.ParentId)).ToArrayAsync();
-                */
-            }
-
-            return StatusCode(404);
-        }
-
-        [ServiceFilter(typeof(CacheUserAttribute))]
-        [HttpGet("social/commentbyid/{commentId}")]
-        [Authorize(Policy = AuthScopes.ChangeUser)]
-        public async Task<ActionResult<SocialCommentResponse[]>> GetCommentById([FromRoute] string commentId)
-        {
-
-            if (this.GetCachedUser() != null)
-                throw new InvalidOperationException();
-            commentId = CommentUtils.GetId(commentId);
-
-            var comments = await CommentUtils.JoinUser(_dbContext).Where((x) =>
-                x.comment.CommentId == commentId && x.comment.IsListed
-            ).ToArrayAsync();
-
-            var tagDict = await CommentUtils.GetAllTags(_dbContext, comments.Select(x => x.comment).ToArray());
-            return comments.Select((c) => new SocialCommentResponse(c.comment, c.identity, tagDict[c.comment.CommentId])).ToArray();
-
-
-
-            return StatusCode(404);
-        }
-
-        [ServiceFilter(typeof(CacheUserAttribute))]
-        [HttpGet("social/comments/context/{contextId}")]
-        [Authorize(Policy = AuthScopes.ReadUser)]
-        public async Task<ActionResult<SocialCommentResponse[]>> GetCommentsByContext([FromRoute] string contextId, [FromQuery] string reader)
-        {
-            if (this.GetCachedUser() != null)
-                throw new InvalidOperationException();
-
-
-            var comments = await CommentUtils.JoinUser(_dbContext)
-                .Where(c => c.comment.ContextId == contextId && c.comment.ParentId == null && c.comment.IsListed)
-                  .OrderByDescending(x => x.comment.Timestamp)
-                  .Take(10)
-                  .ToArrayAsync();
-            //var tagDict = await CommentUtils.GetAllTags(_dbContext, rootComments);
-            var tagDict = await CommentUtils.GetAllTags(_dbContext, comments.Select(x => x.comment).ToArray());
-            return comments.Select((c) => new SocialCommentResponse(c.comment, c.identity, tagDict[c.comment.CommentId])).ToArray();
-
-            //return rootComments.Select(x => new SocialCommentResponse(x, user.UserIdentity, tagDict[x.CommentId])).ToArray();
-
-        }
-
-        [ServiceFilter(typeof(CacheUserAttribute))]
-        [HttpGet("{id}/social/feed")]
-        [Authorize(Policy = AuthScopes.ReadUser)]
-        public async Task<ActionResult<SocialCommentResponse[]>> GetFeed([FromRoute] string id)
-        {
-            if (this.GetCachedUser() != null)
-                throw new InvalidOperationException();
-            if (string.IsNullOrWhiteSpace(id)) throw new ArgumentNullException("id");
-            try
-            {
-                var platformId = BitcornUtils.GetPlatformId(id);
-                var user = await BitcornUtils.GetUserForPlatform(platformId, _dbContext).FirstOrDefaultAsync();
-                if (user != null && !user.IsBanned)
-                {
-                    var following = await _dbContext.SocialFollow.Where(u => u.UserId == user.UserId).ToArrayAsync();
-                    var followingUserIds = following.Select((f) => f.FollowId).ToArray();
-
-                    var comments = await CommentUtils.JoinUser(_dbContext)
-                        .Where((x) => x.comment.IsListed && followingUserIds.Contains(x.comment.UserId) && x.comment.ParentId == null && !x.user.IsBanned && x.comment.Context == null)
-
-                        .OrderByDescending(x => x.comment.Timestamp)
-                            .Take(10)
-                            .ToArrayAsync();
-
-                    var tagDict = await CommentUtils.GetAllTags(_dbContext, comments.Select(x => x.comment).ToArray());
-                    return comments.Select((c) => new SocialCommentResponse(c.comment, c.identity, tagDict[c.comment.CommentId])).ToArray();
-
-                }
-
-                return StatusCode(404);
-            }
-            catch (Exception ex)
-            {
-                throw ex;
-            }
-        }
-
-        [ServiceFilter(typeof(CacheUserAttribute))]
-        [HttpGet("social/comment/{commentId}/subcomments")]
-        [Authorize(Policy = AuthScopes.ReadUser)]
-        public async Task<ActionResult<SocialCommentResponse[]>> GetSubComments([FromRoute] string commentId, [FromQuery] string reader)
-        {
-            if (this.GetCachedUser() != null)
-                throw new InvalidOperationException();
-            commentId = CommentUtils.GetId(commentId);
-            var comment = await _dbContext.SocialComment.FirstOrDefaultAsync(c => c.CommentId == commentId);
-            if (comment != null)
-            {
-                var comments = await CommentUtils.JoinUser(_dbContext)
-                    .Where((c) => c.comment.ParentId == comment.CommentId && !c.user.IsBanned)
-
-                    .OrderByDescending(x => x.comment.Timestamp)
-                    .Take(10)
-                    .ToArrayAsync();
-
-                var tagDict = await CommentUtils.GetAllTags(_dbContext, comments.Select(x => x.comment).ToArray());
-
-                return comments.Select(x => new SocialCommentResponse(x.comment, x.identity, tagDict[x.comment.CommentId])).ToArray();
-            }
-
-
-
-            return StatusCode(404);
-        }
-
+    
         [ServiceFilter(typeof(CacheUserAttribute))]
         [HttpGet("{id}/referralinfo")]
         [Authorize(Policy = AuthScopes.ReadUser)]
@@ -1721,6 +1357,7 @@ namespace BITCORNService.Controllers
             {
                 var referral = _dbContext.Referrer.FirstOrDefault(r => r.UserId == user.UserId);
                 bool isGuest = id != reader;
+                user.UserIdentity.TwitchRefreshToken = null;
                 return BitcornUtils.SelectUserProperties(user, user.UserIdentity, user.UserWallet, user.UserStat, user.UserReferral, referral, isGuest);
             }
             else

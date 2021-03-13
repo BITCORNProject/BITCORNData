@@ -117,13 +117,13 @@ namespace BITCORNServiceTests
                 var context = txController.ControllerContext.HttpContext = new DefaultHttpContext();
                 context.Items.Add("user", dbContext.JoinUserModels().FirstOrDefault(u => u.UserId == TxUtils.BitcornHubPK));
 
-                int changeCount = (await txController.Payout(new PayoutRequest()
+                var changeCount = (await txController.Payout(new PayoutRequest()
                 {
                     Chatters = new HashSet<string>() { _configuration["Config:TestFromUserId"], _configuration["Config:TestToUserId"] },
                     Minutes = 1
 
                 })).Value;
-                Assert.Equal(2, changeCount);
+                Assert.Equal(2, (int)changeCount);
                 using (var db = TestUtils.CreateDatabase())
                 {
                     var user1 = db.TwitchQuery(_configuration["Config:TestFromUserId"]).FirstOrDefault();
