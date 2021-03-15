@@ -83,8 +83,8 @@ namespace BITCORNService.Controllers
                 }
                 return new
                 {
-                    auth0Nickname = user.UserIdentity.Auth0Nickname + str
-
+                    auth0Nickname = "",//user.UserIdentity.Auth0Nickname + str
+                    username = user.UserIdentity.Username
                 };
             }
             else
@@ -172,69 +172,102 @@ namespace BITCORNService.Controllers
             return StatusCode(404);
         }
 
-        [Authorize(Policy = AuthScopes.ReadTransaction)]
-        [HttpGet("transactions/v2/{id}/{offset}/{amount}/{txTypes}")]
-        public async Task<ActionResult<object>> TransactionsV2(string id, int offset, int amount, string txTypes = null)
+        public class GetTransactionsv2Body
         {
-            var platformId = BitcornUtils.GetPlatformId(id);
-            var user = await BitcornUtils.GetUserForPlatform(platformId, _dbContext).FirstOrDefaultAsync();
-            if (user != null)
+            public string[] TxTypes { get; set; }
+        }
+        class TxTick
+        {
+            public DateTime Time { get; set; }
+            public decimal Value { get; set; }
+        }
+
+        [Authorize(Policy = AuthScopes.ReadTransaction)]
+        [HttpPost("transactions/v2/{id}/{offset}/{amount}")]
+        public async Task<ActionResult<object>> TransactionsV2([FromRoute] string id, [FromRoute] int offset, [FromRoute] int amount, [FromBody] GetTransactionsv2Body body)
+        {
+            try
             {
-                string[] txTypesArr = null;
-                if (!string.IsNullOrEmpty(txTypes)) txTypesArr = txTypes.Split(" ");
-
-                var transactions = await Utils.Stats.CornTxUtils.ListTransactions(_dbContext, user.UserId, offset, amount, txTypesArr);
-                var startBalance = user.UserWallet.Balance;
-                //startBalance -= transactions.Where(x => x.Action == "sent").Sum(x => x.Amount);
-                var ticks = new List<object>();
-                if (transactions.Length > 0)
+                var platformId = BitcornUtils.GetPlatformId(id);
+                var user = await BitcornUtils.GetUserForPlatform(platformId, _dbContext).FirstOrDefaultAsync();
+                if (user != null)
                 {
-                    foreach (var tx in transactions)
-                    {
-                        if (tx.Action == "sent")
-                        {
-                            startBalance -= tx.Amount;
-                        }
-                        else
-                        {
-                            startBalance += tx.Amount;
-                        }
+                    string[] txTypesArr = body.TxTypes;//null;
+                                                       //if (!string.IsNullOrEmpty(txTypes)) txTypesArr = txTypes.Split(" ");
 
-                        ticks.Add(new
+                    var transactions = await Utils.Stats.CornTxUtils.ListTransactions(_dbContext, user.UserId, offset, amount, txTypesArr);
+                    var startBalance = user.UserWallet.Balance;
+                    //var sentAmount = transactions.Where(x => x.Action == "sent").Sum(x => x.Amount); ;
+                    //var recAmount = transactions.Where(x => x.Action == "receive").Sum(x => x.Amount); ;
+
+                    //startBalance -= sentAmount;
+
+                    var ticks = new List<TxTick>();
+                    if (transactions.Length > 0)
+                    {
+                        foreach (var tx in transactions)
                         {
-                            time = tx.Time,
+                            if (tx.Action == "sent")
+                            {
+                                startBalance += tx.Amount;
+                            }
+                            else
+                            {
+                                startBalance -= tx.Amount;
+                            }
+
+                            ticks.Add(new TxTick
+                            {
+                                Time = tx.Time,
+                                Value = startBalance.Value
+                            });
+                        }
+                        /*
+                        if (ticks.Count > 0)
+                        {
+                            var lastTime = ticks.Last().Time;
+                            if(DateTime.Now<lastTime)
+                            {
+                                lastTime = lastTime.AddMinutes(10);
+                            }
+                            else
+                            {
+                                lastTime = DateTime.Now;
+                            }
+                            ticks.Add(new TxTick
+                            {
+                                Time = DateTime.Now,
+                                Value = user.UserWallet.Balance.Value
+                            });
+                        }*/
+                        //ticks = ticks.Take(amount / 2).ToList();
+
+                        //ticks.Reverse();
+
+                        /*
+                        var firstTime = transactions.Last().Time;
+                        ticks.Add(new { 
+                            time = firstTime.AddDays(-1),
                             value = startBalance
                         });
+                        */
+
                     }
                     /*
-                    ticks.Add(new
-                    {
-                        time = DateTime.Now,
-                        value = user.UserWallet.Balance
-                    });*/
-                    //ticks = ticks.Take(amount / 2).ToList();
 
-                    ticks.Reverse();
-
-                    /*
-                    var firstTime = transactions.Last().Time;
-                    ticks.Add(new { 
-                        time = firstTime.AddDays(-1),
-                        value = startBalance
-                    });
                     */
-
+                    return new
+                    {
+                        Transactions = transactions,
+                        Ticks = ticks
+                    };
                 }
-                /*
-                
-                */
-                return new
-                {
-                    Transactions = transactions,
-                    Ticks = ticks
-                };
+                return StatusCode(404);
             }
-            return StatusCode(404);
+            catch (Exception ex)
+            {
+                throw ex;
+            }
         }
 
         [ServiceFilter(typeof(CacheUserAttribute))]
@@ -274,7 +307,7 @@ namespace BITCORNService.Controllers
             {
                 return await CommentUtils.FindUsersByName(_dbContext, username).Select((u) => new
                 {
-                    NickName = u.Auth0Nickname,
+                    NickName = u.Username,
                     Auth0Id = u.Auth0Id
                 }).ToArrayAsync();
             }
@@ -708,7 +741,7 @@ namespace BITCORNService.Controllers
 
             }
         }
-      
+
 
         [ServiceFilter(typeof(LockUserAttribute))]
         [HttpPost("{id}/setlivestream")]
@@ -1006,7 +1039,7 @@ namespace BITCORNService.Controllers
             }
         }
         //  
-      
+
         [ServiceFilter(typeof(CacheUserAttribute))]
         [HttpPost("balances")]
         [Authorize(Policy = AuthScopes.ReadUser)]
@@ -1095,15 +1128,19 @@ namespace BITCORNService.Controllers
             if (user != null && !user.IsBanned)
             {
                 var userMission = await _dbContext.UserMission.FirstOrDefaultAsync(x => x.UserId == user.UserId);
-                var faucetClaimLeaderboard = await _dbContext.UserMission.OrderByDescending(x => x.FaucetClaimCount).Select(x => x.UserId).ToArrayAsync();
-                int rank = Array.IndexOf(faucetClaimLeaderboard, userMission.UserId);
                 if (userMission == null)
                 {
-                    return new UserMissionResponse(null, -1);
+                    return new UserMissionResponse(null, -1, false);
                 }
-                else
+
+                if (userMission != null)
                 {
-                    return new UserMissionResponse(userMission, rank);
+                    var faucetClaimLeaderboard = await _dbContext.UserMission.OrderByDescending(x => x.FaucetClaimCount).Select(x => x.UserId).ToArrayAsync();
+                    int rank = Array.IndexOf(faucetClaimLeaderboard, userMission.UserId);
+
+                    {
+                        return new UserMissionResponse(userMission, rank, false);
+                    }
                 }
             }
 
@@ -1123,6 +1160,8 @@ namespace BITCORNService.Controllers
             {
                 var userMission = await _dbContext.UserMission.FirstOrDefaultAsync(x => x.UserId == user.UserId);
                 bool changes = false;
+                bool wasCompleted = false;
+                decimal completeReward = 0;
                 if (userMission == null)
                 {
                     userMission = new UserMission();
@@ -1218,6 +1257,7 @@ namespace BITCORNService.Controllers
                                 var tx = await TxUtils.SendFromBitcornhub(user, amount, "BITCORNFarms", "faucet", _dbContext);
                                 if (tx)
                                 {
+                                    completeReward = amount;
                                     if (srcMission.FaucetFarmAmount == null)
                                     {
                                         srcMission.FaucetFarmAmount = 0;
@@ -1233,6 +1273,7 @@ namespace BITCORNService.Controllers
                                     srcMission.FaucetFarmAmount += amount;
                                     await _dbContext.SaveAsync();
                                     userMission = srcMission;
+                                    wasCompleted = true;
                                 }
                             }
                         }
@@ -1241,13 +1282,13 @@ namespace BITCORNService.Controllers
 
                 var faucetClaimLeaderboard = await _dbContext.UserMission.OrderByDescending(x => x.FaucetClaimCount).Select(x => x.UserId).ToArrayAsync();
                 int rank = Array.IndexOf(faucetClaimLeaderboard, userMission.UserId);
-                return new UserMissionResponse(userMission, rank);
+                return new UserMissionResponse(userMission, rank, wasCompleted, completeReward);
 
             }
 
             return StatusCode(404);
         }
-     
+
         [ServiceFilter(typeof(CacheUserAttribute))]
         [HttpPost("{id}/setsocketconnected/{state}")]
         [Authorize(Policy = AuthScopes.ChangeUser)]
@@ -1284,7 +1325,7 @@ namespace BITCORNService.Controllers
                 throw ex;
             }
         }
-    
+
         [ServiceFilter(typeof(CacheUserAttribute))]
         [HttpGet("{id}/referralinfo")]
         [Authorize(Policy = AuthScopes.ReadUser)]
@@ -1302,6 +1343,18 @@ namespace BITCORNService.Controllers
                 var userReferral = await _dbContext.UserReferral.FirstOrDefaultAsync(r => r.UserId == user.UserId);
                 var userStats = await _dbContext.UserStat.FirstOrDefaultAsync(r => r.UserId == user.UserId);
                 Dictionary<string, object> output = new Dictionary<string, object>();
+                if (referrer == null)
+                {
+                    referrer = new Referrer();
+                    referrer.UserId = user.UserId;
+                    referrer.Tier = 0;
+                    referrer.YtdTotal = 0;
+                    referrer.Amount = 10;
+                    _dbContext.Referrer.Add(referrer);
+                    await _dbContext.SaveAsync();
+
+                }
+
                 if (referrer != null)
                 {
                     BitcornUtils.AppendUserOutput(output, new Type[] { typeof(decimal?), typeof(int?), typeof(string), typeof(DateTime?), typeof(int) }, referrer, "userId");
@@ -1454,9 +1507,10 @@ namespace BITCORNService.Controllers
         [Authorize(Policy = AuthScopes.ReadUser)]
         public async Task<bool> Check(string name)
         {
+            if (name.Length > 50) return false;
             if (this.GetCachedUser() != null)
                 throw new InvalidOperationException();
-            return await _dbContext.User.AnyAsync(u => u.Username == name);
+            return await _dbContext.UserIdentity.AnyAsync(u => u.Username.ToLower() == name.ToLower());
         }
 
         [Authorize(Policy = AuthScopes.ChangeUser)]
@@ -1466,7 +1520,11 @@ namespace BITCORNService.Controllers
         {
             if (this.GetCachedUser() != null)
                 throw new InvalidOperationException();
-            if (_dbContext.User.Any(u => u.Username == auth0IdUsername.Username))
+            if (auth0IdUsername.Username.Length > 50)
+            {
+                return false;
+            }
+            if (_dbContext.UserIdentity.Any(u => u.Username.ToLower() == auth0IdUsername.Username.ToLower()))
             {
                 return false;
             }
@@ -1474,7 +1532,7 @@ namespace BITCORNService.Controllers
             var user = await _dbContext.Auth0Query(auth0IdUsername.Auth0Id)
                 .Join(_dbContext.User, identity => identity.UserId, us => us.UserId, (id, u) => u).FirstOrDefaultAsync();
 
-            user.Username = auth0IdUsername.Username;
+            user.UserIdentity.Username = auth0IdUsername.Username;
             await _dbContext.SaveAsync();
             return true;
         }

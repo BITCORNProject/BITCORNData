@@ -13,14 +13,14 @@ namespace BITCORNService.Utils.CommentUtils
         public static IQueryable<UserIdentity> FindUsersByName(BitcornContext dbContext, string username)
         {
             var srcUsername = username.ToLower();
-            return dbContext.UserIdentity.Where((u) => u.Auth0Nickname.ToLower().Contains(username));
+            return dbContext.UserIdentity.Where((u) => u.Username.ToLower().Contains(username));
 
         }
 
         public static IQueryable<UserIdentity> FindUsersByName(BitcornContext dbContext, string[] usernames)
         {
             var srcUsernames = usernames.Select(x => x.ToLower()).ToArray();
-            return dbContext.UserIdentity.Where((u) => srcUsernames.Contains(u.Auth0Nickname.ToLower()));
+            return dbContext.UserIdentity.Where((u) => srcUsernames.Contains(u.Username.ToLower()));
 
         }
         /*

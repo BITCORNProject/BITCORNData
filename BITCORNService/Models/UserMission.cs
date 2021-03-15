@@ -31,8 +31,12 @@ namespace BITCORNService.Models
         public int? FaucetClaimsDuringSub { get; set; }
         public decimal? FaucetStreakBonuses { get; set; }
         public int FaucetRank { get; set; }
-        public UserMissionResponse(UserMission m, int faucetRank)
+        public bool CompletedFlag { get; set; }
+        public decimal CompleteReward { get; set; }
+        public UserMissionResponse(UserMission m, int faucetRank, bool completedMission, decimal completeReward =0)
         {
+            CompletedFlag = completedMission;
+            CompleteReward = completeReward;
             if (m != null)
             {
                 Faucet = m.Faucet;

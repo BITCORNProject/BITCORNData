@@ -28,9 +28,9 @@ namespace BITCORNService.Utils.Stats
                 case "twitter":
                     return received.TwitterUsername;
                 case "BITCORNFarms":
-                    return received.Auth0Nickname;
+                    return received.Username;
                 default:
-                    return received.Auth0Nickname;
+                    return received.Username;
 
             }
         }
@@ -38,7 +38,9 @@ namespace BITCORNService.Utils.Stats
         {
 
             List<TxRecordOutput> records = new List<TxRecordOutput>();
-            var sentQuery = dbContext.CornTx.Where(tx => tx.SenderId == user && transactions.Contains(tx.TxGroupId)).Join(dbContext.UserIdentity,
+            var sentQuery = dbContext.CornTx.Where(tx => tx.SenderId == user && transactions.Contains(tx.TxGroupId))
+                //.Join(dbContext.User,(tx)=>tx.ReceiverId (u)=>u.UserId,(tx,u)=>new { tx,u})
+                .Join(dbContext.UserIdentity,
                 (CornTx tx) => tx.ReceiverId, (UserIdentity user) => user.UserId, (CornTx tx, UserIdentity user) => new ReceivedTx
                 {
                     BlockchainTxId = tx.BlockchainTxId,
@@ -56,6 +58,7 @@ namespace BITCORNService.Utils.Stats
                     Auth0Id = user.Auth0Id,
                     Auth0Nickname = user.Auth0Nickname,
 
+                    Username = user.Username,
 
                 });
 
@@ -106,7 +109,7 @@ namespace BITCORNService.Utils.Stats
                     TwitterUsername = user.TwitterUsername,
                     RedditUsername = user.RedditUsername,
                     Auth0Id = user.Auth0Id,
-
+                    Username = user.Username,
                     Auth0Nickname = user.Auth0Nickname
                 });
 
@@ -188,10 +191,32 @@ namespace BITCORNService.Utils.Stats
             using (var command = dbContext.Database.GetDbConnection().CreateCommand())
             {
                 bool txTypesDefined = false;
+                var supportedTxTypes = new string[]
+                {
+                    "$withdraw" ,
+                    "$rain",
+                    "$tipcorn",
+                    "receive" ,
+                    "app:order",
+                    "faucet",
+                    "channel-points",
+                    "sub-event" ,
+                    "bit-donation",
+                    "corn-purchase",
+                    "Wallet download",
+                    "Registrations reward",
+                    "Recruit registrations reward",
+                    "Recruit social sync",
+                     "Social sync",
+                     "Referral bonus reward",
+                     "Recruit bonus reward"
 
+                };
                 if (txTypes != null && txTypes.Length > 0)
                 {
-                    txTypes = txTypes.Where(tx => tx == "$withdraw" || tx == "$rain" || tx == "$tipcorn" || tx == "receive" || tx == "app:order" || tx == "faucet" || tx == "channel-points" || tx == "sub-event" || tx == "bit-donation").ToArray();
+                    txTypes = txTypes.Where(tx =>
+                    supportedTxTypes.Contains(tx)
+                    ).ToArray();
                     txTypesDefined = txTypes.Length > 0;
                 }
                 var sql = new StringBuilder($"(select distinct  {nameof(CornTx.TxGroupId)} from  ");

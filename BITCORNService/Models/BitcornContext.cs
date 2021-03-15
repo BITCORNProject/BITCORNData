@@ -225,6 +225,10 @@ namespace BITCORNService.Models
                     .HasMaxLength(100)
                     .IsUnicode(false);
 
+                entity.Property(e=>e.Username)
+                .HasMaxLength(100)
+                .IsUnicode(false);
+
                 entity.HasOne(d => d.User)
                     .WithOne(p => p.UserIdentity)
                     .HasForeignKey<UserIdentity>(d => d.UserId)

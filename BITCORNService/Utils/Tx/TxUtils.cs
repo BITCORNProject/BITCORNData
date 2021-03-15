@@ -294,19 +294,23 @@ namespace BITCORNService.Utils.Tx
 
         public static async Task<bool> ShouldLockWallet(BitcornContext dbContext, User user, decimal add)
         {
-
-            var nowDayAgo = DateTime.Now;
-            nowDayAgo = nowDayAgo.AddHours(-24);
-            var spent = await dbContext.CornTx.Where(x => x.SenderId == user.UserId && x.Timestamp > nowDayAgo).SumAsync(x => x.Amount);
-            if (spent + add > 10_000_000)
+            if (user.UserId != TxUtils.BitcornHubPK)
             {
-                user.UserWallet.IsLocked = true;
-                var cmd = $"UPDATE [{nameof(UserWallet)}] set [{nameof(UserWallet.IsLocked)}] = 1 where [{nameof(UserWallet)}].{nameof(UserWallet.UserId)} = {user.UserId}";
-                dbContext.Database.ExecuteSqlRaw(cmd);
-                return true;
+                var nowDayAgo = DateTime.Now;
+                nowDayAgo = nowDayAgo.AddHours(-24);
+                var spent = await dbContext.CornTx.Where(x => x.SenderId == user.UserId && x.Timestamp > nowDayAgo).SumAsync(x => x.Amount);
+                if (spent + add > 30_000_000)
+                {
+                    user.UserWallet.IsLocked = true;
+                    var cmd = $"UPDATE [{nameof(UserWallet)}] set [{nameof(UserWallet.IsLocked)}] = 1 where [{nameof(UserWallet)}].{nameof(UserWallet.UserId)} = {user.UserId}";
+                    dbContext.Database.ExecuteSqlRaw(cmd);
+                    return true;
+                }
+
             }
 
             return false;
+
         }
 
         /// <summary>
@@ -335,6 +339,7 @@ namespace BITCORNService.Utils.Tx
             //check if sender has enough corn to execute all transactions
             if (info.From != null && info.From.UserWallet.Balance >= totalAmountRequired)
             {
+                
                 if (info.From.UserWallet.IsLocked != null && info.From.UserWallet.IsLocked == true)
                 {
                     canExecuteAll = false;

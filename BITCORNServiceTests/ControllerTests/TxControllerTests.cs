@@ -63,6 +63,34 @@ namespace BITCORNServiceTests
         }
 
         [Fact]
+        public async Task tt()
+        {
+            var dbContext = TestUtils.CreateDatabase();
+            try
+            {
+                var users = dbContext.JoinUserModels().ToArray();
+                foreach (var user in users)
+                {
+                    if (user.UserId > 1516)
+                    {
+                        var dbContext2 = TestUtils.CreateDatabase();
+                        var user2 = await dbContext2.JoinUserModels().FirstOrDefaultAsync(x => x.UserId == user.UserId);
+                        if (user2 != null)
+                        {
+                            user2.UserIdentity.Username = user.Username;
+                            await dbContext2.SaveAsync();
+                        }
+                    }
+                }
+                //await dbContext.SaveAsync();
+            }
+            finally
+            {
+                dbContext.Dispose();
+            }
+        }
+
+        [Fact]
         public async Task TestRainSuccess()
         {
             UnlockTestUser();

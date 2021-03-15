@@ -21,5 +21,7 @@ namespace BITCORNService.Utils.Stats
         public string CornAddy { get; set; }
         public string Auth0Id { get; set; }
         public string Auth0Nickname { get; set; }
+
+        public string Username { get; set; }
     }
 }

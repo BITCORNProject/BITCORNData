@@ -171,8 +171,10 @@ namespace BITCORNService.Controllers
                 UserIdentity = new UserIdentity
                 {
                     Auth0Id = auth0User.Auth0Id,
-                    Auth0Nickname = auth0User.Auth0Nickname
+                    Auth0Nickname = auth0User.Auth0Nickname,
+                    Username = auth0User.Auth0Nickname
                 },
+                Username = auth0User.Auth0Nickname,
                 UserWallet = new UserWallet(),
                 UserStat = new UserStat(),
                 UserReferral = new UserReferral { ReferralId = referralId },

@@ -369,7 +369,7 @@ namespace BITCORNService.Controllers
                                     if (liveStream.BitcornPerTtsCharacter > 0 && toUser.UserId != fromUser.UserId)
                                     {
                                         var tx = await TxUtils.SendFromGetReceipt(fromUser, toUser, costAmount, "twitch", "tts", _dbContext);
-                                        if (tx != null)
+                                        if (tx != null&&tx.TxId!=null)
                                         {
                                             streamAction.TxId = tx.TxId;
                                             receipt = tx;
@@ -558,16 +558,22 @@ namespace BITCORNService.Controllers
                         var purchase = await _dbContext.CornPurchase.Where(x => x.PaymentId == completeRequest.PaymentId && x.UserId == user.UserId).FirstOrDefaultAsync();
                         if (purchase != null && purchase.CornTxId == null)
                         {
-                            var value = await TxUtils.SendFromBitcornhubGetReceipt(user, purchase.CornAmount, "BITCORNFarms", "corn-purchase", _dbContext);
-                            if(value.Tx!=null)
+                            var prices = await ProbitApi.GetPricesAsync();
+                            var (cornBtc, btcUsdt, cornPrice) = prices;
+                            var costDiff = Math.Abs(purchase.UsdAmount-(purchase.CornAmount*cornPrice));
+                            if (costDiff < 2)
                             {
-                                purchase.CornTxId = value.TxId.Value;
-                                await _dbContext.SaveAsync();
-                                return new
+                                var value = await TxUtils.SendFromBitcornhubGetReceipt(user, purchase.CornAmount, "BITCORNFarms", "corn-purchase", _dbContext);
+                                if (value != null && value.Tx != null)
                                 {
-                                    success = true,
+                                    purchase.CornTxId = value.TxId.Value;
+                                    await _dbContext.SaveAsync();
+                                    return new
+                                    {
+                                        success = true,
 
-                                };
+                                    };
+                                }
                             }
                         }
                     }

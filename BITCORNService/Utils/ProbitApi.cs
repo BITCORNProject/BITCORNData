@@ -16,22 +16,29 @@ namespace BITCORNService.Utils
     {
         static async Task<decimal> GetPrice(string market)
         {
+            try
+            {
+                var client = new RestClient("https://api.probit.com");
+                var request = new RestRequest("/api/exchange/v1/ticker", Method.POST);
+                request.AddQueryParameter("market_ids", market);
 
-            var client = new RestClient("https://api.probit.com");
-            var request = new RestRequest("/api/exchange/v1/ticker", Method.POST);
-            request.AddQueryParameter("market_ids", market);
+                var response = await client.ExecuteGetTaskAsync(request);
 
-            var response = await client.ExecuteGetTaskAsync(request);
+                var tickers = JsonConvert.DeserializeObject<Tickers>(response.Content);
 
-            var tickers = JsonConvert.DeserializeObject<Tickers>(response.Content);
-
-            return Convert.ToDecimal(tickers.data[0].last, CultureInfo.InvariantCulture);
+                return Convert.ToDecimal(tickers.data[0].last, CultureInfo.InvariantCulture);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine("failed to fetch price from market "+market);
+                throw ex;
+            }
         }
 
         public static async Task<decimal> GetCornPriceAsync(BitcornContext dbContext)
         {
             var cornPrice = dbContext.Price.FirstOrDefault(p => p.Symbol == "CORN");
-
+            string sql = null;
             try
             {
 
@@ -39,7 +46,8 @@ namespace BITCORNService.Utils
                 var btcUsdt = await GetPrice("BTC-USDT");
                 var price = cornBtc * btcUsdt;
                 //cornPrice.LatestPrice = price;
-                await dbContext.Database.ExecuteSqlRawAsync($"update [{nameof(Price)}] set [{nameof(Price.LatestPrice)}] = {price} where [{nameof(Price.Symbol)}] = 'CORN'");
+                sql = $"update [{nameof(Price)}] set [{nameof(Price.LatestPrice)}] = {price.ToString(CultureInfo.InvariantCulture)} where [{nameof(Price.Symbol)}] = 'CORN'";
+                await dbContext.Database.ExecuteSqlRawAsync(sql);
                 return price;
             }
             catch (Exception e)
