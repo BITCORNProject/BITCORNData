@@ -12,5 +12,6 @@ namespace BITCORNService.Models
         public int Id { get; set; }
         public string Symbol { get; set; }
         public decimal LatestPrice { get; set; }
+        public DateTime? UpdateTime { get; set; }
     }
 }

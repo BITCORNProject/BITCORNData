@@ -369,7 +369,7 @@ namespace BITCORNService.Controllers
                                     if (liveStream.BitcornPerTtsCharacter > 0 && toUser.UserId != fromUser.UserId)
                                     {
                                         var tx = await TxUtils.SendFromGetReceipt(fromUser, toUser, costAmount, "twitch", "tts", _dbContext);
-                                        if (tx != null&&tx.TxId!=null)
+                                        if (tx != null && tx.TxId != null)
                                         {
                                             streamAction.TxId = tx.TxId;
                                             receipt = tx;
@@ -558,10 +558,10 @@ namespace BITCORNService.Controllers
                         var purchase = await _dbContext.CornPurchase.Where(x => x.PaymentId == completeRequest.PaymentId && x.UserId == user.UserId).FirstOrDefaultAsync();
                         if (purchase != null && purchase.CornTxId == null)
                         {
-                            var prices = await ProbitApi.GetPricesAsync();
-                            var (cornBtc, btcUsdt, cornPrice) = prices;
-                            var costDiff = Math.Abs(purchase.UsdAmount-(purchase.CornAmount*cornPrice));
-                            if (costDiff < 2)
+                            //var prices = await ProbitApi.GetPricesAsync();
+                            //var (cornBtc, btcUsdt, cornPrice) = prices;
+                            //var costDiff = Math.Abs(purchase.UsdAmount-(purchase.CornAmount*cornPrice));
+                            //if (costDiff < 2)
                             {
                                 var value = await TxUtils.SendFromBitcornhubGetReceipt(user, purchase.CornAmount, "BITCORNFarms", "corn-purchase", _dbContext);
                                 if (value != null && value.Tx != null)
@@ -571,7 +571,9 @@ namespace BITCORNService.Controllers
                                     return new
                                     {
                                         success = true,
-
+                                        
+                                        purchaseCloseId = purchase.CornPurchaseId,
+                                        paymentId = purchase.PaymentId
                                     };
                                 }
                             }
@@ -580,7 +582,7 @@ namespace BITCORNService.Controllers
                     return new
                     {
                         success = false,
-                     
+
                     };
                 }
                 catch (Exception ex)
@@ -627,21 +629,28 @@ namespace BITCORNService.Controllers
                     var user = await BitcornUtils.GetUserForPlatform(platformId, _dbContext).FirstOrDefaultAsync();
                     if (user != null)
                     {
-                        var purchase = new CornPurchase();
-                        purchase.OrderId = request.OrderId;
-                        purchase.PaymentId = request.PaymentId;
-                        purchase.ReceiptNumber = request.ReceiptNumber;
-                        purchase.UsdAmount = request.UsdAmount;
-                        purchase.CornAmount = request.CornAmount;
-                        purchase.Fingerprint = request.Fingerprint;
-                        purchase.UserId = user.UserId;
-                        _dbContext.CornPurchase.Add(purchase);
-                        int count = await _dbContext.SaveAsync();
-                        return new
+                        var prices = await ProbitApi.GetPricesAsync(_dbContext);
+                        var (cornBtc, btcUsdt, cornPrice) = prices;
+                        var costDiff = Math.Abs(request.UsdAmount - (request.CornAmount * cornPrice));
+                        if (costDiff < 2)
                         {
-                            success = count > 0,
-                            purchaseCloseId = purchase.CornPurchaseId
-                        };
+                            var purchase = new CornPurchase();
+                            purchase.OrderId = request.OrderId;
+                            purchase.PaymentId = request.PaymentId;
+                            purchase.ReceiptNumber = request.ReceiptNumber;
+                            purchase.UsdAmount = request.UsdAmount;
+                            purchase.CornAmount = request.CornAmount;
+                            purchase.Fingerprint = request.Fingerprint;
+                            purchase.UserId = user.UserId;
+                            _dbContext.CornPurchase.Add(purchase);
+                            int count = await _dbContext.SaveAsync();
+                            return new
+                            {
+                                success = count > 0,
+                                purchaseCloseId = purchase.CornPurchaseId,
+                                paymentId = request.PaymentId
+                            };
+                        }
                     }
                     return new
                     {

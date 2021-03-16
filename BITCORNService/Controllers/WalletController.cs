@@ -96,7 +96,7 @@ namespace BITCORNService.Controllers
         [HttpGet("prices")]
         public async Task<ActionResult<object>> GetPrices()
         {
-            var prices = await ProbitApi.GetPricesAsync();
+            var prices = await ProbitApi.GetPricesAsync(_dbContext);
             //(cornBtc, btcUsdt, cornPrice);
             return new
             {
