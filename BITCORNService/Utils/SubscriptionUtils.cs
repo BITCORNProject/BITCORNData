@@ -197,7 +197,7 @@ namespace BITCORNService.Utils
                         //set subscription date to now
                         sub.LastSubDate = DateTime.Now;
 
-                        await dbContext.Database.ExecuteSqlRawAsync(sql.ToString());
+                        await DbOperations.ExecuteSqlRawAsync(dbContext, sql.ToString());
                         await dbContext.SaveAsync(IsolationLevel.RepeatableRead);
                         //create subtx that will link user, corntx and usersubscription together
                         var subTx = new SubTx();

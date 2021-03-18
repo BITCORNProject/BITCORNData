@@ -5,6 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using BITCORNService.Models;
+using BITCORNService.Utils.DbActions;
 using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -69,7 +70,7 @@ namespace BITCORNService.Utils
                 sql += $" update [{nameof(Price)}] set [{nameof(Price.LatestPrice)}] = {btcUsd.ToString(CultureInfo.InvariantCulture)} where [{nameof(Price.Symbol)}] = 'BTC-USD' ";
                 sql += $" update [{nameof(Price)}] set [{nameof(Price.LatestPrice)}] = {cornBtc.ToString(CultureInfo.InvariantCulture)} where [{nameof(Price.Symbol)}] = 'CORN-BTC' ";
                 sql += $" update [{nameof(Price)}] set [{nameof(Price.UpdateTime)}] = {dateStr} ";
-                int count = await dbContext.Database.ExecuteSqlRawAsync(sql);
+                int count = await DbOperations.ExecuteSqlRawAsync(dbContext, sql);
                 System.Diagnostics.Debug.WriteLine(count);
             }
             catch (Exception ex)

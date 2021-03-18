@@ -162,8 +162,18 @@ namespace BITCORNService.Utils.DbActions
         {
             return await dbContext.CornDeposit.AnyAsync(w => w.TxId == txId);
         }
+        public const bool DB_WRITES_ENABLED = true;
+        public static async Task<int> ExecuteSqlRawAsync(BitcornContext dbContext, string sql)
+        {
+            if (DB_WRITES_ENABLED)
+            {
+                return await dbContext.Database.ExecuteSqlRawAsync(sql);
+            }
+            return 0;
+        }
         public static async Task<int> SaveAsync(this BitcornContext dbContext, IsolationLevel isolationLevel = IsolationLevel.RepeatableRead)
         {
+            if (!DB_WRITES_ENABLED) return 0;
 
             //create execution strategy so the request can retry if it fails to connect to the database
             var strategy = dbContext.Database.CreateExecutionStrategy();

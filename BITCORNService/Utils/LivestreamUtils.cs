@@ -123,7 +123,7 @@ namespace BITCORNService.Utils
 
             return output.ToArray();
         }
-
+        /*
         internal static async Task<bool> HandleTts(BitcornContext dbContext, User fromUser, User toUser, UserStreamAction streamAction, bool saveChanges)
         {
            
@@ -164,7 +164,7 @@ namespace BITCORNService.Utils
                 await BITCORNLogger.LogError(dbContext, new Exception("invalid socket send result: "+socketSuccess),"");
             }
             return false;
-        }
+        }*/
 
     }
 }

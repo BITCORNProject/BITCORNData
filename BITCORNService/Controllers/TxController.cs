@@ -118,8 +118,8 @@ namespace BITCORNService.Controllers
                                    TxUtils.ModifyNumber(liveStreamTable, nameof(UserLivestream.TotalSentBitcornViaRains), processInfo.TotalAmount, '+', livestreamKey, liveStream.UserId));
                             }
                         }
-
-                        await _dbContext.Database.ExecuteSqlRawAsync(sql.ToString());
+                        //DbOperations.ExecuteSqlRawAsync(_dbContext, 
+                        await DbOperations.ExecuteSqlRawAsync(_dbContext, sql.ToString());
                         await _dbContext.SaveAsync(IsolationLevel.RepeatableRead);
                         await TxUtils.OnPostTransaction(processInfo, _dbContext);
                     }
@@ -183,7 +183,7 @@ namespace BITCORNService.Controllers
                     sql.Append(TxUtils.ModifyNumber(nameof(UserWallet), nameof(UserWallet.Balance), total, '-', pk, from.UserId));
                     var date = DateTime.Now;
                     sql.Append($" UPDATE [{nameof(UserLivestream)}] set [{nameof(UserLivestream.LastSubTickTimestamp)}] = '{date.ToString("yyyy-MM-dd HH:mm:ss.fff")}' where [{nameof(UserLivestream)}].{nameof(UserLivestream.UserId)}={from.UserId} ");
-                    var val = await _dbContext.Database.ExecuteSqlRawAsync(sql.ToString());
+                    var val = await DbOperations.ExecuteSqlRawAsync(_dbContext, sql.ToString());
                     return val;
                 }
             }
@@ -196,7 +196,7 @@ namespace BITCORNService.Controllers
                     //sql.Append(TxUtils.ModifyNumber(nameof(UserLivestream), nameof(UserWallet.Balance), total, '-', pk, bitcornhub.UserId));
                     var date = DateTime.Now;
                     sql.Append($" UPDATE [{nameof(UserLivestream)}] set [{nameof(UserLivestream.LastSubTickTimestamp)}] = '{date.ToString("yyyy-MM-dd HH:mm:ss.fff")}' where [{nameof(UserLivestream)}].{nameof(UserLivestream.UserId)}={from.UserId} ");
-                    var val = await _dbContext.Database.ExecuteSqlRawAsync(sql.ToString());
+                    var val = await DbOperations.ExecuteSqlRawAsync(_dbContext, sql.ToString());
                     return val;
                 }
             }
@@ -323,6 +323,7 @@ namespace BITCORNService.Controllers
             public string IrcTarget { get; set; }
 
         }
+        /*
         [ServiceFilter(typeof(LockUserAttribute))]
         [HttpPost("streamaction")]
         public async Task<ActionResult<object>> StreamAction([FromBody] StreamActionRequest streamRequest)
@@ -430,7 +431,7 @@ namespace BITCORNService.Controllers
                 return StatusCode(500);
             }
         }
-
+        */
         StatusCodeResult CheckRequest(TipRequest tipRequest, bool checkAmount = true)
         {
             if (!TxUtils.AreTransactionsEnabled(_configuration))
@@ -495,7 +496,7 @@ namespace BITCORNService.Controllers
                     unclaimed.Refunded = false;
 
                     _dbContext.UnclaimedTx.Add(unclaimed);
-                    await _dbContext.Database.ExecuteSqlRawAsync(TxUtils.ModifyNumber(nameof(UserWallet), nameof(UserWallet.Balance), tipRequest.Amount, '-', nameof(UserWallet.UserId), processInfo.From.UserId));
+                    await DbOperations.ExecuteSqlRawAsync(_dbContext, TxUtils.ModifyNumber(nameof(UserWallet), nameof(UserWallet.Balance), tipRequest.Amount, '-', nameof(UserWallet.UserId), processInfo.From.UserId));
                     await _dbContext.SaveAsync();
                     return true;
                 }
@@ -732,7 +733,7 @@ namespace BITCORNService.Controllers
 
                             }
 
-                            await _dbContext.Database.ExecuteSqlRawAsync(sql.ToString());
+                            await DbOperations.ExecuteSqlRawAsync(_dbContext, sql.ToString());
                             await _dbContext.SaveAsync(IsolationLevel.RepeatableRead);
                             await TxUtils.OnPostTransaction(processInfo, _dbContext);
                         }
@@ -826,7 +827,7 @@ namespace BITCORNService.Controllers
 
                             }
 
-                            await _dbContext.Database.ExecuteSqlRawAsync(sql.ToString());
+                            await DbOperations.ExecuteSqlRawAsync(_dbContext, sql.ToString());
                             await _dbContext.SaveAsync(IsolationLevel.RepeatableRead);
                             await TxUtils.OnPostTransaction(processInfo, _dbContext);
                         }
@@ -900,7 +901,7 @@ namespace BITCORNService.Controllers
 
                             }
 
-                            await _dbContext.Database.ExecuteSqlRawAsync(sql.ToString());
+                            await DbOperations.ExecuteSqlRawAsync(_dbContext, sql.ToString());
                             await _dbContext.SaveAsync(IsolationLevel.RepeatableRead);
                             await TxUtils.OnPostTransaction(processInfo, _dbContext);
                         }
@@ -995,7 +996,7 @@ namespace BITCORNService.Controllers
                                        TxUtils.ModifyNumber(liveStreamTable, nameof(UserLivestream.TotalSentBitcornViaTips), processInfo.TotalAmount, '+', livestreamKey, liveStream.UserId));
                                 }
                             }
-                            await _dbContext.Database.ExecuteSqlRawAsync(sql.ToString());
+                            await DbOperations.ExecuteSqlRawAsync(_dbContext, sql.ToString());
                             await _dbContext.SaveAsync(IsolationLevel.RepeatableRead);
                             await TxUtils.OnPostTransaction(processInfo, _dbContext);
                         }

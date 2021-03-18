@@ -162,7 +162,7 @@ namespace BITCORNService.Utils.Wallet
                 var sql = new StringBuilder();
                 sql.Append(TxUtils.ModifyNumber(nameof(UserWallet), nameof(UserWallet.Balance), amount, '-', nameof(UserWallet.UserId), user.UserId));
                 sql.Append(TxUtils.ModifyNumber(nameof(WalletServer), nameof(WalletServer.ServerBalance), amount, '-', nameof(WalletServer.Id), server.Id));
-                await dbContext.Database.ExecuteSqlRawAsync(sql.ToString());
+                await DbOperations.ExecuteSqlRawAsync(dbContext, sql.ToString());
 
                 var log = new CornTx();
                 log.BlockchainTxId = txId;
@@ -199,7 +199,7 @@ namespace BITCORNService.Utils.Wallet
                     return cornResponse;
                 }
 
-                if(user.UserWallet.IsLocked != null && user.UserWallet.IsLocked.Value)
+                if (user.UserWallet.IsLocked != null && user.UserWallet.IsLocked.Value)
                 {
                     return cornResponse;
                 }
@@ -323,7 +323,7 @@ namespace BITCORNService.Utils.Wallet
                 if (newDeposits > 0)
                 {
                     server.LastBalanceUpdateBlock = request.Block;
-                    int count = await dbContext.Database.ExecuteSqlRawAsync(sql.ToString());
+                    int count = await DbOperations.ExecuteSqlRawAsync(dbContext, sql.ToString());
                     await dbContext.SaveAsync();
                 }
             }

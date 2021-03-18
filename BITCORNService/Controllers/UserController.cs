@@ -656,7 +656,7 @@ namespace BITCORNService.Controllers
         {
             return StatusCode(200);
         }
-
+        /*
         [ServiceFilter(typeof(CacheUserAttribute))]
         [HttpGet("{id}/livestream/actions")]
         [Authorize(Policy = AuthScopes.ChangeUser)]
@@ -756,7 +756,7 @@ namespace BITCORNService.Controllers
             }
         }
 
-
+        */
         [ServiceFilter(typeof(LockUserAttribute))]
         [HttpPost("{id}/setlivestream")]
         [Authorize(Policy = AuthScopes.ChangeUser)]

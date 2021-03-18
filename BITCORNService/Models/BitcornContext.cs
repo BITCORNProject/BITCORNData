@@ -45,8 +45,8 @@ namespace BITCORNService.Models
         //public virtual DbSet<SocialTag> SocialTag { get; set; }
         public virtual DbSet<UserMission> UserMission { get; set; }
         public virtual DbSet<IrcTransaction> IrcTransaction { get; set; }
-        public virtual DbSet<UserStreamAction> UserStreamAction { get; set; }
-        public virtual DbSet<UserTts> UserTts { get; set; }
+        //public virtual DbSet<UserStreamAction> UserStreamAction { get; set; }
+        //public virtual DbSet<UserTts> UserTts { get; set; }
         //public virtual DbSet<UserGiveawayTicket> UserGiveawayTicket { get; set; }
         public virtual DbSet<CornPurchase> CornPurchase { get; set; }
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)

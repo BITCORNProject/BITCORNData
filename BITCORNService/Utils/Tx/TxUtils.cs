@@ -76,7 +76,7 @@ namespace BITCORNService.Utils.Tx
 
                 sql.Append(TxUtils.ModifyNumber(nameof(UserWallet), nameof(UserWallet.Balance), entry.Tx.Amount, '+', pk, entry.Wallet.UserId));
             }
-            await dbContext.Database.ExecuteSqlRawAsync(sql.ToString());
+            await DbOperations.ExecuteSqlRawAsync(dbContext, sql.ToString());
             await dbContext.SaveAsync();
         }
 
@@ -139,7 +139,7 @@ namespace BITCORNService.Utils.Tx
                 }
                 if (txs.Length > 0)
                 {
-                    await dbContext.Database.ExecuteSqlRawAsync(sql.ToString());
+                    await DbOperations.ExecuteSqlRawAsync(dbContext, sql.ToString());
                     await dbContext.SaveAsync();
                 }
                 return txs.Length;
@@ -194,7 +194,7 @@ namespace BITCORNService.Utils.Tx
             var sql = new StringBuilder();
             if (processInfo.WriteTransactionOutput(sql))
             {
-                var rows = await dbContext.Database.ExecuteSqlRawAsync(sql.ToString());
+                var rows = await DbOperations.ExecuteSqlRawAsync(dbContext, sql.ToString());
                 if (rows > 0)
                 {
                     await dbContext.SaveAsync();
