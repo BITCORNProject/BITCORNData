@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Data;
 using System.Linq;
 using System.Net;
+using System.Reflection;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
@@ -611,7 +612,7 @@ namespace BITCORNService.Controllers
         [ServiceFilter(typeof(CacheUserAttribute))]
         [HttpGet("{id}/livestream")]
         [Authorize(Policy = AuthScopes.ReadUser)]
-        public async Task<ActionResult<UserLivestream>> GetLivestream([FromRoute] string id)
+        public async Task<ActionResult<Object>> GetLivestream([FromRoute] string id)
         {
             if (this.GetCachedUser() != null)
                 throw new InvalidOperationException();
@@ -623,8 +624,21 @@ namespace BITCORNService.Controllers
                 {
                     var stream = await _dbContext.GetLivestreams().Where(e => e.User.UserId == user.UserId).FirstOrDefaultAsync();
                     if (stream != null)
+                    {
+                        /*
+                        var properties = typeof(UserLivestream).GetProperties(BindingFlags.GetProperty|BindingFlags.Public);
+                        Dictionary<string, object> output = new Dictionary<string, object>();
+                        foreach (var property in properties)
+                        {
+                            var name = property.Name;
+                            output.Add(Char.ToLowerInvariant(name[0]) + name.Substring(1), property.GetValue(stream.Stream));
+                        }
+                     
+                        return output;
+                        //
+                        */
                         return stream.Stream;
-
+                    }
                 }
 
                 return StatusCode(404);
@@ -764,7 +778,7 @@ namespace BITCORNService.Controllers
                     {
                         liveStream = new UserLivestream()
                         {
-                            Enabled = body.Enabled,
+                            Enabled = true,//body.Enabled,
                             UserId = user.UserId,
                             Public = body.Public,
                             EnableTransactions = body.EnableTransactions,
@@ -813,11 +827,11 @@ namespace BITCORNService.Controllers
                         if (commit)
                         {
                             bool changes = false;
-                            if (body.Enabled != liveStream.Enabled)
+                            /*if (body.Enabled != liveStream.Enabled)
                             {
                                 changes = true;
                                 liveStream.Enabled = body.Enabled;
-                            }
+                            }*/
 
                             if (body.Public != liveStream.Public)
                             {
@@ -1528,13 +1542,21 @@ namespace BITCORNService.Controllers
             {
                 return false;
             }
+            /*
             //join identity with user table to select in 1 query
             var user = await _dbContext.Auth0Query(auth0IdUsername.Auth0Id)
-                .Join(_dbContext.User, identity => identity.UserId, us => us.UserId, (id, u) => u).FirstOrDefaultAsync();
-
-            user.UserIdentity.Username = auth0IdUsername.Username;
-            await _dbContext.SaveAsync();
-            return true;
+                //.Join(_dbContext.User, identity => identity.UserId, us => us.UserId, (id, u) => u)
+                .FirstOrDefaultAsync();
+            */
+            var user = await _dbContext.UserIdentity.Where(x=>x.Auth0Id==auth0IdUsername.Auth0Id).FirstOrDefaultAsync();
+            if (user != null)
+            {
+                user.Username = auth0IdUsername.Username;
+                
+                int count = await _dbContext.SaveAsync();
+                return true;
+            }
+            return false;
         }
     }
 }

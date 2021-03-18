@@ -45,7 +45,7 @@ namespace BITCORNService.Utils.DbActions
             {
                 User = user,
                 Stream = stream
-            });
+            }).Where(x=>!string.IsNullOrEmpty(x.User.UserIdentity.TwitchRefreshToken));
             /*
             return (from identity in dbContext.UserIdentity
                          join user in dbContext.User on identity.UserId equals user.UserId

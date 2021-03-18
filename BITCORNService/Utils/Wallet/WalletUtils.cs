@@ -239,7 +239,8 @@ namespace BITCORNService.Utils.Wallet
                     {
                         //get wallet error response
                         var error = response.GetError();
-
+                        cornResponse.ErrorCode = error.Code;
+                        cornResponse.DepositAddress = server.DepositAddress;
                         //invalid withdrawal address
                         if (error.Code == WalletErrorCodes.RPC_INVALID_ADDRESS_OR_KEY)
                         {

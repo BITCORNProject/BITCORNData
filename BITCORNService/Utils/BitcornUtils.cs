@@ -242,7 +242,7 @@ namespace BITCORNService.Utils
             var fullUser = new FullUser()
             {
                 Mfa = user.MFA,
-                Username = user.Username,
+                Username = userIdentity.Username,//user.Username,
                 UserId = user.UserId,
                 Avatar = user.Avatar,
                 Level = user.Level,
@@ -329,7 +329,7 @@ namespace BITCORNService.Utils
                 typeof(string),
                 typeof(DateTime?),
                 typeof(bool)
-            },user);
+            },user,"Username");
 
             if (!guestView)
             {
@@ -378,7 +378,7 @@ namespace BITCORNService.Utils
             {
                 Mfa = user.MFA,
                 //user
-                Username = user.Username,
+                Username = userIdentity.Username,
                 UserId = user.UserId,
                 Avatar = user.Avatar,
                 Level = user.Level,

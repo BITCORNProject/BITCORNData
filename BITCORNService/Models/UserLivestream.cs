@@ -45,6 +45,7 @@ namespace BITCORNService.Models
         public DateTime? LastUpdateTime { get; set; }
         public int GiveawayIndex { get; set; }
     }
+   
     public class UserGiveawayTicket
     {
         [Key]

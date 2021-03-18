@@ -756,8 +756,8 @@ namespace BITCORNService.Controllers
         }
 
         [ServiceFilter(typeof(LockUserAttribute))]
-        [HttpPost("donation")]
-        public async Task<ActionResult<TxReceipt[]>> Donation([FromBody] ChannelSubRequest tipRequest)
+        [HttpPost("subevent")]
+        public async Task<ActionResult<TxReceipt[]>> SubEvent([FromBody] ChannelSubRequest tipRequest)
         {
             var status = CheckRequest(tipRequest, false);
             if (status != null) return status;
@@ -792,6 +792,11 @@ namespace BITCORNService.Controllers
                 if (tipRequest.SubTier == "3000")
                 {
                     tipRequest.Amount = liveStream.Tier3SubReward;
+                }
+
+                if(tipRequest.Amount<=0)
+                {
+                    return StatusCode((int)HttpStatusCode.BadRequest);
                 }
 
                 //tipRequest.Amount = tipRequest.UsdAmount * liveStream.BitcornPerDonation;

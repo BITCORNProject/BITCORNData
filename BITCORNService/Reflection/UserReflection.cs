@@ -36,7 +36,8 @@ namespace BITCORNService.Reflection
                         if (property.PropertyType.IsPrimitive ||
                             property.PropertyType == typeof(string) ||
                             property.PropertyType == typeof(int?) ||
-                            property.PropertyType == typeof(decimal?))
+                            property.PropertyType == typeof(decimal?) ||
+                            property.PropertyType == typeof(bool?))
                         {
                             string name;
                             string nameLowerCase;

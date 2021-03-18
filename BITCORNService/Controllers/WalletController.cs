@@ -190,6 +190,16 @@ namespace BITCORNService.Controllers
                             response.Add("usererror", withdrawResult.UserError);
                             response.Add("walletavailable", withdrawResult.WalletAvailable);
                             response.Add("txid", withdrawResult.WalletObject);
+
+                            if (withdrawResult.ErrorCode != null && withdrawResult.ErrorCode == Utils.Wallet.Models.WalletErrorCodes.RPC_WALLET_INSUFFICIENT_FUNDS)
+                            {
+                                await BitcornUtils.TxTracking(_configuration, new
+                                {
+                                    message = "Insufficient funds detected on wallet on withdraw, (this might be because of no mature utxos) address to deposit from cold reserve  = " +
+                                    withdrawResult.DepositAddress
+                                });
+                            }
+
                             await FillColumns(response, request, user);
                             if (withdrawResult.WalletObject != null && request.Amount > 100000)
                             {

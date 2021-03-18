@@ -191,6 +191,7 @@ namespace BITCORNService.Utils.Stats
             using (var command = dbContext.Database.GetDbConnection().CreateCommand())
             {
                 bool txTypesDefined = false;
+                /*
                 var supportedTxTypes = new string[]
                 {
                     "$withdraw" ,
@@ -219,10 +220,11 @@ namespace BITCORNService.Utils.Stats
                     ).ToArray();
                     txTypesDefined = txTypes.Length > 0;
                 }
+                */
                 var sql = new StringBuilder($"(select distinct  {nameof(CornTx.TxGroupId)} from  ");
                 sql.Append($" (select * from {nameof(CornTx)} where ({nameof(CornTx.ReceiverId)} = {user} or {nameof(CornTx.SenderId)} = {user}) ");
                 //txTypesDefined = false;
-                if (txTypesDefined)
+                /*if (txTypesDefined)
                 {
                     sql.Append($" and {nameof(CornTx.TxType)} in ( ");
                     //{string.Join(",", txTypes)}
@@ -235,7 +237,7 @@ namespace BITCORNService.Utils.Stats
                         }
                     }
                     sql.Append(") ");
-                }
+                }*/
 
                 sql.Append(" ) t) ");
 
