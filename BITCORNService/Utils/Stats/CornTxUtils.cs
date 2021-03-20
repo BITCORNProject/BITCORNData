@@ -146,8 +146,45 @@ namespace BITCORNService.Utils.Stats
                 outputs.Sort((a, b) => b.Time.CompareTo(a.Time));
 
                 var allTransactions = outputs.Skip(offset).Take(limit).ToArray();
+                var filteredTransactions = allTransactions.Select(x => x.GroupId).ToHashSet();
                 var mappedTransactions = allTransactions.GroupBy(x => x.GroupId).ToDictionary(x => x.Key, X => X.ToList());
-                var ircTransactions = await dbContext.IrcTransaction.Join(dbContext.UserIdentity, (ircTx) => ircTx.IrcChannel, (u) => u.TwitchId,
+                var ircTransactions = await dbContext.IrcTransaction.Where(x => filteredTransactions.Contains(x.TxGroupId)).ToArrayAsync();
+                //var groupIds = ircTransactions.Select(x=>x.TxGroupId);
+                var twitchIds = ircTransactions.Select(x => x.IrcChannel).ToHashSet();
+                var streamerIdentities = await dbContext.UserIdentity.Where(x => twitchIds.Contains(x.TwitchId) && !string.IsNullOrEmpty(x.TwitchRefreshToken))
+                    .Join(dbContext.UserLivestream, (UserIdentity u) => u.UserId, (UserLivestream l) => l.UserId, (u, l) => new { u = u, l = l })
+                    .Where(x=>x.l.Public)
+                    .ToDictionaryAsync(x => x.u.TwitchId, x => x);
+
+                foreach (var groupId in ircTransactions)
+                {
+                    //var txs = mappedTransactions[groupId.TxGroupId];
+                    if (mappedTransactions.TryGetValue(groupId.TxGroupId, out var txs))
+                    {
+                        foreach (var tx in txs)
+                        {
+                            tx.Message = groupId.IrcMessage;
+                            if (streamerIdentities.TryGetValue(groupId.IrcChannel, out var src))
+                            {
+                                tx.Channel = src.u.TwitchUsername;
+                            }
+                            //tx.Channel = groupId
+                        }
+                    }
+                }
+                //mappedTransactions[groupIds[0]]
+                /*.Join(dbContext.UserIdentity,
+                                        (ircTx) => ircTx.IrcChannel, (u) => u.TwitchId,
+                    (tx, u) => new { tx, u }
+                    ).Join(dbContext.UserLivestream, (select) => select.u.UserId, (stream) => stream.UserId, (select, stream) => new
+                    {
+                        tx = select.tx,
+                        u = select.u,
+                        stream = stream
+                    }).ToArrayAsync();*/
+                /*
+                var ircTransactions = await dbContext.IrcTransaction.Join(dbContext.UserIdentity, 
+                    (ircTx) => ircTx.IrcChannel, (u) => u.TwitchId,
                     (tx, u) => new { tx, u }
                     ).Join(dbContext.UserLivestream, (select) => select.u.UserId, (stream) => stream.UserId, (select, stream) => new
                     {
@@ -156,7 +193,8 @@ namespace BITCORNService.Utils.Stats
                         stream = stream
                     })
                     .Where(x => x.stream.Public && transactions.Contains(x.tx.TxGroupId)).ToArrayAsync();
-
+                */
+                /*
                 for (int i = 0; i < ircTransactions.Length; i++)
                 {
                     var ircTx = ircTransactions[i];
@@ -176,7 +214,7 @@ namespace BITCORNService.Utils.Stats
                         }
                     }
                 }
-
+                */
                 return allTransactions;
             }
             catch (Exception ex)

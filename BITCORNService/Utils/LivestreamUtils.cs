@@ -52,11 +52,11 @@ namespace BITCORNService.Utils
                 {"ircEventPayments", stream.IrcEventPayments },
                 {"bitcornhubFunded", stream.BitcornhubFunded },
                 {"bitcornPerBit", stream.BitcornPerBit },
-                {"tier1SubReward ", stream.Tier1SubReward },
+                {"tier1SubReward", stream.Tier1SubReward },
 
-                {"tier2SubReward ", stream.Tier2SubReward },
+                {"tier2SubReward", stream.Tier2SubReward },
 
-                {"tier3SubReward ", stream.Tier3SubReward },
+                {"tier3SubReward", stream.Tier3SubReward },
                 {"twitchRefreshToken", userIdentity.TwitchRefreshToken },
                 {"bitcornPerChannelpointsRedemption", stream.BitcornPerChannelpointsRedemption },
                 {"enableChannelpoints", stream.EnableChannelpoints },
