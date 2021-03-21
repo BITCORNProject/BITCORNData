@@ -622,7 +622,7 @@ namespace BITCORNService.Controllers
                 var user = await BitcornUtils.GetUserForPlatform(platformId, _dbContext).FirstOrDefaultAsync();
                 if (user != null)
                 {
-                    var stream = await _dbContext.GetLivestreams().Where(e => e.User.UserId == user.UserId).FirstOrDefaultAsync();
+                    var stream = await _dbContext.GetLivestreams(false).Where(e => e.User.UserId == user.UserId).FirstOrDefaultAsync();
                     if (stream != null)
                     {
                         /*

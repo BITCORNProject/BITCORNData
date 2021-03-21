@@ -38,14 +38,14 @@ namespace BITCORNService.Utils.DbActions
                     });
         }
 
-        public static IQueryable<LivestreamQueryResponse> GetLivestreams(this BitcornContext dbContext)
+        public static IQueryable<LivestreamQueryResponse> GetLivestreams(this BitcornContext dbContext, bool requireToken = true)
         {
 
             return dbContext.JoinUserModels().Join(dbContext.UserLivestream, (user) => user.UserId, (stream) => stream.UserId, (user, stream) => new LivestreamQueryResponse
             {
                 User = user,
                 Stream = stream
-            }).Where(x=>!string.IsNullOrEmpty(x.User.UserIdentity.TwitchRefreshToken));
+            }).Where(x => requireToken && !string.IsNullOrEmpty(x.User.UserIdentity.TwitchRefreshToken) || !requireToken);
             /*
             return (from identity in dbContext.UserIdentity
                          join user in dbContext.User on identity.UserId equals user.UserId

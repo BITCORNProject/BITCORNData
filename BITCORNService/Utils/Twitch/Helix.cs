@@ -37,7 +37,11 @@ namespace BITCORNService.Utils.Twitch
 
                     for (int i = 0; i < initial.data.Length; i++)
                     {
-                        userIds.Add(initial.data[i].user_id, initial.data[i].tier);
+                        var userId = initial.data[i].user_id;
+                        if (!userIds.ContainsKey(userId))
+                        {
+                            userIds.Add(initial.data[i].user_id, initial.data[i].tier);
+                        }
                     }
 
                     while (!string.IsNullOrEmpty(pagination))
@@ -45,11 +49,15 @@ namespace BITCORNService.Utils.Twitch
                         if (!string.IsNullOrEmpty(pagination))
                         {
                             var output = await SubscriptionsRequest(twitchId, pagination);
-                            if (output != null && output.data!=null)
+                            if (output != null && output.data != null)
                             {
                                 for (int i = 0; i < output.data.Length; i++)
                                 {
-                                    userIds.Add(output.data[i].user_id, output.data[i].tier);
+                                    var userId = output.data[i].user_id;
+                                    if (!userIds.ContainsKey(userId))
+                                    {
+                                        userIds.Add(userId, output.data[i].tier);
+                                    }
                                 }
 
                                 if (output.pagination != null)
@@ -65,7 +73,7 @@ namespace BITCORNService.Utils.Twitch
             }
             catch (Exception ex)
             {
-                await BITCORNLogger.LogError(_dbContext, ex,JsonConvert.SerializeObject(initial));
+                await BITCORNLogger.LogError(_dbContext, ex, JsonConvert.SerializeObject(initial));
                 throw ex;
                 //return new Dictionary<string, string>();
             }
