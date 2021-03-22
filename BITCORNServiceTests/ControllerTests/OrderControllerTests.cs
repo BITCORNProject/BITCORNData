@@ -1,5 +1,6 @@
 ﻿using BITCORNService.Controllers;
 using BITCORNService.Models;
+using BITCORNService.Utils;
 using BITCORNService.Utils.DbActions;
 using BITCORNService.Utils.Public;
 using BITCORNServiceTests.Utils;
@@ -21,11 +22,15 @@ namespace BITCORNServiceTests.ControllerTests
         [Fact]
         public async Task TestCreateOrder()
         {
+            BitcornUtils.TEST_MODE = true;
+
             await CreateOrder();   
         }
         [Fact]
         public async Task TestCloseOrder()
         {
+            BitcornUtils.TEST_MODE = true;
+
             var clientId = "JyNM71Tg1b76GScmVpp31KQqFWfY5xbq";
             var orderOutput = await CreateOrder();
             var db = TestUtils.CreateDatabase();
@@ -49,6 +54,8 @@ namespace BITCORNServiceTests.ControllerTests
         [Fact]
         public async Task TestCloseUnAuthorizedOrder()
         {
+            BitcornUtils.TEST_MODE = true;
+
             var clientId = "JyNM71Tg1b76GScmVpp31KQqFWfY5xbq";
             var orderOutput = await CreateOrder();
             var db = TestUtils.CreateDatabase();
@@ -67,6 +74,8 @@ namespace BITCORNServiceTests.ControllerTests
         [Fact]
         public async Task TestAuthOrder()
         {
+            BitcornUtils.TEST_MODE = true;
+
             var clientId = "JyNM71Tg1b76GScmVpp31KQqFWfY5xbq";
             var orderOutput = await CreateOrder();
             var db = TestUtils.CreateDatabase();
@@ -89,6 +98,8 @@ namespace BITCORNServiceTests.ControllerTests
         [Fact]
         public async Task TestAuthOrderNoFunds()
         {
+            BitcornUtils.TEST_MODE = true;
+
             var clientId = "JyNM71Tg1b76GScmVpp31KQqFWfY5xbq";
             var db = TestUtils.CreateDatabase();
             var user = db.JoinUserModels().FirstOrDefault(u => u.UserId == 1722);
@@ -133,7 +144,7 @@ namespace BITCORNServiceTests.ControllerTests
             var clientId = "JyNM71Tg1b76GScmVpp31KQqFWfY5xbq";
             var db = TestUtils.CreateDatabase();
             {
-
+                BitcornUtils.TEST_MODE = true;
                 var orderController = new OrderController(db, TestUtils.GetConfig());
                 var order = await orderController.CreateOrder(new CreateOrderRequest()
                 {

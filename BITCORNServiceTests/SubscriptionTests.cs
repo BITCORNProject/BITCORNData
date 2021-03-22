@@ -48,14 +48,14 @@ namespace BITCORNServiceTests
 
                 TestUtils.CreateTestUser(testName, testId);
                 var user = dbContext.JoinUserModels().FirstOrDefault(u=>u.UserIdentity.Auth0Id==testId);
-                user.UserWallet.Balance += 1001;
+                user.UserWallet.Balance += 1000001;
                 dbContext.SaveChanges();
                 var resp = await SubscriptionUtils.Subscribe(dbContext, user, new SubRequest()
                 {
                     SubscriptionName = "BITCORNFarms",
                     Tier = 1,
                     Platform = "test",
-                    Amount = 1000
+                    Amount = 100000
                 });
 
                 Assert.True(await SubscriptionUtils.HasSubscribed(dbContext,user, "BITCORNFarms",1));
@@ -79,14 +79,14 @@ namespace BITCORNServiceTests
 
                 TestUtils.CreateTestUser(testName, testId);
                 var user = dbContext.JoinUserModels().FirstOrDefault(u => u.UserIdentity.Auth0Id == testId);
-                user.UserWallet.Balance += 1001;
+                user.UserWallet.Balance += 10000001;
                 dbContext.SaveChanges();
                 var resp = await SubscriptionUtils.Subscribe(dbContext, user, new SubRequest()
                 {
                     SubscriptionName = "BITCORNFarms",
                     Tier = 1,
                     Platform = "test",
-                    Amount = 1000
+                    Amount = 100000
                 });
 
                 Assert.False(await SubscriptionUtils.HasSubscribed(dbContext, user, "BITCORNFarms", 2));
@@ -116,7 +116,7 @@ namespace BITCORNServiceTests
                     SubscriptionName = "BITCORNFarms",
                     Tier = 1,
                     Platform = "test",
-                    Amount = 1000
+                    Amount = 100000
                 });
 
                 Assert.False(await SubscriptionUtils.HasSubscribed(dbContext, user, "BITCORNFarms", 1));
@@ -140,14 +140,14 @@ namespace BITCORNServiceTests
 
                 TestUtils.CreateTestUser(testName, testId);
                 var user = dbContext.JoinUserModels().FirstOrDefault(u => u.UserIdentity.Auth0Id == testId);
-                user.UserWallet.Balance += 1001;
+                user.UserWallet.Balance += 10000001;
                 dbContext.SaveChanges();
                 var resp = await SubscriptionUtils.Subscribe(dbContext, user, new SubRequest()
                 {
                     SubscriptionName = "BITCORNFarms",
                     Tier = 1,
                     Platform = "test",
-                    Amount = 1000
+                    Amount = 100000
                 });
 
                 var userSubscription = dbContext.UserSubscription.FirstOrDefault(u=>u.UserId==user.UserId);

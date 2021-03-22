@@ -179,7 +179,7 @@ namespace BITCORNServiceTests.Utils
                 dbContext.Database.ExecuteSqlRaw("delete socialidentity");
                 dbContext.Database.ExecuteSqlRaw("delete subtx");
                 dbContext.Database.ExecuteSqlRaw("delete corndeposit");
-
+                dbContext.Database.ExecuteSqlRaw("delete walletdownload ");
                 var referral = dbContext.UserReferral.FirstOrDefault(u => u.UserId == user.UserId);
                 
                 if(referral!=null)
@@ -201,6 +201,7 @@ namespace BITCORNServiceTests.Utils
             var dbContext = TestUtils.CreateDatabase();
             try
             {
+
                 var referrer = dbContext.Referrer.FirstOrDefault(u => u.ReferralId == referralId);
                 var startReferrerBal = dbContext.JoinUserModels().Where(u => u.UserId == referrer.UserId).Select(u => u.UserWallet.Balance).FirstOrDefault();
 

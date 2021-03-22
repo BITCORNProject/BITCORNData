@@ -129,8 +129,8 @@ namespace BITCORNService
             
             app.UseEndpoints(endpoints =>
             {
-            
-                endpoints.MapControllers().WithMetadata(new AllowAnonymousAttribute()); ;
+
+                endpoints.MapControllers();//.WithMetadata(new AllowAnonymousAttribute()); ;
             });
         }
 
