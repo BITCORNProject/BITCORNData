@@ -572,7 +572,7 @@ namespace BITCORNService.Controllers
                                     return new
                                     {
                                         success = true,
-                                        
+
                                         purchaseCloseId = purchase.CornPurchaseId,
                                         paymentId = purchase.PaymentId
                                     };
@@ -617,6 +617,8 @@ namespace BITCORNService.Controllers
             if (this.GetCachedUser() != null)
                 throw new InvalidOperationException();
 
+            if (request.CornAmount <= 0) return StatusCode((int)HttpStatusCode.BadRequest);
+            if (request.UsdAmount <= 0) return StatusCode((int)HttpStatusCode.BadRequest);
             if (!string.IsNullOrEmpty(request.PaymentId))
             {
                 if (!TryLockPayment(request.PaymentId))
@@ -687,6 +689,7 @@ namespace BITCORNService.Controllers
         public async Task<ActionResult<TxReceipt[]>> BitDonation([FromBody] BitDonationRequest tipRequest)
         {
             var status = CheckRequest(tipRequest, false);
+            if (tipRequest.BitAmount <= 0) return StatusCode((int)HttpStatusCode.BadRequest);
             if (status != null) return status;
 
             try
@@ -761,6 +764,7 @@ namespace BITCORNService.Controllers
         public async Task<ActionResult<TxReceipt[]>> SubEvent([FromBody] ChannelSubRequest tipRequest)
         {
             var status = CheckRequest(tipRequest, false);
+
             if (status != null) return status;
 
             try
@@ -785,17 +789,20 @@ namespace BITCORNService.Controllers
                     tipRequest.Amount = liveStream.Tier1SubReward;
                 }
 
-                if (tipRequest.SubTier == "2000")
+                else if (tipRequest.SubTier == "2000")
                 {
                     tipRequest.Amount = liveStream.Tier2SubReward;
                 }
 
-                if (tipRequest.SubTier == "3000")
+                else if (tipRequest.SubTier == "3000")
                 {
                     tipRequest.Amount = liveStream.Tier3SubReward;
                 }
-
-                if(tipRequest.Amount<=0)
+                else
+                {
+                    return StatusCode((int)HttpStatusCode.BadRequest);
+                }
+                if (tipRequest.Amount <= 0)
                 {
                     return StatusCode((int)HttpStatusCode.BadRequest);
                 }

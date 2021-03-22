@@ -915,7 +915,7 @@ namespace BITCORNService.Controllers
                                 changes = true;
                             }
 
-                            bool allowFundedChanges = true;
+                            bool allowFundedChanges = user.IsAdmin();//true;
                             if (!liveStream.BitcornhubFunded || allowFundedChanges)
                             {
                                 if (body.Tier1IdlePerMinute != liveStream.Tier1IdlePerMinute)
@@ -1007,13 +1007,13 @@ namespace BITCORNService.Controllers
                             }
 
 
-
+                            /*
                             if (body.EnableTts != liveStream.EnableTts)
                             {
                                 liveStream.EnableTts = body.EnableTts;
                                 changes = true;
                             }
-
+                            */
                             if (changes)
                             {
 

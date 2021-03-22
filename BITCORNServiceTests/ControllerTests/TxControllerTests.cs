@@ -1,6 +1,7 @@
 ﻿using BITCORNService.Controllers;
 using BITCORNService.Models;
 using BITCORNService.Platforms;
+using BITCORNService.Utils;
 using BITCORNService.Utils.DbActions;
 using BITCORNService.Utils.Models;
 using BITCORNService.Utils.Twitch;
@@ -62,33 +63,6 @@ namespace BITCORNServiceTests
             }
         }
 
-        [Fact]
-        public async Task tt()
-        {
-            var dbContext = TestUtils.CreateDatabase();
-            try
-            {
-                var users = dbContext.JoinUserModels().ToArray();
-                foreach (var user in users)
-                {
-                    if (user.UserId > 1516)
-                    {
-                        var dbContext2 = TestUtils.CreateDatabase();
-                        var user2 = await dbContext2.JoinUserModels().FirstOrDefaultAsync(x => x.UserId == user.UserId);
-                        if (user2 != null)
-                        {
-                            user2.UserIdentity.Username = user.Username;
-                            await dbContext2.SaveAsync();
-                        }
-                    }
-                }
-                //await dbContext.SaveAsync();
-            }
-            finally
-            {
-                dbContext.Dispose();
-            }
-        }
 
         [Fact]
         public async Task TestRainSuccess()
@@ -127,40 +101,29 @@ namespace BITCORNServiceTests
         [Fact]
         public async Task TestPayoutSuccess()
         {
-            using (var db = TestUtils.CreateDatabase())
-            {
-                var user1 = db.TwitchQuery(_configuration["Config:TestFromUserId"]).FirstOrDefault();
-                var user2 = db.TwitchQuery(_configuration["Config:TestToUserId"]).FirstOrDefault();
-                user1.SubTier = 1;
-                db.Update(user1);
-                user2.SubTier = 1;
-                db.Update(user2);
-                db.SaveChanges();
-            }
+
             var dbContext = TestUtils.CreateDatabase();
             try
             {
 
                 var txController = new TxController(_configuration, dbContext);
                 var context = txController.ControllerContext.HttpContext = new DefaultHttpContext();
-                context.Items.Add("user", dbContext.JoinUserModels().FirstOrDefault(u => u.UserId == TxUtils.BitcornHubPK));
-
+                //context.Items.Add("user", dbContext.JoinUserModels().FirstOrDefault(u => u.UserId == TxUtils.BitcornHubPK));
+                var startBalance = (await TxUtils.GetBitcornhub(dbContext)).UserWallet.Balance;
                 var changeCount = (await txController.Payout(new PayoutRequest()
                 {
                     Chatters = new HashSet<string>() { _configuration["Config:TestFromUserId"], _configuration["Config:TestToUserId"] },
-                    Minutes = 1
+                    Minutes = 1,
+                    IrcTarget = "75987197"
 
                 })).Value;
-                Assert.Equal(2, (int)changeCount);
-                using (var db = TestUtils.CreateDatabase())
+
+                Assert.True((int)changeCount > 0);
                 {
-                    var user1 = db.TwitchQuery(_configuration["Config:TestFromUserId"]).FirstOrDefault();
-                    var user2 = db.TwitchQuery(_configuration["Config:TestToUserId"]).FirstOrDefault();
-                    user1.SubTier = 0;
-                    db.Update(user1);
-                    user2.SubTier = 0;
-                    db.Update(user2);
-                    db.SaveChanges();
+                    var db2 = TestUtils.CreateDatabase();
+                    var endBalance = (await TxUtils.GetBitcornhub(db2)).UserWallet.Balance;
+                    Assert.True(startBalance > endBalance);
+                    //Assert.Equal(2, (int)changeCount);
                 }
             }
             finally
@@ -199,7 +162,8 @@ namespace BITCORNServiceTests
 
                 request.From = "twitch|" + fromUser.UserIdentity.TwitchId;
                 request.To = toList.ToArray();
-                request.IrcTarget = "#clayman666";
+                request.IrcTarget = "120524051";
+                request.IrcMessage = "test message";
                 var response = (await txController.Rain(request));
                 using (var dbContext2 = TestUtils.CreateDatabase())
                 {
@@ -248,7 +212,8 @@ namespace BITCORNServiceTests
 
                 request.Amount = amount;
                 request.Platform = "twitch";
-                request.IrcTarget = "#clayman666";
+                request.IrcTarget = "120524051";
+                request.IrcMessage = "test message";
                 request.From = "twitch|" + fromUser.UserIdentity.TwitchId;
                 request.To = "twitch|" + toUser.UserIdentity.TwitchId;
 
@@ -391,26 +356,6 @@ namespace BITCORNServiceTests
                 db.Database.ExecuteSqlRaw("update userwallet set islocked = 0 where userid = 1722");
             }
         }
-        [Fact]
-        public async Task shit()
-        {
-            var dbContext = TestUtils.CreateDatabase();
-            //"4j3vncygh2jk64amjdtaelczlo6hlwbc0550ijpi9xh8e8eh5f"
-            var token = await TwitchPlatform.RefreshToken(dbContext, dbContext.UserIdentity.FirstOrDefault(x => x.UserId == 1369),
-                 TestUtils.GetConfig());
-
-            var helix = new Helix(TestUtils.GetConfig(), dbContext, token);
-            try
-            {
-               // var stuff = $" UPDATE [{nameof(UserLivestream)}] set [{nameof(UserLivestream.LastSubTickTimestamp)}] = '{DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff")}' where [{nameof(UserLivestream.)}]={10} ";
-                var request = await helix.SubscriptionsRequest("75987197", null);
-                Console.WriteLine("???");
-            }
-            catch(Exception e)
-            {
-                throw e;
-            }
-        }
 
         [Fact]
         public async Task TestTipCornSuccess()
@@ -450,6 +395,190 @@ namespace BITCORNServiceTests
         }
 
         [Fact]
+        public async Task TestBitdonationSuccess()
+        {
+            var dbContext = TestUtils.CreateDatabase();
+            UnlockTestUser();
+
+            try
+            {
+                var tipAmount = 10;
+                var startFromUser = await TxUtils.GetBitcornhub(dbContext);//dbContext.TwitchQuery(_configuration["Config:TestFromUserId"]).FirstOrDefault();
+
+
+                var startToUser = dbContext.TwitchQuery(_configuration["Config:TestToUserId"]).FirstOrDefault();
+
+                var txController = new TxController(_configuration, dbContext);
+                var context = txController.ControllerContext.HttpContext = new DefaultHttpContext();
+                context.Items.Add("user", startFromUser);
+
+                var request = new BitDonationRequest();
+                request.Columns = new string[] { };
+                var startToBal = startToUser.UserWallet.Balance;
+                var startFromBal = startFromUser.UserWallet.Balance;
+                //request.IrcTarget = "#markettraderstv";
+                //tipResult.FromStartBalance = startFromUser.UserWallet.Balance.Value;
+                //tipResult.ToStartBalance = startToUser.UserWallet.Balance.Value;
+
+                //request.Amount = amount;
+                request.Platform = "twitch";
+                request.IrcTarget = "120524051";
+                var livestream = dbContext.UserLivestream.Where(x => x.UserId == 1722).FirstOrDefault();
+                request.IrcMessage = "test message";
+                request.From = "twitch|" + startFromUser.UserIdentity.TwitchId;
+                request.To = "twitch|" + startToUser.UserIdentity.TwitchId;
+                request.BitAmount = 10;
+                var result = (await txController.BitDonation(request)).Value;
+
+                //var result = await Tip(tipAmount, startFromUser, startToUser);
+                //Assert.Equal(result.FromEndBalance, result.FromStartBalance - result.Amount);
+                //Assert.Equal(result.ToEndBalance, result.ToStartBalance + result.Amount);
+                using (var dbContext2 = TestUtils.CreateDatabase())
+                {
+                    var endFromUser = await TxUtils.GetBitcornhub(dbContext2);//dbContext2.TwitchQuery(_configuration["Config:TestFromUserId"]).FirstOrDefault();
+                    var endToUser = dbContext2.TwitchQuery(_configuration["Config:TestToUserId"]).Select(x => x.UserWallet.Balance).FirstOrDefault();
+                    var balDiff = livestream.BitcornPerBit * request.BitAmount;
+                    var totalDiff = endToUser - startToBal;
+                    Assert.Equal(startToBal + balDiff, endToUser);
+                    Assert.Equal(startFromBal, endFromUser.UserWallet.Balance + balDiff);
+                    /*
+                    Assert.Equal(startFromTip + 1, endFromUser.UserStat.AmountOfTipsSent);
+                    Assert.Equal(startFromTotalTip + tipAmount, endFromUser.UserStat.TotalSentBitcornViaTips);
+                    Assert.Equal(startToUserTipped + 1, endToUser.UserStat.AmountOfTipsReceived);
+                    Assert.Equal(startToUserTotalTipped + tipAmount, endToUser.UserStat.TotalReceivedBitcornTips);
+                */
+                }
+            }
+            finally
+            {
+                dbContext.Dispose();
+            }
+        }
+
+
+        [Fact]
+        public async Task TestChannelpointsSuccess()
+        {
+            var dbContext = TestUtils.CreateDatabase();
+            UnlockTestUser();
+
+            try
+            {
+                var tipAmount = 10;
+                var startFromUser = await TxUtils.GetBitcornhub(dbContext);//dbContext.TwitchQuery(_configuration["Config:TestFromUserId"]).FirstOrDefault();
+
+
+                var startToUser = dbContext.TwitchQuery(_configuration["Config:TestToUserId"]).FirstOrDefault();
+
+                var txController = new TxController(_configuration, dbContext);
+                var context = txController.ControllerContext.HttpContext = new DefaultHttpContext();
+                context.Items.Add("user", startFromUser);
+
+                var request = new ChannelPointsRedemptionRequest();
+                request.Columns = new string[] { };
+                var startToBal = startToUser.UserWallet.Balance;
+                var startFromBal = startFromUser.UserWallet.Balance;
+                //request.IrcTarget = "#markettraderstv";
+                //tipResult.FromStartBalance = startFromUser.UserWallet.Balance.Value;
+                //tipResult.ToStartBalance = startToUser.UserWallet.Balance.Value;
+
+                //request.Amount = amount;
+                request.Platform = "twitch";
+                request.IrcTarget = "120524051";
+                var livestream = dbContext.UserLivestream.Where(x => x.UserId == 1722).FirstOrDefault();
+                request.IrcMessage = "test message";
+                request.From = "twitch|" + startFromUser.UserIdentity.TwitchId;
+                request.To = "twitch|" + startToUser.UserIdentity.TwitchId;
+                request.ChannelPointAmount = 1000;
+                var result = (await txController.RedeemChannelpoints(request)).Value;
+
+                //var result = await Tip(tipAmount, startFromUser, startToUser);
+                //Assert.Equal(result.FromEndBalance, result.FromStartBalance - result.Amount);
+                //Assert.Equal(result.ToEndBalance, result.ToStartBalance + result.Amount);
+                using (var dbContext2 = TestUtils.CreateDatabase())
+                {
+                    var endFromUser = await TxUtils.GetBitcornhub(dbContext2);//dbContext2.TwitchQuery(_configuration["Config:TestFromUserId"]).FirstOrDefault();
+                    var endToUser = dbContext2.TwitchQuery(_configuration["Config:TestToUserId"]).Select(x => x.UserWallet.Balance).FirstOrDefault();
+                    var balDiff = livestream.BitcornPerChannelpointsRedemption * request.ChannelPointAmount;
+                    var totalDiff = endToUser - startToBal;
+                    Assert.Equal(startToBal + balDiff, endToUser);
+                    Assert.Equal(startFromBal, endFromUser.UserWallet.Balance + balDiff);
+                    /*
+                    Assert.Equal(startFromTip + 1, endFromUser.UserStat.AmountOfTipsSent);
+                    Assert.Equal(startFromTotalTip + tipAmount, endFromUser.UserStat.TotalSentBitcornViaTips);
+                    Assert.Equal(startToUserTipped + 1, endToUser.UserStat.AmountOfTipsReceived);
+                    Assert.Equal(startToUserTotalTipped + tipAmount, endToUser.UserStat.TotalReceivedBitcornTips);
+                */
+                }
+            }
+            finally
+            {
+                dbContext.Dispose();
+            }
+        }
+
+        [Fact]
+        public async Task TestSubEventSuccess()
+        {
+            var dbContext = TestUtils.CreateDatabase();
+            UnlockTestUser();
+
+            try
+            {
+                var tipAmount = 10;
+                var startFromUser = await TxUtils.GetBitcornhub(dbContext);//dbContext.TwitchQuery(_configuration["Config:TestFromUserId"]).FirstOrDefault();
+
+
+                var startToUser = dbContext.TwitchQuery(_configuration["Config:TestToUserId"]).FirstOrDefault();
+
+                var txController = new TxController(_configuration, dbContext);
+                var context = txController.ControllerContext.HttpContext = new DefaultHttpContext();
+                context.Items.Add("user", startFromUser);
+
+                var request = new ChannelSubRequest();
+                request.Columns = new string[] { };
+                var startToBal = startToUser.UserWallet.Balance;
+                var startFromBal = startFromUser.UserWallet.Balance;
+                //request.IrcTarget = "#markettraderstv";
+                //tipResult.FromStartBalance = startFromUser.UserWallet.Balance.Value;
+                //tipResult.ToStartBalance = startToUser.UserWallet.Balance.Value;
+
+                //request.Amount = amount;
+                request.Platform = "twitch";
+                request.IrcTarget = "120524051";
+                var livestream = dbContext.UserLivestream.Where(x => x.UserId == 1722).FirstOrDefault();
+                request.IrcMessage = "test message";
+                request.From = "twitch|" + startFromUser.UserIdentity.TwitchId;
+                request.To = "twitch|" + startToUser.UserIdentity.TwitchId;
+                request.SubTier = "1000";
+                var result = (await txController.SubEvent(request)).Value;
+
+                //var result = await Tip(tipAmount, startFromUser, startToUser);
+                //Assert.Equal(result.FromEndBalance, result.FromStartBalance - result.Amount);
+                //Assert.Equal(result.ToEndBalance, result.ToStartBalance + result.Amount);
+                using (var dbContext2 = TestUtils.CreateDatabase())
+                {
+                    var endFromUser = await TxUtils.GetBitcornhub(dbContext2);//dbContext2.TwitchQuery(_configuration["Config:TestFromUserId"]).FirstOrDefault();
+                    var endToUser = dbContext2.TwitchQuery(_configuration["Config:TestToUserId"]).Select(x => x.UserWallet.Balance).FirstOrDefault();
+                    var balDiff = livestream.Tier1SubReward;
+                    var totalDiff = endToUser - startToBal;
+                    Assert.Equal(startToBal + balDiff, endToUser);
+                    Assert.Equal(startFromBal, endFromUser.UserWallet.Balance + balDiff);
+                    /*
+                    Assert.Equal(startFromTip + 1, endFromUser.UserStat.AmountOfTipsSent);
+                    Assert.Equal(startFromTotalTip + tipAmount, endFromUser.UserStat.TotalSentBitcornViaTips);
+                    Assert.Equal(startToUserTipped + 1, endToUser.UserStat.AmountOfTipsReceived);
+                    Assert.Equal(startToUserTotalTipped + tipAmount, endToUser.UserStat.TotalReceivedBitcornTips);
+                */
+                }
+            }
+            finally
+            {
+                dbContext.Dispose();
+            }
+        }
+
+        [Fact]
         public async Task TestTipCornUserGetsLocked()
         {
             var dbContext = TestUtils.CreateDatabase();
@@ -457,7 +586,7 @@ namespace BITCORNServiceTests
 
             try
             {
-                var tipAmount = 10_000_010;
+                var tipAmount = 30_000_010;
                 var startFromUser = dbContext.TwitchQuery(_configuration["Config:TestFromUserId"]).FirstOrDefault();
                 var startFromTip = startFromUser.UserStat.AmountOfTipsSent;
                 var startFromTotalTip = startFromUser.UserStat.TotalSentBitcornViaTips;
@@ -489,7 +618,7 @@ namespace BITCORNServiceTests
 
             try
             {
-                var tipAmount = 10_000_010;
+                var tipAmount = 30_000_010;
                 var startFromUser = dbContext.TwitchQuery(_configuration["Config:TestFromUserId"]).FirstOrDefault();
                 var startFromTip = startFromUser.UserStat.AmountOfTipsSent;
                 var startFromTotalTip = startFromUser.UserStat.TotalSentBitcornViaTips;
