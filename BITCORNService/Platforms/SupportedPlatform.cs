@@ -171,11 +171,11 @@ namespace BITCORNService.Platforms
             _dbContext.Remove(delete.UserIdentity);
             _dbContext.Remove(delete.UserStat);
             _dbContext.User.Remove(delete);
-            await _dbContext.Database.ExecuteSqlRawAsync($" UPDATE [{nameof(CornTx)}] SET [{nameof(CornTx.SenderId)}] = {user.UserId} WHERE [{nameof(CornTx.SenderId)}] = {delete.UserId}");
-            await _dbContext.Database.ExecuteSqlRawAsync($" UPDATE [{nameof(CornTx)}] SET [{nameof(CornTx.ReceiverId)}] = {user.UserId} WHERE [{nameof(CornTx.ReceiverId)}] = {delete.UserId}");
-            await _dbContext.Database.ExecuteSqlRawAsync($" UPDATE [{nameof(CornDeposit)}] SET [{nameof(CornDeposit.UserId)}] = {user.UserId} WHERE [{nameof(CornDeposit.UserId)}] = {delete.UserId}");
-            await _dbContext.Database.ExecuteSqlRawAsync($" UPDATE [{nameof(UserSubscription)}] SET [{nameof(UserSubscription.UserId)}] = {user.UserId} WHERE [{nameof(UserSubscription.UserId)}] = {delete.UserId}");
-
+            await DbOperations.ExecuteSqlRawAsync(_dbContext, $" UPDATE [{nameof(CornTx)}] SET [{nameof(CornTx.SenderId)}] = {user.UserId} WHERE [{nameof(CornTx.SenderId)}] = {delete.UserId}");
+            await DbOperations.ExecuteSqlRawAsync(_dbContext, $" UPDATE [{nameof(CornTx)}] SET [{nameof(CornTx.ReceiverId)}] = {user.UserId} WHERE [{nameof(CornTx.ReceiverId)}] = {delete.UserId}");
+            await DbOperations.ExecuteSqlRawAsync(_dbContext, $" UPDATE [{nameof(CornDeposit)}] SET [{nameof(CornDeposit.UserId)}] = {user.UserId} WHERE [{nameof(CornDeposit.UserId)}] = {delete.UserId}");
+            await DbOperations.ExecuteSqlRawAsync(_dbContext, $" UPDATE [{nameof(UserSubscription)}] SET [{nameof(UserSubscription.UserId)}] = {user.UserId} WHERE [{nameof(UserSubscription.UserId)}] = {delete.UserId}");
+            
             await _dbContext.SaveAsync();
         }
     }

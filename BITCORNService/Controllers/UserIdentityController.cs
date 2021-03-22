@@ -41,6 +41,7 @@ namespace BITCORNService.Controllers
                 throw new InvalidOperationException();
             var platformId = BitcornUtils.GetPlatformId(registrationData.PlatformId);
             var userIdentity = await BitcornUtils.GetUserIdentityForPlatform(platformId, _dbContext);
+            if (userIdentity == null) return StatusCode(200);
             if (registrationData.Auth0Id == userIdentity.Auth0Id)
             {
                 await BitcornUtils.DeleteIdForPlatform(userIdentity, platformId, _dbContext);

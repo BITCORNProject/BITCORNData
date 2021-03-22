@@ -19,5 +19,9 @@ namespace BITCORNService.Utils.Stats
         public string RedditUsername { get; set; }
         public string BlockchainTxId { get; set; }
         public string CornAddy { get; set; }
+        public string Auth0Id { get; set; }
+        public string Auth0Nickname { get; set; }
+
+        public string Username { get; set; }
     }
 }

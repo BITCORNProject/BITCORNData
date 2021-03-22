@@ -46,9 +46,13 @@ namespace BITCORNService.Platforms
                 }
                 else if (discordDbUser?.UserIdentity.Auth0Id != null)
                 {
+                    var obj = GetSyncOutput(creationTime, discordDbUser, false);
+                    obj.ProfileAlreadySynced = true;
+                    return obj;
+                    /*
                     var e = new Exception($"A login id already exists for this discord id");
                     await BITCORNLogger.LogError(_dbContext, e, $"Auth0Id already exists for user {platformId.Id}");
-                    throw e;
+                    throw e;*/
                 }
                 else
                 {

@@ -1,5 +1,10 @@
 using System;
+using System.Collections.Generic;
+using System.Net.WebSockets;
+using System.Threading;
+using System.Threading.Tasks;
 using BITCORNService.Games.Models;
+
 using BITCORNService.Models;
 using BITCORNService.Utils.Auth;
 using BITCORNService.Utils.LockUser;
@@ -7,6 +12,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -19,7 +25,7 @@ namespace BITCORNService
     public class Startup
     {
         public Startup(IConfiguration configuration)
-        { 
+        {
             Log.Logger = new LoggerConfiguration().ReadFrom.Configuration(configuration).CreateLogger();
             Configuration = configuration;
         }
@@ -29,6 +35,7 @@ namespace BITCORNService
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
         {
+          
             var connection = Configuration["Config:ConnectionString"];
             var auth0Domain = $"https://{Configuration["Config:Auth0:Domain"]}/";
             var audience = Configuration["Config:Auth0:ApiIdentifier"];
@@ -42,11 +49,12 @@ namespace BITCORNService
                 options.Audience = audience;
             });
 
-            services.AddAuthorization(options => {
+            services.AddAuthorization(options =>
+            {
 
                 options.AddPolicy(AuthScopes.SendTransaction,
                     policy => policy.Requirements.Add(new RequireScope(AuthScopes.SendTransaction, auth0Domain)));
-                
+
                 options.AddPolicy(AuthScopes.ReadTransaction,
                    policy => policy.Requirements.Add(new RequireScope(AuthScopes.ReadTransaction, auth0Domain)));
 
@@ -65,7 +73,7 @@ namespace BITCORNService
                 options.AddPolicy(AuthScopes.BanUser,
                     policy => policy.Requirements.Add(new RequireScope(AuthScopes.BanUser, auth0Domain)));
 
-                options.AddPolicy(AuthScopes.ReadUser, 
+                options.AddPolicy(AuthScopes.ReadUser,
                     policy => policy.Requirements.Add(new RequireScope(AuthScopes.ReadUser, auth0Domain)));
 
                 options.AddPolicy(AuthScopes.CreateOrder,
@@ -75,14 +83,16 @@ namespace BITCORNService
                     policy => policy.Requirements.Add(new RequireScope(AuthScopes.AuthorizeOrder, auth0Domain)));
             });
 
+
             services.AddSingleton<IAuthorizationHandler, RequireScopeHandler>();
             services.AddScoped<LockUserAttribute>();
             services.AddScoped<CacheUserAttribute>();
             services.AddSingleton(Configuration);
-            
+
+         
             services.AddDbContext<BitcornContext>(options =>
                 options.UseSqlServer(connection,
-                Options=> Options.EnableRetryOnFailure(
+                Options => Options.EnableRetryOnFailure(
                         maxRetryCount: 10,
                         maxRetryDelay: TimeSpan.FromSeconds(30),
                         errorNumbersToAdd: null)));
@@ -111,13 +121,18 @@ namespace BITCORNService
 
             app.UseRouting();
 
+            app.UseWebSockets();
+
             app.UseAuthentication();
             app.UseAuthorization();
-
+            
+            
             app.UseEndpoints(endpoints =>
             {
-                endpoints.MapControllers();
+
+                endpoints.MapControllers();//.WithMetadata(new AllowAnonymousAttribute()); ;
             });
         }
+
     }
 }

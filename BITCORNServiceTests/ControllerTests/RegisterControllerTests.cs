@@ -142,7 +142,7 @@ namespace BITCORNServiceTests.ControllerTests
                     Auth0Id = testId
                 }, "0");
 
-                Assert.Equal(testName, response.Auth0Nickname);
+                Assert.Equal(testName, response.Value.Auth0Nickname);
             }
             finally
             {
@@ -266,7 +266,7 @@ namespace BITCORNServiceTests.ControllerTests
             try
             {
                 var user = dbContext.JoinUserModels().FirstOrDefault(u => u.UserIdentity.Auth0Id == testId);
-                user.UserWallet.Balance += UserWalletController.MIN_BALANCE_QUEST_AMOUNT;
+                user.UserWallet.Balance += UserWalletController.MIN_BALANCE_QUEST_AMOUNT+ 10000000;
                 dbContext.SaveChanges();
 
                 var userWalletController = new UserWalletController(dbContext);
@@ -277,7 +277,7 @@ namespace BITCORNServiceTests.ControllerTests
                         SubscriptionName = "BITCORNFarms",
                         Tier = 1,
                         Platform = "test",
-                        Amount= 1000
+                        Amount= 100000
                     });
                 }
                 await TestUtils.TestWalletDownloadWithReferrerInternal(dbContext, "1.1.1.1", user, sub&&runSubFirst);
@@ -289,7 +289,7 @@ namespace BITCORNServiceTests.ControllerTests
                         SubscriptionName = "BITCORNFarms",
                         Tier = 1,
                         Platform = "test",
-                        Amount = 1000
+                        Amount = 100000
                     });
                 }
                 var userReferral = dbContext.UserReferral.FirstOrDefault(u => u.UserId == user.UserId);

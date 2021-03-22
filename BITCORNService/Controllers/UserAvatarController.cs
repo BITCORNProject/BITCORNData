@@ -26,8 +26,67 @@ namespace BITCORNService.Controllers
         {
             this._dbContext = dbContext;
         }
+        public class GetAvatarsBody
+        {
+            public string[] Names { get; set; }
+        }
+
+        [HttpPost("twitchavatars")]
+        public async Task<ActionResult<UserAvatarOutputTwitchName[]>> GetAvatarsForTwitch([FromBody] GetAvatarsBody body)
+        {
+            var avatarConfig = await _dbContext.AvatarConfig.FirstOrDefaultAsync(c => c.Platform == "webgl");
+            var names = body.Names;
+            var identities = await _dbContext.UserIdentity.Where(x=>names.Contains(x.TwitchUsername)).ToArrayAsync();
+            var userIds = identities.Select(x => x.UserId).ToArray();
+
+            var foundAvatars = await _dbContext.UserAvatar.Where(x=>userIds.Contains(x.UserId)).ToArrayAsync();
+            //var foundIds = foundAvatars.Select(x=>x.UserId).ToArray();
+            int newAvatars = 0;
+            var outputs = new List<UserAvatarOutputTwitchName>();
+            for (int i = 0; i < identities.Length; i++)
+            {
+                UserAvatar avatar = null;
+                bool found = false;
+                for (int j = 0; j < foundAvatars.Length; j++)
+                {
+                    var foundAvatar = foundAvatars[j];
+                    if(foundAvatar.UserId==userIds[i])
+                    {
+                        avatar = foundAvatar;
+                        found = true;
+                        break;
+                    }
+                }
+
+                if(!found)
+                {
+                    avatar = new UserAvatar();
+                    avatar.UserId = userIds[i];
+                    avatar.AvatarAddress = avatarConfig.DefaultAvatar;
+
+                    _dbContext.UserAvatar.Add(avatar);
+                    newAvatars++;
+                }
+
+                outputs.Add(new UserAvatarOutputTwitchName() { 
+                    AvailableAvatars = new string[0],
+                    Avatar = avatar.AvatarAddress,
+                    Catalog = avatarConfig.Catalog,
+                    Name = identities[i].TwitchUsername
+                });
+            }
+
+            if(newAvatars>0)
+            {
+                await _dbContext.SaveAsync();
+            }
+
+
+            return outputs.ToArray();
+        }
+
         [HttpGet("{platform}/{id}")]
-        public async Task<ActionResult<object>> Get([FromRoute]string platform,[FromRoute]string id)
+        public async Task<ActionResult<object>> Get([FromRoute] string platform, [FromRoute] string id)
         {
             try
             {
@@ -46,11 +105,11 @@ namespace BITCORNService.Controllers
 
                 if (user != null)
                 {
-                    return await GameUtils.GetAvatar(_dbContext,user, platform);
+                    return await GameUtils.GetAvatar(_dbContext, user, platform);
                 }
                 throw new NotImplementedException();
             }
-            catch(Exception e)
+            catch (Exception e)
             {
                 Console.WriteLine(e.Message);
                 throw e;

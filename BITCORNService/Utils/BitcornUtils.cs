@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using System.Security.Claims;
 using System.Text;
 using System.Threading;
@@ -47,9 +48,10 @@ namespace BITCORNService.Utils
         {
             return controller.HttpContext.GetAppId(config);
         }
-
+        public static bool TEST_MODE = true;
         public static string GetAppId(this HttpContext context, IConfiguration config)
         {
+            if(TEST_MODE) return "JyNM71Tg1b76GScmVpp31KQqFWfY5xbq"; 
             var identity = context.User.Identities.First();
             var claim = identity.Claims.FirstOrDefault(c => c.Type == config["Config:IdKey"]);
             if (claim == default(Claim)) return null;
@@ -65,6 +67,11 @@ namespace BITCORNService.Utils
                     return dbContext.Auth0Query(platformId.Id);
                 case "twitch":
                     return dbContext.TwitchQuery(platformId.Id);
+                case "stream":
+                    return dbContext.TwitchQuery(platformId.Id);
+                case "twitchusername":
+                    return dbContext.TwitchUsernameQuery(platformId.Id);
+
                 case "discord":
                     return dbContext.DiscordQuery(platformId.Id);
                 case "twitter":
@@ -109,6 +116,11 @@ namespace BITCORNService.Utils
                     return await query.ToDictionaryAsync(u => u.UserIdentity.Auth0Id, u => u);
                 case "twitch":
                     return await query.ToDictionaryAsync(u => u.UserIdentity.TwitchId, u => u);
+                case "twitchusername":
+                    return await query.ToDictionaryAsync(u => u.UserIdentity.TwitchUsername, u => u);
+
+                case "stream":
+                    return await query.ToDictionaryAsync(u => u.UserIdentity.TwitchId, u => u);
                 case "discord":
                     return await query.ToDictionaryAsync(u => u.UserIdentity.DiscordId, u => u);
                 case "twitter":
@@ -131,6 +143,11 @@ namespace BITCORNService.Utils
                     return dbContext.Auth0ManyQuery(ids);
                 case "twitch":
                     return dbContext.TwitchManyQuery(ids);
+                case "twitchusername":
+                    return dbContext.TwitchUsernameManyQuery(ids);
+                case "stream":
+                    return dbContext.TwitchManyQuery(ids);
+
                 case "discord":
                     return dbContext.DiscordManyQuery(ids);
                 case "twitter":
@@ -173,6 +190,7 @@ namespace BITCORNService.Utils
                 case "twitch":
                     userIdentity.TwitchId = null;
                     userIdentity.TwitchUsername = null;
+                    userIdentity.TwitchRefreshToken = null;
                     await dbContext.SaveAsync();
                     break;
                 case "discord":
@@ -189,6 +207,11 @@ namespace BITCORNService.Utils
                     userIdentity.RedditId = null;
                     await dbContext.SaveAsync();
                     break;
+                case "stream":
+                    userIdentity.TwitchRefreshToken = null;
+                    await dbContext.SaveAsync();
+                    break;
+
                 default:
                     throw new Exception($"User {platformId.Platform}|{platformId.Id} could not be found");
             }
@@ -214,12 +237,13 @@ namespace BITCORNService.Utils
             sb.Append(")");
             return sb.ToString();
         }
-
+        //TODO: depricate this nonsense
         public static FullUser GetFullUser(User user, UserIdentity userIdentity, UserWallet userWallet, UserStat userStats)
         {
             var fullUser = new FullUser()
             {
-                Username = user.Username,
+                Mfa = user.MFA,
+                Username = userIdentity.Username,//user.Username,
                 UserId = user.UserId,
                 Avatar = user.Avatar,
                 Level = user.Level,
@@ -261,13 +285,101 @@ namespace BITCORNService.Utils
             //call for discord username
             return fullUser;
         }
+        static string FirstLower(string s)
+        {
+            if (string.IsNullOrEmpty(s))
+                return s;
+            return s[0].ToString().ToLower() + s.Substring(1);
+        }
+        public static void AppendUserOutput<T>(Dictionary<string,object> output,Type[] validTypes,T instance,params string[] ignoreNames)
+        {
+            try
+            {
+                var userProperties = typeof(T).GetProperties(BindingFlags.Public | BindingFlags.Instance);
+                foreach (var userProp in userProperties)
+                {
 
+                    if (validTypes.Contains(userProp.PropertyType))
+                    {
+                        var name = FirstLower(userProp.Name);
+                        if (!ignoreNames.Contains(name))
+                        {
+                            output.Add(name, userProp.GetValue(instance));
+                        }
+                    }
+                }
+            }
+            catch(Exception e)
+            {
+                int i = 0;
+            }
+        }
+
+        public static object SelectUserProperties(User user,
+            UserIdentity userIdentity,
+            UserWallet userWallet,
+            UserStat userStats,
+            UserReferral userReferral,
+            Referrer referrer, 
+            bool guestView)
+        {
+            Dictionary<string, object> output = new Dictionary<string, object>();
+            
+            AppendUserOutput(output,new Type[] {
+                typeof(int),
+                typeof(string),
+                typeof(DateTime?),
+                typeof(bool)
+            },user,"Username");
+
+            if (!guestView)
+            {
+                AppendUserOutput(output,
+                    new Type[] { typeof(string) },
+                    userIdentity);
+            }
+            else
+            {
+                output.Add("auth0Id", userIdentity.Auth0Id);
+                output.Add("auth0Nickname", userIdentity.Auth0Nickname);
+                
+                //Auth0Id = userIdentity.Auth0Id,
+                //Auth0Nickname = userIdentity.Auth0Nickname,
+            }
+            
+            if (!guestView)
+            {
+                AppendUserOutput(output, new Type[] { typeof(decimal?), typeof(int?), typeof(string) }, userWallet);
+            }
+            if (!guestView)
+            {
+                AppendUserOutput(output, new Type[] { typeof(decimal?), typeof(int?), typeof(string) }, userStats);
+
+            }
+            if (!guestView&&referrer != null)
+            {
+                AppendUserOutput(output, new Type[] { typeof(decimal?), typeof(int?), typeof(string), typeof(DateTime?), typeof(int) }, referrer,"userId");
+               
+            }
+
+            if (!guestView&&userReferral != null)
+            {
+                AppendUserOutput(output, new Type[] { typeof(decimal), typeof(int), typeof(string), typeof(int) }, userReferral,"userId");
+
+            }
+            
+
+
+            return output;
+        }
+        //TODO: depricate this nonsense
         public static FullUserAndReferrer GetFullUserAndReferer(User user, UserIdentity userIdentity, UserWallet userWallet, UserStat userStats,UserReferral userReferral = null ,Referrer referrer = null)
         {
             var fullUser = new FullUserAndReferrer()
             {
+                Mfa = user.MFA,
                 //user
-                Username = user.Username,
+                Username = userIdentity.Username,
                 UserId = user.UserId,
                 Avatar = user.Avatar,
                 Level = user.Level,

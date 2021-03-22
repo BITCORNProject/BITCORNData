@@ -82,7 +82,7 @@ namespace BITCORNService.Controllers
                     subscriptions = await query.Where(s => s.Subscription.Name.ToLower() == subscriptionName.ToLower()).ToArrayAsync();
 
                 var availableSubscriptions = new List<AvailableSubscriptionResponse>();
-                var cornUsdt = await ProbitApi.GetCornPriceAsync();
+                var cornUsdt = await ProbitApi.GetCornPriceAsync(_dbContext);
                 foreach (var row in subscriptions)
                 {
                     var existingEntry = availableSubscriptions.FirstOrDefault(l => l.Subscription.SubscriptionId == row.Subscription.SubscriptionId);
@@ -230,7 +230,7 @@ namespace BITCORNService.Controllers
         [HttpGet("cornprice")]
         public async Task<decimal> cornprice()
         {
-            return await ProbitApi.GetCornPriceAsync();
+            return await ProbitApi.GetCornPriceAsync(_dbContext);
         }
     }
 }

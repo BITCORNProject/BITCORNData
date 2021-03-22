@@ -6,6 +6,7 @@
         public int? WalletServer { get; set; }
         public decimal? Balance { get; set; }
         public string CornAddy { get; set; }
+        public bool? IsLocked { get; set; }
 
         public virtual User User { get; set; }
     }

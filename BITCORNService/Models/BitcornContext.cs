@@ -38,6 +38,17 @@ namespace BITCORNService.Models
         public virtual DbSet<OrderItem> OrderItem { get; set; }
 
         public virtual DbSet<ThirdPartyClient> ThirdPartyClient { get; set; }
+        //public virtual DbSet<SocialComment> SocialComment { get; set; }
+        //public virtual DbSet<SocialCommentInteraction> SocialCommentInteraction { get; set; }
+        public virtual DbSet<UserLivestream> UserLivestream { get; set; }
+        //public virtual DbSet<SocialFollow> SocialFollow { get; set; }
+        //public virtual DbSet<SocialTag> SocialTag { get; set; }
+        public virtual DbSet<UserMission> UserMission { get; set; }
+        public virtual DbSet<IrcTransaction> IrcTransaction { get; set; }
+        //public virtual DbSet<UserStreamAction> UserStreamAction { get; set; }
+        //public virtual DbSet<UserTts> UserTts { get; set; }
+        //public virtual DbSet<UserGiveawayTicket> UserGiveawayTicket { get; set; }
+        public virtual DbSet<CornPurchase> CornPurchase { get; set; }
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {
         }
@@ -165,6 +176,10 @@ namespace BITCORNService.Models
 
                 entity.Property(e=>e.SubTier)
                     .HasDefaultValueSql("((0))");
+
+                entity.Property(e=>e.IsSocketConnected).HasDefaultValueSql("((0))"); ;
+                entity.Property(e=>e.MFA).HasDefaultValueSql("((0))"); ;
+
             });
 
             modelBuilder.Entity<UserIdentity>(entity =>
@@ -209,6 +224,10 @@ namespace BITCORNService.Models
                 entity.Property(e => e.TwitterId)
                     .HasMaxLength(100)
                     .IsUnicode(false);
+
+                entity.Property(e=>e.Username)
+                .HasMaxLength(100)
+                .IsUnicode(false);
 
                 entity.HasOne(d => d.User)
                     .WithOne(p => p.UserIdentity)
@@ -289,6 +308,8 @@ namespace BITCORNService.Models
                 entity.Property(e => e.CornAddy)
                     .HasMaxLength(50)
                     .IsUnicode(false);
+                
+                entity.Property(e=>e.IsLocked);
 
                 entity.HasOne(d => d.User)
                     .WithOne(p => p.UserWallet)

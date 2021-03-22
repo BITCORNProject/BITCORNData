@@ -38,9 +38,14 @@ namespace BITCORNService.Platforms
                 }
                 else if (redditDbUser?.UserIdentity.Auth0Id != null)
                 {
+                    var obj = GetSyncOutput(DateTime.Now,redditDbUser, false);
+                    obj.ProfileAlreadySynced = true;
+                    return obj;
+                    /*
                     var e = new Exception($"Auth0Id already exists for user {platformId.Id}");
                     await BITCORNLogger.LogError(_dbContext, e, JsonConvert.SerializeObject(registrationData));
                     throw e;
+                    */
                 }
                 else
                 {

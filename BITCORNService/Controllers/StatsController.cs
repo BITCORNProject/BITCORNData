@@ -22,7 +22,7 @@ namespace BITCORNService.Controllers
         {
             _dbContext = dbContext;
         }
-
+        //TODO: deprecate this nonsense
         [HttpPost("userstats/{id}")]
         public async Task<UserStat> UserStats([FromRoute] string id)
         {
@@ -32,6 +32,7 @@ namespace BITCORNService.Controllers
             return await Utils.BitcornUtils.GetUserForPlatform(platformId, _dbContext).Select(u=>u.UserStat).FirstOrDefaultAsync();
         }
 
+        //TODO: deprecate this nonsense
         [HttpPost("ReceivedTotal")]
         public async Task<decimal> ReceiverTotal([FromRoute] string auth0Id)
         {

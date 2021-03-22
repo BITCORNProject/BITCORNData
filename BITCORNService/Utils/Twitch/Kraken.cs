@@ -15,6 +15,7 @@ using RestSharp;
 
 namespace BITCORNService.Utils.Twitch
 {
+
     public class Kraken
     {
         private IConfiguration _config;
@@ -44,7 +45,7 @@ namespace BITCORNService.Utils.Twitch
             {
                 //create client
                 var restClient = new RestClient(@"https://api.twitch.tv/");
-                
+
                 //create request
                 var request = new RestRequest(Method.GET);
                 request.Resource = "kraken/channels/223836682/subscriptions";
@@ -53,7 +54,7 @@ namespace BITCORNService.Utils.Twitch
                 request.AddHeader("Authorization", $"OAuth {token}");
                 request.AddHeader("Accept", "application/vnd.twitchtv.v5+json");
                 request.AddHeader("Client-ID", _config.GetSection("Config").GetSection("TwitchClientIdSub").Value);
-                
+
                 //make request
                 var response = restClient.Execute(request);
                 var data = JsonConvert.DeserializeObject<TwitchSubData>(response.Content);
@@ -82,9 +83,10 @@ namespace BITCORNService.Utils.Twitch
                     ToArrayAsync();
 
                 var discordUpdateData = new List<DiscordGuildUpdate>();
-                discordUpdateData.Add(new DiscordGuildUpdate() { 
+                discordUpdateData.Add(new DiscordGuildUpdate()
+                {
                     GuildId = "446556386076393473",
-                    Roles = new List<DiscordUserRoleUpdate> { 
+                    Roles = new List<DiscordUserRoleUpdate> {
                         new DiscordUserRoleUpdate()
                         {
                             RoleId = "522152365374046210",
@@ -92,31 +94,31 @@ namespace BITCORNService.Utils.Twitch
                         }
                     }
                 });
-                
+
                 var fullInfo = await (from userSubscription in _dbContext.UserSubscription
-                 join subscription in _dbContext.Subscription on userSubscription.SubscriptionId equals subscription.SubscriptionId
-                 join subscriptionTier in _dbContext.SubscriptionTier on userSubscription.SubscriptionTierId equals subscriptionTier.SubscriptionTierId
-                 join userIdentity in _dbContext.UserIdentity on userSubscription.UserId equals userIdentity.UserId
-                 join user in _dbContext.User on userSubscription.UserId equals user.UserId
+                                      join subscription in _dbContext.Subscription on userSubscription.SubscriptionId equals subscription.SubscriptionId
+                                      join subscriptionTier in _dbContext.SubscriptionTier on userSubscription.SubscriptionTierId equals subscriptionTier.SubscriptionTierId
+                                      join userIdentity in _dbContext.UserIdentity on userSubscription.UserId equals userIdentity.UserId
+                                      join user in _dbContext.User on userSubscription.UserId equals user.UserId
 
-                 select new 
-                 {
-                     userSubscription,
-                     subscription,
-                     subscriptionTier,
-                     userIdentity,
-                     isBanned = user.IsBanned
+                                      select new
+                                      {
+                                          userSubscription,
+                                          subscription,
+                                          subscriptionTier,
+                                          userIdentity,
+                                          isBanned = user.IsBanned
 
-                 }).Where(sub=>!sub.isBanned&&sub.subscription.DiscordGuildId!=null && sub.userSubscription.LastSubDate.Value.AddDays(sub.subscription.Duration)>DateTime.Now).ToArrayAsync();
+                                      }).Where(sub => !sub.isBanned && sub.subscription.DiscordGuildId != null && sub.userSubscription.LastSubDate.Value.AddDays(sub.subscription.Duration) > DateTime.Now).ToArrayAsync();
 
                 var subInfo = await (from subscription in _dbContext.Subscription
-                              join subscriptionTier in _dbContext.SubscriptionTier on subscription.SubscriptionId equals subscriptionTier.SubscriptionId
-                              select new
-                              {
-                                  subscription,
-                                  subscriptionTier
+                                     join subscriptionTier in _dbContext.SubscriptionTier on subscription.SubscriptionId equals subscriptionTier.SubscriptionId
+                                     select new
+                                     {
+                                         subscription,
+                                         subscriptionTier
 
-                              }).Where(sub => sub.subscription.DiscordGuildId != null).ToArrayAsync();
+                                     }).Where(sub => sub.subscription.DiscordGuildId != null).ToArrayAsync();
 
                 foreach (var sub in subInfo)
                 {
@@ -184,10 +186,10 @@ namespace BITCORNService.Utils.Twitch
                 req.Resource = "discord";
                 req.AddJsonBody(discordUpdateData);
                 var r = client.Execute(req);
-            
+
             }
         }
-        
+
         public async Task<bool> UpdateSubTiers(Sub[] subs)
         {
             try
@@ -229,7 +231,7 @@ namespace BITCORNService.Utils.Twitch
 
             var response = restClient.Execute(request);
             var twitchRefreshData = JsonConvert.DeserializeObject<TwitchRefreshToken>(response.Content);
-            
+
 
             if (!string.IsNullOrWhiteSpace(twitchRefreshData?.AccessToken) && !string.IsNullOrWhiteSpace(twitchRefreshData?.RefreshToken))
             {

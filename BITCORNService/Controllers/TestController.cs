@@ -1,5 +1,7 @@
 ﻿using System;
+using System.Linq;
 using System.Net;
+using System.Net.WebSockets;
 using System.Threading.Tasks;
 using BITCORNService.Models;
 using BITCORNService.Utils;
@@ -40,6 +42,17 @@ namespace BITCORNService.Controllers
             {
                 return HttpStatusCode.InternalServerError;
             }
+        }
+
+        [HttpGet("debugsockets")]
+        public async Task<ActionResult<object>> debug()
+        {
+            return new
+            {
+                validFarmsSockets = WebSocketsController.BitcornFarmsWebSocket.Where(x => x.State == WebSocketState.Open).Count(),
+                validHubSockets = WebSocketsController.BitcornhubWebsocket.Where(x => x.State == WebSocketState.Open).Count(),
+
+            };
         }
 
         [HttpGet]

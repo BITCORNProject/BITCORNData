@@ -41,5 +41,6 @@ namespace BITCORNService.Utils.Models
         public int SubTier { get; set; }
         public bool IsBanned { get; set; }
         public DateTime? CreationTime { get; set; }
+        public bool Mfa { get; set; }
     }
 }

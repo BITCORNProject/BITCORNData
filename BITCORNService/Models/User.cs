@@ -15,9 +15,13 @@ namespace BITCORNService.Models
         public int UserId { get; set; }
         public string Level { get; set; }
         public int SubTier { get; set; }
+        //TODO: deprecate this property, as its read from useridentity isntead
         public string Username { get; set; }
         public string Avatar { get; set; }
         public bool IsBanned { get; set; }
+
+        public bool MFA { get; set; }
+        public bool IsSocketConnected { get; set; }
         public DateTime? CreationTime { get; set; }
         public virtual UserIdentity UserIdentity { get; set; }
         public virtual UserStat UserStat { get; set; }

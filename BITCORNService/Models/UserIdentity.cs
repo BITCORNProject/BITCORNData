@@ -10,13 +10,14 @@ namespace BITCORNService.Models
         public string TwitterUsername { get; set; }
         [UserPropertyRoute(nameof(RedditId))]
         public string RedditUsername { get => RedditId; }
+        public string Username { get; set; }
         public string Auth0Nickname { get; set; }
         public string Auth0Id { get; set; }
         public string TwitchId { get; set; }
         public string DiscordId { get; set; }
         public string TwitterId { get; set; }
         public string RedditId { get; set; }
-
+        public string TwitchRefreshToken { get; set; }
         public virtual User User { get; set; }
     }
 }
