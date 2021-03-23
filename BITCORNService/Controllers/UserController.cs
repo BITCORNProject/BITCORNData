@@ -758,7 +758,7 @@ namespace BITCORNService.Controllers
 
         */
 
-        
+
         [ServiceFilter(typeof(LockUserAttribute))]
         [HttpPost("{id}/setlivestream")]
         [Authorize(Policy = AuthScopes.ChangeUser)]
@@ -778,6 +778,11 @@ namespace BITCORNService.Controllers
                     var liveStream = await _dbContext.UserLivestream.FirstOrDefaultAsync(u => u.UserId == user.UserId);
                     if (liveStream == null)
                     {
+                        if (body.RainAlgorithm != 1 && body.RainAlgorithm != 0)
+                        {
+                            body.RainAlgorithm = 0;
+                        }
+
                         liveStream = new UserLivestream()
                         {
                             Enabled = true,//body.Enabled,
@@ -787,8 +792,8 @@ namespace BITCORNService.Controllers
                             IrcTarget = "#" + user.UserIdentity.TwitchUsername,
                             TxCooldownPerUser = body.TxCooldownPerUser,
                             RainAlgorithm = body.RainAlgorithm,
-                            MinRainAmount = body.MinRainAmount,
-                            MinTipAmount = body.MinTipAmount,
+                            MinRainAmount = 1,//body.MinRainAmount,
+                            MinTipAmount = 1,//body.MinTipAmount,
                             TxMessages = body.TxMessages,
                             IrcEventPayments = body.IrcEventPayments,
                             BitcornPerBit = 0.1m,
@@ -1550,11 +1555,11 @@ namespace BITCORNService.Controllers
                 //.Join(_dbContext.User, identity => identity.UserId, us => us.UserId, (id, u) => u)
                 .FirstOrDefaultAsync();
             */
-            var user = await _dbContext.UserIdentity.Where(x=>x.Auth0Id==auth0IdUsername.Auth0Id).FirstOrDefaultAsync();
+            var user = await _dbContext.UserIdentity.Where(x => x.Auth0Id == auth0IdUsername.Auth0Id).FirstOrDefaultAsync();
             if (user != null)
             {
                 user.Username = auth0IdUsername.Username;
-                
+
                 int count = await _dbContext.SaveAsync();
                 return true;
             }

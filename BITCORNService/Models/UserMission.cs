@@ -20,8 +20,8 @@ namespace BITCORNService.Models
 
     public class UserMissionResponse
     {
-        public DateTime? Faucet { get; set; }
-
+        public long? Faucet { get; set; }
+        public long? NextFaucetTime { get; set; }
         public int? FaucetClaimCount { get; set; }
         public decimal? FaucetFarmAmount { get; set; }
         public bool FaucetAvailable { get; set; }
@@ -33,13 +33,25 @@ namespace BITCORNService.Models
         public int FaucetRank { get; set; }
         public bool CompletedFlag { get; set; }
         public decimal CompleteReward { get; set; }
+        public long UnixTimeNow(DateTime date)
+        {
+            //var timeSpan = (date- new DateTime(1970, 1, 1, 0, 0, 0));
+            return (long)Math.Truncate((date.ToUniversalTime().Subtract(new DateTime(1970, 1, 1))).TotalSeconds);
+            // return (long)timeSpan.TotalSeconds;
+        }
         public UserMissionResponse(UserMission m, int faucetRank, bool completedMission, decimal completeReward =0)
         {
             CompletedFlag = completedMission;
             CompleteReward = completeReward;
+            DateTime? faucet = m.Faucet;
             if (m != null)
             {
-                Faucet = m.Faucet;
+                if (m.Faucet != null)
+                {
+                    Faucet = UnixTimeNow(m.Faucet.Value);
+                    faucet = m.Faucet;
+                }
+
                 FaucetClaimCount = m.FaucetClaimCount;
                 FaucetFarmAmount = m.FaucetFarmAmount;
                 FaucetClaimStreak = m.FaucetClaimStreak;
@@ -47,9 +59,13 @@ namespace BITCORNService.Models
                 FaucetStreakBonuses = m.FaucetStreakBonuses;
             }
             FaucetRank = faucetRank+1;
-            if (Faucet != null)
+            if (faucet != null)
             {
-                FaucetAvailable = DateTime.Now > Faucet.Value.AddHours(24);
+                FaucetAvailable = DateTime.Now > faucet.Value.AddHours(24);
+                if(!FaucetAvailable)
+                {
+                    NextFaucetTime = UnixTimeNow(faucet.Value.AddHours(24));
+                }
             }
             else
             {
