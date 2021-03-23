@@ -405,7 +405,7 @@ namespace BITCORNService.Controllers
 
             }
 
-            return channels.OrderByDescending(x => x.AmountOfRainsSent).ToArray();
+            return channels.OrderByDescending(x => x.AmountOfRainsSent).Take(25).ToArray();
         }
 
         public class UpdateUserRefreshTokenRequest
@@ -757,6 +757,8 @@ namespace BITCORNService.Controllers
         }
 
         */
+
+        
         [ServiceFilter(typeof(LockUserAttribute))]
         [HttpPost("{id}/setlivestream")]
         [Authorize(Policy = AuthScopes.ChangeUser)]
@@ -1087,7 +1089,7 @@ namespace BITCORNService.Controllers
         [ServiceFilter(typeof(CacheUserAttribute))]
         [HttpGet("{id}/getmfastate")]
         [Authorize(Policy = AuthScopes.ChangeUser)]
-        public async Task<ActionResult<object>> GetMFAState([FromRoute] string id, [FromBody] SetMFAState body)
+        public async Task<ActionResult<object>> GetMFAState([FromRoute] string id)
         {
             if (this.GetCachedUser() != null)
                 throw new InvalidOperationException();

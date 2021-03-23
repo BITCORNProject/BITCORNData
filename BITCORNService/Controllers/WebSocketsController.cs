@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IdentityModel.Tokens.Jwt;
 using System.IO;
 using System.Linq;
 using System.Net.WebSockets;
@@ -14,7 +15,10 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
+using Microsoft.IdentityModel.Logging;
+using Microsoft.IdentityModel.Tokens;
 using Newtonsoft.Json;
+using RestSharp;
 
 namespace BITCORNService.Controllers
 {
@@ -124,19 +128,16 @@ namespace BITCORNService.Controllers
         }
 
 
-        public static void GetSocketArgs<T>(string v)
-        {
-
-        }
 
         public static List<WebSocket> BitcornFarmsWebSocket { get; set; } = new List<WebSocket>();
         public static List<WebSocket> BitcornhubWebsocket { get; set; } = new List<WebSocket>();
         public static string[] BitcornhubSocketArgs { get; set; }
 
-        [Authorize(Policy = AuthScopes.SendTransaction)]
+        
+
 
         [HttpGet("/bitcornhub")]
-        public async Task GetBitcornhub([FromQuery] string settingsColumns)
+        public async Task GetBitcornhub([FromQuery] string settingsColumns, [FromQuery] string token)
         {
             if (HttpContext.WebSockets.IsWebSocketRequest)
             {
@@ -148,9 +149,11 @@ namespace BITCORNService.Controllers
             {
                 HttpContext.Response.StatusCode = 400;
             }
+
         }
 
-        [Authorize(Policy = AuthScopes.SendTransaction)]
+
+        //[Authorize(Policy = AuthScopes.SendTransaction)]
 
         [HttpGet("/bitcornfarms")]
         public async Task GetBitcornfarms()
@@ -198,7 +201,7 @@ namespace BITCORNService.Controllers
                         await receiver.Process(webSocket, message);
                     }
                 }
-                catch(WebSocketException ex)
+                catch (WebSocketException ex)
                 {
                     break;
                 }

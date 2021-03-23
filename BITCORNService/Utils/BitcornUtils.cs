@@ -48,7 +48,7 @@ namespace BITCORNService.Utils
         {
             return controller.HttpContext.GetAppId(config);
         }
-        public static bool TEST_MODE = true;
+        public static bool TEST_MODE = false;
         public static string GetAppId(this HttpContext context, IConfiguration config)
         {
             if(TEST_MODE) return "JyNM71Tg1b76GScmVpp31KQqFWfY5xbq"; 

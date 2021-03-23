@@ -54,13 +54,17 @@ namespace BITCORNService.Controllers
 
             };
         }
-
+        [HttpGet("twitchtest")]
+        public async Task<string> GetT()
+        {
+            return _config.GetSection("Config").GetSection("TwitchClientIdSub").Value.ToString();
+        }
         [HttpGet]
         public async Task<HttpStatusCode> Get()
         {
             try
             {
-                
+        
                 return HttpStatusCode.OK;
             }
             catch (Exception e)

@@ -180,7 +180,7 @@ namespace BITCORNService.Controllers
                         return StatusCode(420);
                     }
 
-                    if (user.MFA)
+                    //if (user.MFA)
                     {
                         if (user.UserWallet.Balance < 10_000_000)
                         {
@@ -238,13 +238,14 @@ namespace BITCORNService.Controllers
                             });
                         }
                     }
+                    /*
                     else
                     {
                         await FillColumns(response, request, user);
                         response.Add("usererror", false);
                         response.Add("walletavailable", false);
                         response.Add("txid", null);
-                    }
+                    }*/
                 }
                 return response;
             }

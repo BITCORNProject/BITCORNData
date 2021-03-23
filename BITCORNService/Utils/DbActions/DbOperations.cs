@@ -162,7 +162,7 @@ namespace BITCORNService.Utils.DbActions
         {
             return await dbContext.CornDeposit.AnyAsync(w => w.TxId == txId);
         }
-        public const bool DB_WRITES_ENABLED = true;
+        public const bool DB_WRITES_ENABLED = true;//true;
         public static async Task<int> ExecuteSqlRawAsync(BitcornContext dbContext, string sql)
         {
             if (DB_WRITES_ENABLED)

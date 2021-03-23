@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Linq;
+using System.Net;
 using System.Threading.Tasks;
 using BITCORNService.Models;
 using BITCORNService.Platforms;
@@ -129,7 +130,7 @@ namespace BITCORNService.Controllers
         [Authorize(Policy = AuthScopes.ChangeUser)]
         [ServiceFilter(typeof(CacheUserAttribute))]
         [HttpPost]
-        public async Task<PlatformSyncResponse> Register([FromBody] RegistrationData registrationData)
+        public async Task<ActionResult<PlatformSyncResponse>> Register([FromBody] RegistrationData registrationData)
         {
             if (registrationData == null) throw new ArgumentNullException("registrationData");
             if (registrationData.Auth0Id == null) throw new ArgumentNullException("registrationData.Auth0Id");
@@ -147,13 +148,25 @@ namespace BITCORNService.Controllers
                 var registerController = SupportedPlatform.AllocateController(_dbContext, platformId, _configuration);
                 if (registerController != null)
                 {
-                    var result = await registerController.SyncPlatform(registrationData, auth0DbUser, platformId, auth0Id);
-                    if (result != null)
+                    if (!string.IsNullOrEmpty(platformId.Id) && platformId.Id.ToLower()!="undefined")
                     {
-                        //claim transactions etc..
-                        await registerController.OnSyncSuccess(result.SocialCreationTime, platformId);
+                        var result = await registerController.SyncPlatform(registrationData, auth0DbUser, platformId, auth0Id);
+                        if (result != null)
+                        {
+                            //claim transactions etc..
+                            await registerController.OnSyncSuccess(result.SocialCreationTime, platformId);
+                        }
+
+                        return result;
                     }
-                    return result;
+                    else
+                    {
+                        return registerController.GetSyncOutput(auth0DbUser?.CreationTime, auth0DbUser, false);
+                    }
+                }
+                else
+                {
+                    return StatusCode((int)HttpStatusCode.BadRequest);
                 }
                 
             }

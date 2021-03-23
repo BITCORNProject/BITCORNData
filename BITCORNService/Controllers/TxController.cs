@@ -541,6 +541,7 @@ namespace BITCORNService.Controllers
         [HttpPost("completebuycorn")]
         public async Task<ActionResult<object>> CloseBuycorn([FromBody] CompleteBuyCornRequest completeRequest)
         {
+            return StatusCode(200);
             if (this.GetCachedUser() != null)
                 throw new InvalidOperationException();
             if (!string.IsNullOrEmpty(completeRequest.PaymentId))
@@ -614,6 +615,8 @@ namespace BITCORNService.Controllers
         [HttpPost("prepbuycorn")]
         public async Task<ActionResult<object>> Buycorn([FromBody] BuyCornRequest request)
         {
+
+            return StatusCode(200);
             if (this.GetCachedUser() != null)
                 throw new InvalidOperationException();
 
