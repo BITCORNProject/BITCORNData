@@ -43,7 +43,7 @@ namespace BITCORNService.Models
         {
             CompletedFlag = completedMission;
             CompleteReward = completeReward;
-            DateTime? faucet = m.Faucet;
+            DateTime? faucet = null;//m.Faucet;
             if (m != null)
             {
                 if (m.Faucet != null)
