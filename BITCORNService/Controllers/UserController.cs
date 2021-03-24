@@ -348,6 +348,7 @@ namespace BITCORNService.Controllers
             public decimal Tier3IdlePerMinute { get; set; }
             public decimal Tier2IdlePerMinute { get; set; }
             public decimal Tier1IdlePerMinute { get; set; }
+            public decimal TotalBitcornPaidViaIdling { get; set; }
             public bool IsPartner { get; set; }
             public bool IrcPayments { get; set; }
 
@@ -381,6 +382,7 @@ namespace BITCORNService.Controllers
                 GiveawayEntryFee = stream.GiveawayEntryFee;
                 GiveawayOpen = stream.GiveawayOpen;
                 GiveawayText = stream.GiveawayText;
+                TotalBitcornPaidViaIdling = stream.TotalBitcornPaidViaIdling;
                 if (ticket != null)
                 {
                     hasTicket = true;
