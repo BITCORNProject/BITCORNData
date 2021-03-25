@@ -1273,7 +1273,7 @@ namespace BITCORNService.Controllers
                                 decimal bonus = 0;
                                 if (userMission.FaucetClaimStreak > 1)
                                 {
-                                    bonus = amount * 0.25m;
+                                    //bonus = amount * 0.25m;
                                 }
 
                                 amount += bonus;
