@@ -541,7 +541,7 @@ namespace BITCORNService.Controllers
         [HttpPost("completebuycorn")]
         public async Task<ActionResult<object>> CloseBuycorn([FromBody] CompleteBuyCornRequest completeRequest)
         {
-            return StatusCode(200);
+            //return StatusCode(200);
             if (this.GetCachedUser() != null)
                 throw new InvalidOperationException();
             if (!string.IsNullOrEmpty(completeRequest.PaymentId))
@@ -560,6 +560,10 @@ namespace BITCORNService.Controllers
                         var purchase = await _dbContext.CornPurchase.Where(x => x.PaymentId == completeRequest.PaymentId && x.UserId == user.UserId).FirstOrDefaultAsync();
                         if (purchase != null && purchase.CornTxId == null)
                         {
+                            if(purchase.CornAmount<=0||purchase.UsdAmount<=0)
+                            {
+                                return StatusCode(400);
+                            }
                             //var prices = await ProbitApi.GetPricesAsync();
                             //var (cornBtc, btcUsdt, cornPrice) = prices;
                             //var costDiff = Math.Abs(purchase.UsdAmount-(purchase.CornAmount*cornPrice));
@@ -616,7 +620,7 @@ namespace BITCORNService.Controllers
         public async Task<ActionResult<object>> Buycorn([FromBody] BuyCornRequest request)
         {
 
-            return StatusCode(200);
+            //return StatusCode(200);
             if (this.GetCachedUser() != null)
                 throw new InvalidOperationException();
 
