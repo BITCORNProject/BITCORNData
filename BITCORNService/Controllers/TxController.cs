@@ -581,7 +581,9 @@ namespace BITCORNService.Controllers
                                 //var costDiff = Math.Abs(purchase.UsdAmount-(purchase.CornAmount*cornPrice));
                                 //if (costDiff < 2)
                                 {
-                                    var value = await TxUtils.SendFromBitcornhubGetReceipt(user, purchase.CornAmount, "BITCORNFarms", "corn-purchase", _dbContext);
+                                    var amount = purchase.CornAmount;
+                                    amount -= amount * 0.2m;
+                                    var value = await TxUtils.SendFromBitcornhubGetReceipt(user, amount, "BITCORNFarms", "corn-purchase", _dbContext);
                                     if (value != null && value.Tx != null)
                                     {
                                         purchase.CornTxId = value.TxId.Value;
@@ -758,6 +760,7 @@ namespace BITCORNService.Controllers
                         var (cornBtc, btcUsdt, cornPrice) = prices;
                         var costDiff = 0.0m;
                         var expectedCost = cornPrice * request.CornAmount;
+
                         if (expectedCost > 0 && request.CornAmount > 0 && request.UsdAmount > 0)
                         {
                             if (expectedCost < request.UsdAmount)
@@ -776,7 +779,7 @@ namespace BITCORNService.Controllers
                             var existingPurhcase = await _dbContext.CornPurchase.Where(x => x.OrderId == request.OrderId).FirstOrDefaultAsync();
 
                             //Math.Abs(request.UsdAmount - (request.CornAmount * cornPrice));
-                            if (costDiff < 0.03m && existingPurhcase == null)
+                            if (costDiff < 0.001m && existingPurhcase == null)
                             {
                                 var purchase = new CornPurchase();
                                 purchase.OrderId = request.OrderId;
