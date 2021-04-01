@@ -1,4 +1,5 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using System;
+using System.ComponentModel.DataAnnotations;
 
 namespace BITCORNService.Models
 {
@@ -14,5 +15,6 @@ namespace BITCORNService.Models
         public string PaymentId { get; set; }
         public string Fingerprint { get; set; }
         public string ReceiptNumber { get; set; }
+        public DateTime CreatedAt { get; set; }
     }
 }

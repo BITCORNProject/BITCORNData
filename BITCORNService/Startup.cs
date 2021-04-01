@@ -81,6 +81,10 @@ namespace BITCORNService
 
                 options.AddPolicy(AuthScopes.AuthorizeOrder,
                     policy => policy.Requirements.Add(new RequireScope(AuthScopes.AuthorizeOrder, auth0Domain)));
+
+
+                options.AddPolicy(AuthScopes.BuyCorn,
+                    policy => policy.Requirements.Add(new RequireScope(AuthScopes.BuyCorn, auth0Domain)));
             });
 
 
