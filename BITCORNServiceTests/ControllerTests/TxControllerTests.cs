@@ -63,6 +63,72 @@ namespace BITCORNServiceTests
             }
         }
 
+        [Fact]
+        public async Task Testbuycorn()
+        {
+            UnlockTestUser();
+            var dbContext = TestUtils.CreateDatabase();
+            try
+            {
+                var startFromUser = dbContext.TwitchQuery(_configuration["Config:TestFromUserId"]).FirstOrDefault();
+                var startBal = startFromUser.UserWallet.Balance.Value;
+                var txController = new TxController(_configuration, dbContext);
+                var context = txController.ControllerContext.HttpContext = new DefaultHttpContext();
+                var usdAmount = 10;
+                var prices = await ProbitApi.GetCornPriceAsync(dbContext);
+                var response = await txController.CanBuycorn(startFromUser.UserIdentity.Auth0Id, usdAmount);
+                if (response.Value.Success)
+                {
+                    var cornAmount = usdAmount / prices;
+                    string token = response.Value.Token;
+                    var paymentId = Guid.NewGuid().ToString();
+                    var orderId = Guid.NewGuid().ToString();
+                    var buyCornResponse = await txController.Buycorn(new TxController.BuyCornRequest()
+                    {
+                        Auth0Id = startFromUser.UserIdentity.Auth0Id,
+                        CornAmount = cornAmount,
+                        UsdAmount = usdAmount,
+                        CreatedAt = DateTime.Now,
+                        Fingerprint = "123",
+                        OrderId = orderId,
+                        PaymentId = paymentId,
+                        ReceiptNumber = "123",
+                        Token = token
+                    });
+
+                    var cv = buyCornResponse.Value;
+                    if (cv.Success)
+                    {
+                        var closeResponse = await txController.CloseBuycorn(new TxController.CompleteBuyCornRequest()
+                        {
+                            Auth0Id = startFromUser.UserIdentity.Auth0Id,
+
+                            CornPurchaseId = cv.PurchaseCloseId,
+                            PaymentId = paymentId,
+                            Token = token
+                        });
+
+                        Assert.True(closeResponse.Value.Success);
+                        Assert.True(closeResponse.Value.PurchaseCloseId != null && closeResponse.Value.PurchaseCloseId != 0);
+                        {
+                            var dbContext2 = TestUtils.CreateDatabase();
+                            var startFromUser2 = dbContext2.TwitchQuery(_configuration["Config:TestFromUserId"]).Select(x=>x.UserWallet.Balance).FirstOrDefault();
+                            Assert.True(startFromUser2>startBal);
+                        }
+                        return;
+                    }
+                }
+                Assert.False(true);
+            }
+            catch (Exception ex)
+            {
+                throw ex;
+            }
+            finally
+            {
+                dbContext.Dispose();
+            }
+        }
 
         [Fact]
         public async Task TestRainSuccess()

@@ -541,10 +541,17 @@ namespace BITCORNService.Controllers
             public string Token { get; set; }
         }
 
+        public class CloseBuycornResponse
+        {
+            public bool Success { get; set; }
+            public int? PurchaseCloseId { get; set; }
+            public string PaymentId { get;  set; }
+        }
+
         [ServiceFilter(typeof(CacheUserAttribute))]
         [HttpPost("completebuycorn")]
         [Authorize(Policy = AuthScopes.BuyCorn)]
-        public async Task<ActionResult<object>> CloseBuycorn([FromBody] CompleteBuyCornRequest completeRequest)
+        public async Task<ActionResult<CloseBuycornResponse>> CloseBuycorn([FromBody] CompleteBuyCornRequest completeRequest)
         {
             //return StatusCode(200);
             if (this.GetCachedUser() != null)
@@ -588,29 +595,29 @@ namespace BITCORNService.Controllers
                                     {
                                         purchase.CornTxId = value.TxId.Value;
                                         await _dbContext.SaveAsync();
-                                        return new
+                                        return new CloseBuycornResponse
                                         {
-                                            success = true,
+                                            Success = true,
 
-                                            purchaseCloseId = purchase.CornPurchaseId,
-                                            paymentId = purchase.PaymentId
+                                            PurchaseCloseId = purchase.CornPurchaseId,
+                                            PaymentId = purchase.PaymentId
                                         };
                                     }
                                 }
                             }
                         }
-                        return new
+                        return new CloseBuycornResponse
                         {
-                            success = false,
+                            Success = false,
 
                         };
                     }
                     catch (Exception ex)
                     {
                         await BITCORNLogger.LogError(_dbContext, ex, JsonConvert.SerializeObject(completeRequest));
-                        return new
+                        return new CloseBuycornResponse
                         {
-                            success = false
+                            Success = false
                         };
                     }
                     finally
@@ -642,30 +649,41 @@ namespace BITCORNService.Controllers
 
         }
 
+        public class CanBuyCornResponse
+        {
+            public bool  HasFunds { get; set; }
+            public bool Success { get; set; }
+            public bool GlobalCooldown { get; set; }
+            public bool Cooldown { get; set; }
+            public string Token { get; set; }
+        }
+
         [ServiceFilter(typeof(CacheUserAttribute))]
         [HttpGet("{authid}/canbuycorn/{amount}")]
 
         [Authorize(Policy = AuthScopes.BuyCorn)]
-        public async Task<ActionResult<object>> CanBuycorn([FromRoute] string authid, [FromRoute] long amount)
+        public async Task<ActionResult<CanBuyCornResponse>> CanBuycorn([FromRoute] string authid, [FromRoute] long amount)
         {
             var platformId = BitcornUtils.GetPlatformId(authid);
             var user = await BitcornUtils.GetUserForPlatform(platformId, _dbContext).FirstOrDefaultAsync();
-            if (user != null && !user.IsBanned)
+            if (user != null && !user.IsBanned && user.IsAdmin())
             {
 
                 var soldAmount24h = await _dbContext.CornPurchase.Where(x => x.CreatedAt > DateTime.Now.AddHours(-24) && x.CornTxId != null).SumAsync(x => x.CornAmount);
                 if (soldAmount24h > 50_000_000)
                 {
-                    return new
+                    return new CanBuyCornResponse
                     {
-                        success = false,
-                        globalCooldown = true,
-                        cooldown = false
+
+                        HasFunds = true,
+                        Success = false,
+                        GlobalCooldown = true,
+                        Cooldown = false
                     };
                 }
                 else
                 {
-                    var cooldown = await _dbContext.CornPurchase.Where(x => x.UserId == user.UserId && x.CreatedAt > DateTime.Now.AddMinutes(-1)).CountAsync();
+                    var cooldown = await _dbContext.CornPurchase.Where(x => x.UserId == user.UserId && x.CreatedAt > DateTime.Now.AddMinutes(-1) && x.CornTxId!=null).CountAsync();
                     if (cooldown <= 0 && amount >= 1)
                     {
                         var bitcornhub = await TxUtils.GetBitcornhub(_dbContext);
@@ -678,33 +696,34 @@ namespace BITCORNService.Controllers
                                 s_PurchaseTokens.Add(purchaseToken);
                             }
 
-                            return new
+                            return new CanBuyCornResponse
                             {
-                                hasFunds = true,
-                                success = true,
-                                globalCooldown = false,
-                                cooldown = false,
-                                token = purchaseToken
+                                HasFunds = true,
+                                Success = true,
+                                GlobalCooldown = false,
+                                Cooldown = false,
+                                Token = purchaseToken
                             };
                         }
                         else
                         {
-                            return new
+                            return new CanBuyCornResponse
                             {
-                                hasFunds = false,
-                                success = false,
-                                globalCooldown = false,
-                                cooldown = false
+                                HasFunds = false,
+                                Success = false,
+                                GlobalCooldown = false,
+                                Cooldown = false
                             };
                         }
                     }
                     else
                     {
-                        return new
+                        return new CanBuyCornResponse
                         {
-                            success = false,
-                            globalCooldown = false,
-                            cooldown = false
+                            HasFunds = true,
+                            Success = false,
+                            GlobalCooldown = false,
+                            Cooldown = false
                         };
                     }
                 }
@@ -716,11 +735,18 @@ namespace BITCORNService.Controllers
 
         }
 
+        public class PrepBuyCornResponse
+        {
+            public bool Success { get; set; }
+            public string PaymentId { get; set; }
+            public int PurchaseCloseId { get; set; }
+        }
+
         [ServiceFilter(typeof(CacheUserAttribute))]
         [HttpPost("prepbuycorn")]
 
         [Authorize(Policy = AuthScopes.BuyCorn)]
-        public async Task<ActionResult<object>> Buycorn([FromBody] BuyCornRequest request)
+        public async Task<ActionResult<PrepBuyCornResponse>> Buycorn([FromBody] BuyCornRequest request)
         {
 
             //return StatusCode(200);
@@ -792,27 +818,29 @@ namespace BITCORNService.Controllers
                                 purchase.CreatedAt = request.CreatedAt;
                                 _dbContext.CornPurchase.Add(purchase);
                                 int count = await _dbContext.SaveAsync();
-                                return new
+                                return new PrepBuyCornResponse
                                 {
-                                    success = count > 0,
-                                    purchaseCloseId = purchase.CornPurchaseId,
-                                    paymentId = request.PaymentId
+                                    Success = count > 0,
+                                    PurchaseCloseId = purchase.CornPurchaseId,
+                                    PaymentId = request.PaymentId
                                 };
                             }
                         }
                     }
-                    return new
+                    return new PrepBuyCornResponse
                     {
-                        success = false,
-                        purchaseCloseId = -1//purchase.CornPurchaseId
+                        Success = false,
+                        PurchaseCloseId = -1//purchase.CornPurchaseId
                     };
                 }
                 catch (Exception ex)
                 {
                     await BITCORNLogger.LogError(_dbContext, ex, JsonConvert.SerializeObject(request));
-                    return new
+                    return new PrepBuyCornResponse
                     {
-                        success = false
+                        Success = false,
+                        PurchaseCloseId = -1//purchase.CornPurchaseId
+
                     };
                 }
                 finally
