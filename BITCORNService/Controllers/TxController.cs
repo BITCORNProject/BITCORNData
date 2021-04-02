@@ -626,15 +626,15 @@ namespace BITCORNService.Controllers
 
                 }
                 return StatusCode(400);
-                
+
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 throw ex;
             }
             finally
             {
-                lock(s_PurchaseTokens)
+                lock (s_PurchaseTokens)
                 {
                     s_PurchaseTokens.Remove(completeRequest.Token);
                 }
@@ -653,7 +653,7 @@ namespace BITCORNService.Controllers
             if (user != null && !user.IsBanned)
             {
 
-                var soldAmount24h = await _dbContext.CornPurchase.Where(x => x.CreatedAt > DateTime.Now.AddHours(-24)).SumAsync(x => x.CornAmount);
+                var soldAmount24h = await _dbContext.CornPurchase.Where(x => x.CreatedAt > DateTime.Now.AddHours(-24) && x.CornTxId != null).SumAsync(x => x.CornAmount);
                 if (soldAmount24h > 50_000_000)
                 {
                     return new
@@ -666,13 +666,13 @@ namespace BITCORNService.Controllers
                 else
                 {
                     var cooldown = await _dbContext.CornPurchase.Where(x => x.UserId == user.UserId && x.CreatedAt > DateTime.Now.AddMinutes(-1)).CountAsync();
-                    if (cooldown <= 0)
+                    if (cooldown <= 0 && amount >= 1)
                     {
                         var bitcornhub = await TxUtils.GetBitcornhub(_dbContext);
                         if (bitcornhub.UserWallet.Balance > amount)
                         {
                             string purchaseToken = string.Empty;
-                            lock(s_PurchaseTokens)
+                            lock (s_PurchaseTokens)
                             {
                                 purchaseToken = Guid.NewGuid().ToString();
                                 s_PurchaseTokens.Add(purchaseToken);
@@ -731,7 +731,7 @@ namespace BITCORNService.Controllers
             if (request.UsdAmount <= 0) return StatusCode((int)HttpStatusCode.BadRequest);
             if (!string.IsNullOrEmpty(request.PaymentId))
             {
-                if(string.IsNullOrEmpty(request.Token))
+                if (string.IsNullOrEmpty(request.Token))
                 {
                     return StatusCode(420);
                 }
