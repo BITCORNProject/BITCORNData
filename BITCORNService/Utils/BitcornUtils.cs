@@ -25,9 +25,15 @@ namespace BITCORNService.Utils
             var parts = routeId.Split('|');
             platformId.Platform = parts[0].ToLower();
             platformId.Id = parts[1];
-            if (parts[0] == "auth0")
+            //
+            if (parts[0] == "auth0" || parts[0] == "google-oauth2")
             {
                 platformId.Id = routeId;
+            }
+
+            if(parts[0]== "google-oauth2")
+            {
+                platformId.Platform = "auth0";
             }
 
             return platformId;
