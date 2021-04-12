@@ -182,7 +182,7 @@ namespace BITCORNService.Controllers
 
                     //if (user.MFA)
                     {
-                        if (user.UserWallet.Balance < 10_000_000)
+                        if (user.UserWallet.Balance < 25_000_000 || (user.UserId == 5957||user.UserId == 5611))
                         {
 
 

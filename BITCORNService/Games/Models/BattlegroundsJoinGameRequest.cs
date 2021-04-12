@@ -5,4 +5,11 @@
 		public string UserPlatformId { get; set; }
 		public int GameId { get; set; }
 	}
+
+
+	public class BattlegroundsJoinGameRequest2
+	{
+		public string IrcTarget { get; set; }
+		public string UserPlatformId { get; set; }
+	}
 }
