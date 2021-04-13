@@ -1261,12 +1261,13 @@ namespace BITCORNService.Controllers
                             if (srcMission.Faucet == now)
                             {
                                 int replicate = 1;
+                                /*
                                 if (previousClaimTime != null && (now - previousClaimTime.Value).TotalDays > 15)
                                 {
                                     userMission.FaucetClaimCount += 14;
                                     replicate = 15;
                                 }
-
+                                */
                                 var reward = 4166.666m; ;
                                 var amount = reward * replicate;
 
