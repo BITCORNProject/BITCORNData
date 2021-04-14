@@ -664,19 +664,22 @@ namespace BITCORNService.Controllers
             public string Token { get; set; }
         }
 
+        public const decimal SELL_CORN_CAP_24H = 50_000_000;
+
         [ServiceFilter(typeof(CacheUserAttribute))]
         [HttpGet("{authid}/canbuycorn/{amount}")]
 
         [Authorize(Policy = AuthScopes.BuyCorn)]
-        public async Task<ActionResult<CanBuyCornResponse>> CanBuycorn([FromRoute] string authid, [FromRoute] long amount)
+        public async Task<ActionResult<CanBuyCornResponse>> CanBuycorn([FromRoute] string authid, [FromRoute] long buyAmount)
         {
             var platformId = BitcornUtils.GetPlatformId(authid);
             var user = await BitcornUtils.GetUserForPlatform(platformId, _dbContext).FirstOrDefaultAsync();
             if (user != null && !user.IsBanned && user.IsAdmin())
             {
 
-                var soldAmount24h = await _dbContext.CornPurchase.Where(x => x.CreatedAt > DateTime.Now.AddHours(-24) && x.CornTxId != null).SumAsync(x => x.CornAmount);
-                if (soldAmount24h > 50_000_000)
+                var soldAmount24h = await TxUtils.GetSoldCorn24h(_dbContext);
+                var sellCap = SELL_CORN_CAP_24H;
+                if (soldAmount24h + buyAmount > sellCap || Math.Abs(sellCap - soldAmount24h) < 10_000_00)
                 {
                     return new CanBuyCornResponse
                     {
@@ -690,10 +693,10 @@ namespace BITCORNService.Controllers
                 else
                 {
                     var cooldown = await _dbContext.CornPurchase.Where(x => x.UserId == user.UserId && x.CreatedAt > DateTime.Now.AddMinutes(-1) && x.CornTxId != null).CountAsync();
-                    if (cooldown <= 0 && amount >= 1)
+                    if (cooldown <= 0 && buyAmount >= 1)
                     {
                         var bitcornhub = await TxUtils.GetBitcornhub(_dbContext);
-                        if (bitcornhub.UserWallet.Balance > amount)
+                        if (bitcornhub.UserWallet.Balance > buyAmount)
                         {
                             string purchaseToken = string.Empty;
                             lock (s_PurchaseTokens)

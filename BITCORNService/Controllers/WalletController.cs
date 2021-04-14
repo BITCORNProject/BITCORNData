@@ -93,16 +93,39 @@ namespace BITCORNService.Controllers
             return StatusCode(200);
         }
 
+
+        [HttpGet("sold24")]
+        public async Task<ActionResult<object>> GetSold24()
+        {
+            decimal sold24 = 0;
+            try
+            {
+                sold24 = await TxUtils.GetSoldCorn24h(_dbContext);
+            }
+            catch
+            {
+
+            }
+
+            return new 
+            {
+                sold24,
+                available = Math.Abs(TxController.SELL_CORN_CAP_24H - sold24)
+            };
+        }
+
         [HttpGet("prices")]
         public async Task<ActionResult<object>> GetPrices()
         {
             var prices = await ProbitApi.GetPricesAsync(_dbContext);
             //(cornBtc, btcUsdt, cornPrice);
+          
             return new
             {
                 cornBtc = prices.Item1,
                 btcUsdt = prices.Item2,
-                cornPrice = prices.Item3
+                cornPrice = prices.Item3,
+            
             };
         }
         //API: /api/wallet/deposit
@@ -182,7 +205,7 @@ namespace BITCORNService.Controllers
 
                     //if (user.MFA)
                     {
-                        if (user.UserWallet.Balance < 10_000_000)
+                        if (user.UserWallet.Balance < 30_000_000)
                         {
 
 

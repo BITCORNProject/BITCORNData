@@ -522,5 +522,10 @@ namespace BITCORNService.Utils.Tx
             return null;
         }
 
+        internal static async Task<decimal> GetSoldCorn24h(BitcornContext dbContext)
+        {
+            return await dbContext.CornPurchase.Where(x => x.CreatedAt > DateTime.Now.AddHours(-24) && x.CornTxId != null)
+                .SumAsync(x => x.CornAmount);
+        }
     }
 }
