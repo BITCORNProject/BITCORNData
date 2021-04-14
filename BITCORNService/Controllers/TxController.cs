@@ -670,8 +670,9 @@ namespace BITCORNService.Controllers
         [HttpGet("{authid}/canbuycorn/{amount}")]
 
         [Authorize(Policy = AuthScopes.BuyCorn)]
-        public async Task<ActionResult<CanBuyCornResponse>> CanBuycorn([FromRoute] string authid, [FromRoute] long buyAmount)
+        public async Task<ActionResult<CanBuyCornResponse>> CanBuycorn([FromRoute] string authid, [FromRoute] long amount)
         {
+            var buyAmount = amount;
             var platformId = BitcornUtils.GetPlatformId(authid);
             var user = await BitcornUtils.GetUserForPlatform(platformId, _dbContext).FirstOrDefaultAsync();
             if (user != null && !user.IsBanned && user.IsAdmin())
