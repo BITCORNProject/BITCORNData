@@ -675,7 +675,7 @@ namespace BITCORNService.Controllers
             var buyAmount = amount;
             var platformId = BitcornUtils.GetPlatformId(authid);
             var user = await BitcornUtils.GetUserForPlatform(platformId, _dbContext).FirstOrDefaultAsync();
-            if (user != null && !user.IsBanned && user.IsAdmin())
+            if (user != null && !user.IsBanned)
             {
 
                 var soldAmount24h = await TxUtils.GetSoldCorn24h(_dbContext);
