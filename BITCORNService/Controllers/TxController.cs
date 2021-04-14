@@ -545,7 +545,7 @@ namespace BITCORNService.Controllers
         {
             public bool Success { get; set; }
             public int? PurchaseCloseId { get; set; }
-            public string PaymentId { get;  set; }
+            public string PaymentId { get; set; }
         }
 
         [ServiceFilter(typeof(CacheUserAttribute))]
@@ -589,7 +589,13 @@ namespace BITCORNService.Controllers
                                 //if (costDiff < 2)
                                 {
                                     var amount = purchase.CornAmount;
-                                    amount -= amount * 0.2m;
+                                    var taxAmount = 0.3m;
+                                    if (purchase.UsdAmount >= 50)
+                                    {
+                                        taxAmount = 0.2m;
+                                    }
+                                    amount -= amount * taxAmount;
+
                                     var value = await TxUtils.SendFromBitcornhubGetReceipt(user, amount, "BITCORNFarms", "corn-purchase", _dbContext);
                                     if (value != null && value.Tx != null)
                                     {
@@ -651,7 +657,7 @@ namespace BITCORNService.Controllers
 
         public class CanBuyCornResponse
         {
-            public bool  HasFunds { get; set; }
+            public bool HasFunds { get; set; }
             public bool Success { get; set; }
             public bool GlobalCooldown { get; set; }
             public bool Cooldown { get; set; }
@@ -683,7 +689,7 @@ namespace BITCORNService.Controllers
                 }
                 else
                 {
-                    var cooldown = await _dbContext.CornPurchase.Where(x => x.UserId == user.UserId && x.CreatedAt > DateTime.Now.AddMinutes(-1) && x.CornTxId!=null).CountAsync();
+                    var cooldown = await _dbContext.CornPurchase.Where(x => x.UserId == user.UserId && x.CreatedAt > DateTime.Now.AddMinutes(-1) && x.CornTxId != null).CountAsync();
                     if (cooldown <= 0 && amount >= 1)
                     {
                         var bitcornhub = await TxUtils.GetBitcornhub(_dbContext);
