@@ -10,6 +10,7 @@ using System.Threading.Tasks;
 using BITCORNService.Models;
 using BITCORNService.Utils;
 using BITCORNService.Utils.Auth;
+using BITCORNService.Utils.LockUser;
 using BITCORNService.WebSockets.Utils;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
@@ -133,16 +134,19 @@ namespace BITCORNService.Controllers
         public static List<WebSocket> BitcornhubWebsocket { get; set; } = new List<WebSocket>();
         public static string[] BitcornhubSocketArgs { get; set; }
 
-        
 
-
+        [ServiceFilter(typeof(CacheUserAttribute))]
+        [Authorize(Policy = AuthScopes.SendTransaction)]
         [HttpGet("/bitcornhub")]
-        public async Task GetBitcornhub([FromQuery] string settingsColumns, [FromQuery] string token)
+        public async Task GetBitcornhub([FromQuery] string settingsColumns)
         {
+            if (this.GetCachedUser() != null)
+                throw new InvalidOperationException();
+
             if (HttpContext.WebSockets.IsWebSocketRequest)
             {
 
-                using var webSocket = await HttpContext.WebSockets.AcceptWebSocketAsync();
+                using var webSocket = await HttpContext.WebSockets.AcceptWebSocketAsync("client");
                 await SocketReceiverHandler<BitcornhubSocketReceiver>(webSocket, settingsColumns);
             }
             else
@@ -152,8 +156,8 @@ namespace BITCORNService.Controllers
 
         }
 
-
-        //[Authorize(Policy = AuthScopes.SendTransaction)]
+        [ServiceFilter(typeof(CacheUserAttribute))]
+        [Authorize(Policy = AuthScopes.SendTransaction)]
 
         [HttpGet("/bitcornfarms")]
         public async Task GetBitcornfarms()
@@ -161,7 +165,7 @@ namespace BITCORNService.Controllers
             if (HttpContext.WebSockets.IsWebSocketRequest)
             {
 
-                using var webSocket = await HttpContext.WebSockets.AcceptWebSocketAsync();
+                using var webSocket = await HttpContext.WebSockets.AcceptWebSocketAsync("client");
                 await SocketReceiverHandler<BitcornfarmsSocketReceiver>(webSocket, null);
             }
             else
