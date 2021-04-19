@@ -61,8 +61,6 @@ namespace BITCORNService
                         return Task.CompletedTask;
                     }
                 };
-                
-                
             });
 
             services.AddAuthorization(options =>

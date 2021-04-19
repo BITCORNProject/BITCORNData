@@ -149,11 +149,14 @@ namespace BITCORNService.Controllers
         public static string[] BitcornhubSocketArgs { get; set; }
 
 
-
-        [Authorize]
+        [ServiceFilter(typeof(CacheUserAttribute))]
+        [Authorize(Policy = AuthScopes.SendTransaction)]
         [HttpGet("/bitcornhub")]
         public async Task GetBitcornhub([FromQuery] string settingsColumns)
         {
+            if (this.GetCachedUser() != null)
+                throw new InvalidOperationException();
+
             if (HttpContext.WebSockets.IsWebSocketRequest)
             {
 
@@ -167,8 +170,8 @@ namespace BITCORNService.Controllers
 
         }
 
-
-        //[Authorize(Policy = AuthScopes.SendTransaction)]
+        [ServiceFilter(typeof(CacheUserAttribute))]
+        [Authorize(Policy = AuthScopes.SendTransaction)]
 
         [HttpGet("/bitcornfarms")]
         public async Task GetBitcornfarms()
@@ -176,7 +179,7 @@ namespace BITCORNService.Controllers
             if (HttpContext.WebSockets.IsWebSocketRequest)
             {
 
-                using var webSocket = await HttpContext.WebSockets.AcceptWebSocketAsync();
+                using var webSocket = await HttpContext.WebSockets.AcceptWebSocketAsync("client");
                 await SocketReceiverHandler<BitcornfarmsSocketReceiver>(webSocket, null);
             }
             else

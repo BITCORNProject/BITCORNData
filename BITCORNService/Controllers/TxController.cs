@@ -545,7 +545,7 @@ namespace BITCORNService.Controllers
         {
             public bool Success { get; set; }
             public int? PurchaseCloseId { get; set; }
-            public string PaymentId { get;  set; }
+            public string PaymentId { get; set; }
         }
 
         [ServiceFilter(typeof(CacheUserAttribute))]
@@ -589,7 +589,13 @@ namespace BITCORNService.Controllers
                                 //if (costDiff < 2)
                                 {
                                     var amount = purchase.CornAmount;
-                                    amount -= amount * 0.2m;
+                                    var taxAmount = 0.3m;
+                                    if (purchase.UsdAmount >= 50)
+                                    {
+                                        taxAmount = 0.2m;
+                                    }
+                                    amount -= amount * taxAmount;
+
                                     var value = await TxUtils.SendFromBitcornhubGetReceipt(user, amount, "BITCORNFarms", "corn-purchase", _dbContext);
                                     if (value != null && value.Tx != null)
                                     {
@@ -651,12 +657,14 @@ namespace BITCORNService.Controllers
 
         public class CanBuyCornResponse
         {
-            public bool  HasFunds { get; set; }
+            public bool HasFunds { get; set; }
             public bool Success { get; set; }
             public bool GlobalCooldown { get; set; }
             public bool Cooldown { get; set; }
             public string Token { get; set; }
         }
+
+        public const decimal SELL_CORN_CAP_24H = 50_000_000;
 
         [ServiceFilter(typeof(CacheUserAttribute))]
         [HttpGet("{authid}/canbuycorn/{amount}")]
@@ -664,13 +672,15 @@ namespace BITCORNService.Controllers
         [Authorize(Policy = AuthScopes.BuyCorn)]
         public async Task<ActionResult<CanBuyCornResponse>> CanBuycorn([FromRoute] string authid, [FromRoute] long amount)
         {
+            var buyAmount = amount;
             var platformId = BitcornUtils.GetPlatformId(authid);
             var user = await BitcornUtils.GetUserForPlatform(platformId, _dbContext).FirstOrDefaultAsync();
-            if (user != null && !user.IsBanned && user.IsAdmin())
+            if (user != null && !user.IsBanned)
             {
 
-                var soldAmount24h = await _dbContext.CornPurchase.Where(x => x.CreatedAt > DateTime.Now.AddHours(-24) && x.CornTxId != null).SumAsync(x => x.CornAmount);
-                if (soldAmount24h > 50_000_000)
+                var soldAmount24h = await TxUtils.GetSoldCorn24h(_dbContext);
+                var sellCap = SELL_CORN_CAP_24H;
+                if (soldAmount24h + buyAmount > sellCap || Math.Abs(sellCap - soldAmount24h) < 10_000_00)
                 {
                     return new CanBuyCornResponse
                     {
@@ -683,11 +693,11 @@ namespace BITCORNService.Controllers
                 }
                 else
                 {
-                    var cooldown = await _dbContext.CornPurchase.Where(x => x.UserId == user.UserId && x.CreatedAt > DateTime.Now.AddMinutes(-1) && x.CornTxId!=null).CountAsync();
-                    if (cooldown <= 0 && amount >= 1)
+                    var cooldown = await _dbContext.CornPurchase.Where(x => x.UserId == user.UserId && x.CreatedAt > DateTime.Now.AddMinutes(-1) && x.CornTxId != null).CountAsync();
+                    if (cooldown <= 0 && buyAmount >= 1)
                     {
                         var bitcornhub = await TxUtils.GetBitcornhub(_dbContext);
-                        if (bitcornhub.UserWallet.Balance > amount)
+                        if (bitcornhub.UserWallet.Balance > buyAmount)
                         {
                             string purchaseToken = string.Empty;
                             lock (s_PurchaseTokens)

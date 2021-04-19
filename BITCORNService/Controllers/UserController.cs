@@ -407,7 +407,7 @@ namespace BITCORNService.Controllers
 
             }
 
-            return channels.OrderByDescending(x => x.AmountOfRainsSent).Take(25).ToArray();
+            return channels.OrderByDescending(x => x.AmountOfRainsSent).Take(99).ToArray();
         }
 
         public class UpdateUserRefreshTokenRequest
@@ -794,8 +794,8 @@ namespace BITCORNService.Controllers
                             IrcTarget = "#" + user.UserIdentity.TwitchUsername,
                             TxCooldownPerUser = body.TxCooldownPerUser,
                             RainAlgorithm = body.RainAlgorithm,
-                            MinRainAmount = 1,//body.MinRainAmount,
-                            MinTipAmount = 1,//body.MinTipAmount,
+                            MinRainAmount = 100,//body.MinRainAmount,
+                            MinTipAmount = 100,//body.MinTipAmount,
                             TxMessages = body.TxMessages,
                             IrcEventPayments = body.IrcEventPayments,
                             BitcornPerBit = 0.1m,
@@ -868,9 +868,9 @@ namespace BITCORNService.Controllers
                             if (body.MinRainAmount != liveStream.MinRainAmount)
                             {
                                 liveStream.MinRainAmount = body.MinRainAmount;
-                                if (liveStream.MinRainAmount <= 0)
+                                if (liveStream.MinRainAmount <= 100)
                                 {
-                                    liveStream.MinRainAmount = 1;
+                                    liveStream.MinRainAmount = 100;
                                 }
                                 changes = true;
                             }
@@ -878,9 +878,9 @@ namespace BITCORNService.Controllers
                             if (body.MinTipAmount != liveStream.MinTipAmount)
                             {
                                 liveStream.MinTipAmount = body.MinTipAmount;
-                                if (liveStream.MinTipAmount <= 0)
+                                if (liveStream.MinTipAmount <= 100)
                                 {
-                                    liveStream.MinTipAmount = 1;
+                                    liveStream.MinTipAmount = 100;
                                 }
 
                                 changes = true;
@@ -1261,12 +1261,13 @@ namespace BITCORNService.Controllers
                             if (srcMission.Faucet == now)
                             {
                                 int replicate = 1;
+                                /*
                                 if (previousClaimTime != null && (now - previousClaimTime.Value).TotalDays > 15)
                                 {
                                     userMission.FaucetClaimCount += 14;
                                     replicate = 15;
                                 }
-
+                                */
                                 var reward = 4166.666m; ;
                                 var amount = reward * replicate;
 
