@@ -407,7 +407,7 @@ namespace BITCORNService.Controllers
 
             }
 
-            return channels.OrderByDescending(x => x.AmountOfRainsSent).Take(50).ToArray();
+            return channels.OrderByDescending(x => x.AmountOfRainsSent).Take(99).ToArray();
         }
 
         public class UpdateUserRefreshTokenRequest
