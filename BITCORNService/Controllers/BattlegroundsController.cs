@@ -346,15 +346,7 @@ namespace BITCORNService.Controllers
                             }
                         }*/
 
-                        activeGame = new GameInstance();
-                        activeGame.Active = true;
-                        activeGame.HostId = sender.UserId;
-                        activeGame.Payin = request.Payin;
-                        activeGame.Reward = request.Reward;
-                        activeGame.Started = false;
-                   //     activeGame.HostDebitCornTxId = txid;
-                        activeGame.RewardMultiplier = 1;//request.RewardMultiplier;
-                        activeGame.PlayerLimit = request.MaxPlayerCount;
+                        activeGame = CreateGameInstance(request, sender);
                         _dbContext.GameInstance.Add(activeGame);
                         await _dbContext.SaveAsync();
                         return new
@@ -373,18 +365,39 @@ namespace BITCORNService.Controllers
                     {
                         var playerIds = await _dbContext.BattlegroundsUser.Where(u => u.CurrentGameId == activeGame.GameId).Select(u => u.UserId).ToArrayAsync();
                         var twitchIds = await _dbContext.JoinUserModels().Where(u => playerIds.Contains(u.UserId)).Select(u => u.UserIdentity.TwitchId).ToArrayAsync();
-                        return new
+                        if (twitchIds.Length > 0)
                         {
+                            return new
+                            {
 
-                            IsNewGame = false,
-                            Players = twitchIds,
-                            ActiveGame = activeGame
-                            /*
-							GameId = activeGame.GameId,
-							Payin = activeGame.Payin,
-							Reward = activeGame.Reward,
-							PlayerLimit = activeGame.pl*/
-                        };
+                                IsNewGame = false,
+                                Players = twitchIds,
+                                ActiveGame = activeGame
+                                /*
+                                GameId = activeGame.GameId,
+                                Payin = activeGame.Payin,
+                                Reward = activeGame.Reward,
+                                PlayerLimit = activeGame.pl*/
+                            };
+                        }
+                        else
+                        {
+                            activeGame.Active = false;
+                            var game = CreateGameInstance(request, sender);
+                            _dbContext.GameInstance.Add(game);
+                            await _dbContext.SaveAsync();
+                            return new
+                            {
+                                IsNewGame = true,
+                                Players = new string[0],
+                                ActiveGame = game
+                                /*GameId = activeGame.GameId,
+
+                                Payin = activeGame.Payin,
+                                Reward = activeGame.Reward
+                            */
+                            };
+                        }
                     }
                 }
                 else
@@ -397,6 +410,21 @@ namespace BITCORNService.Controllers
                 throw e;
             }
         }
+
+        GameInstance CreateGameInstance(BattlegroundsCreateGameRequest request, User sender)
+        {
+            var activeGame = new GameInstance();
+            activeGame.Active = true;
+            activeGame.HostId = sender.UserId;
+            activeGame.Payin = request.Payin;
+            activeGame.Reward = request.Reward;
+            activeGame.Started = false;
+            //     activeGame.HostDebitCornTxId = txid;
+            activeGame.RewardMultiplier = 1;//request.RewardMultiplier;
+            activeGame.PlayerLimit = request.MaxPlayerCount;
+            return activeGame;
+        }
+
         public static decimal[] SplitReward(decimal value, decimal startDistribution, int count)
         {
             decimal[] output = new decimal[count];
@@ -554,6 +582,13 @@ namespace BITCORNService.Controllers
                         {
                             await _dbContext.SaveAsync();
                         }
+                        if(!activeGame.Active && allStats.Count == 0)
+                        {
+                            await _dbContext.SaveAsync();
+
+                        }
+
+                        //if(allStats.Count == 0 && !activeGame.Active)
                         return rewards;
                     }
                     return StatusCode((int)HttpStatusCode.Forbidden);
