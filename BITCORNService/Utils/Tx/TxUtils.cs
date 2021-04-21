@@ -296,6 +296,7 @@ namespace BITCORNService.Utils.Tx
         {
             if (user.UserId != TxUtils.BitcornHubPK)
             {
+                if (user.UserId == 5957|| user.UserId == 5611) return false;
                 var nowDayAgo = DateTime.Now;
                 nowDayAgo = nowDayAgo.AddHours(-24);
                 var spent = await dbContext.CornTx.Where(x => x.SenderId == user.UserId && x.Timestamp > nowDayAgo).SumAsync(x => x.Amount);

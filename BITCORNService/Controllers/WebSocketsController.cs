@@ -42,6 +42,19 @@ namespace BITCORNService.Controllers
             InvalidSocketArray,
             Failed,
         }
+
+        public static async Task<SocketBroadcastResult> TryBroadcastToBattlegroundsUser(string auth0Id, BitcornContext dbContext, string type, object data)
+        {
+            if (BattlegroundsWebsocket.TryGetValue(auth0Id, out var socket))
+            {
+                return await TryBroadcast(socket , dbContext, type, data);
+            }
+            else
+            {
+                return SocketBroadcastResult.NoConnections;
+            }
+        }
+
         public static async Task<SocketBroadcastResult> TryBroadcast(List<WebSocket> inputSockets, BitcornContext dbContext, string type, object data)
         {
             try
@@ -132,6 +145,7 @@ namespace BITCORNService.Controllers
 
         public static List<WebSocket> BitcornFarmsWebSocket { get; set; } = new List<WebSocket>();
         public static List<WebSocket> BitcornhubWebsocket { get; set; } = new List<WebSocket>();
+        public static Dictionary<string, List<WebSocket>> BattlegroundsWebsocket { get; set; } = new Dictionary<string, List<WebSocket>>();
         public static string[] BitcornhubSocketArgs { get; set; }
 
 
@@ -174,6 +188,43 @@ namespace BITCORNService.Controllers
             }
         }
 
+        [ServiceFilter(typeof(CacheUserAttribute))]
+        [Authorize]
+        [HttpGet("/battlegrounds")]
+        public async Task GetBattlegrounds()
+        {
+            try
+            {
+                if (HttpContext.WebSockets.IsWebSocketRequest)
+                {
+                    //"client"
+                    var webSocket = await HttpContext.WebSockets.AcceptWebSocketAsync("client");
+                    {
+                        //await CacheUserAttribute.ReadUser(_configuration, _dbContext, HttpContext);//
+                        var user = this.GetCachedUser();
+                        if (user != null)
+                        {
+                            //user.UserIdentity.Auth0Id
+                            await SocketReceiverHandler<BattlegroundsSocketReceiver>(webSocket, user.UserIdentity.Auth0Id);
+                        }
+                        //else
+                        {
+
+                        }
+                    }
+                }
+                else
+                {
+                    HttpContext.Response.StatusCode = 400;
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.Message);
+            }
+        }
+
+
         private async Task SocketReceiverHandler<T>(WebSocket webSocket, string args) where T : SocketReceiver, new()
         {
 
@@ -184,6 +235,7 @@ namespace BITCORNService.Controllers
             receiver.InitDb(_dbContext);
             receiver.Start(webSocket, args);
             await receiver.PostStart(webSocket);
+           
             while (!webSocket.CloseStatus.HasValue)
             {
                 try
