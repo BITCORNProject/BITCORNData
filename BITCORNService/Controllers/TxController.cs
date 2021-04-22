@@ -894,6 +894,7 @@ namespace BITCORNService.Controllers
                     tipRequest.FromUser = await TxUtils.GetBitcornhub(_dbContext);
                 }
                 tipRequest.Amount = tipRequest.BitAmount * liveStream.BitcornPerBit;
+                if (tipRequest.Amount <= 0) return StatusCode((int)HttpStatusCode.BadRequest);
                 var processInfo = await TxUtils.ProcessRequest(tipRequest, _dbContext);
                 var transactions = processInfo.Transactions;
                 if (transactions != null && transactions.Length > 0)
@@ -1066,6 +1067,7 @@ namespace BITCORNService.Controllers
                     tipRequest.FromUser = await TxUtils.GetBitcornhub(_dbContext);
                 }
                 tipRequest.Amount = tipRequest.ChannelPointAmount * liveStream.BitcornPerChannelpointsRedemption;
+                if (tipRequest.Amount <= 0) return StatusCode((int)HttpStatusCode.BadRequest);
                 var processInfo = await TxUtils.ProcessRequest(tipRequest, _dbContext);
                 var transactions = processInfo.Transactions;
                 if (transactions != null && transactions.Length > 0)
