@@ -24,7 +24,9 @@ namespace BITCORNService.Games.Models
         public virtual DbSet<AvatarConfig> AvatarConfig { get; set; }
         public virtual DbSet<BattlegroundsUser> BattlegroundsUser { get; set; }
         public virtual DbSet<GameInstance> GameInstance { get; set; }
+        public virtual DbSet<Tournament> Tournament { get; set; }
         public virtual DbSet<GameInstanceCornReward> GameInstanceCornReward { get; set; }
+        public virtual DbSet<BattlegroundsGameHistory> BattlegroundsGameHistory { get; set; }
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {
             base.OnConfiguring(optionsBuilder);
@@ -34,6 +36,7 @@ namespace BITCORNService.Games.Models
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
+            return;
             modelBuilder.Entity<GameInstanceCornReward>(entity=> {
                 entity.HasKey(e=>e.Id);
                 entity.Property(e=>e.GameInstanceId);

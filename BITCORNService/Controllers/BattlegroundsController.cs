@@ -133,17 +133,21 @@ namespace BITCORNService.Controllers
                             {
                                 var aInfo = await GameUtils.GetAvatar(_dbContext, player, GameUtils.AvatarPlatformWindows);
                                 var packet = GetJoinPacket(aInfo, player, battlegroundsProfile);
-                                await WebSocketsController.TryBroadcastToBattlegroundsUser(sender.UserIdentity.Auth0Id,
+                                var result = await WebSocketsController.TryBroadcastToBattlegroundsUser(sender.UserIdentity.Auth0Id,
                                     _dbContext,
                                     "user-join-game",
                                     packet
                                     );
 
+                                if(result == WebSocketsController.SocketBroadcastResult.Success)
+                                {
+                                    battlegroundsProfile.VerifiedGameId = activeGame.GameId;
+                                }
                             }
                         }
                         else
                         {
-                            return new 
+                            return new
                             {
                                 gameStarted = true
                             };
@@ -281,11 +285,11 @@ namespace BITCORNService.Controllers
                 if (sender != null)
                 {
                     var activeGame = await _dbContext.GameInstance.FirstOrDefaultAsync(g => g.HostId == sender.UserId && g.Active);
-                    if(activeGame!=null)
+                    if (activeGame != null)
                     {
                         activeGame.Started = true;
                         await _dbContext.SaveAsync();
-                        return new 
+                        return new
                         {
                             success = true
                         };
@@ -324,29 +328,33 @@ namespace BITCORNService.Controllers
                     var activeGame = await _dbContext.GameInstance.FirstOrDefaultAsync(g => g.HostId == sender.UserId && g.Active);
                     if (activeGame == null)
                     {
-                        /*
-                        int? txid = null;
-                        var totalRewardAmount = (request.Payin * request.RewardMultiplier) * request.MaxPlayerCount;
-                        //give corn to bitcornhub to hold for the duration of the game
-                        if (totalRewardAmount > 100000000)
-                        {
-                            return StatusCode((int)HttpStatusCode.BadRequest);
-                        }
-                        if (totalRewardAmount > 0)
-                        {
 
-                            var tx = await TxUtils.SendToBitcornhub(sender, totalRewardAmount, "BITCORNBattlegrounds", "Battlegrounds Host reward debit", _dbContext);
-                            if (tx == null || tx.TxId == null)
+
+                        activeGame = CreateGameInstance(request, sender);
+                        if (request.Tournament)
+                        {
+                            var existingTournament = await _dbContext.Tournament.Where(x => x.UserId == sender.UserId && !x.Completed).FirstOrDefaultAsync();
+                            if (existingTournament == null)
                             {
-                                return StatusCode((int)HttpStatusCode.PaymentRequired);
+                                existingTournament = new Tournament();
+                                existingTournament.UserId = sender.UserId;
+                                existingTournament.TournamentId = Guid.NewGuid().ToString();
+                                existingTournament.MapIndex = 0;
+                                existingTournament.MapCount = request.TournamentMapCount.Value;
+                                _dbContext.Tournament.Add(existingTournament);
                             }
                             else
                             {
-                                txid = tx.TxId;
+                                existingTournament.MapIndex++;
+                                /*if (existingTournament.MapIndex == existingTournament.MapCount)
+                                {
+                                    //TODO: tournament completion stuff
+                                    existingTournament.Completed = true;
+                                }*/
                             }
-                        }*/
+                            activeGame.TournamentId = existingTournament.TournamentId;
+                        }
 
-                        activeGame = CreateGameInstance(request, sender);
                         _dbContext.GameInstance.Add(activeGame);
                         await _dbContext.SaveAsync();
                         return new
@@ -490,6 +498,18 @@ namespace BITCORNService.Controllers
                     var activeGame = await _dbContext.GameInstance.FirstOrDefaultAsync(g => g.HostId == sender.UserId && g.Active);
                     if (activeGame != null)
                     {
+                        if (!string.IsNullOrEmpty(activeGame.TournamentId))
+                        {
+                            var tournament = await _dbContext.Tournament.Where(x => x.TournamentId == activeGame.TournamentId).FirstOrDefaultAsync();
+                            if (tournament != null && !tournament.Completed)
+                            {
+                                if(tournament.MapIndex == tournament.MapCount-1)
+                                {
+                                    tournament.Completed = true;
+                                }
+
+                            }
+                        }
 
                         var playerIds = await _dbContext.BattlegroundsUser.Where(u => u.CurrentGameId == activeGame.GameId).Select(u => u.UserId).ToArrayAsync();
                         var twitchIds = await _dbContext.JoinUserModels().Where(u => playerIds.Contains(u.UserId)).Select(u => u.UserIdentity.TwitchId).ToArrayAsync();
@@ -519,8 +539,8 @@ namespace BITCORNService.Controllers
                                 activeGame.Payin * playerIds.Length
                             };
                             //var tx = await _dbContext.CornTx.Where(u => u.CornTxId == activeGame.HostDebitCornTxId.Value)
-                                //.Select(u => u.Amount).FirstOrDefaultAsync();
-                           // if (tx != null)
+                            //.Select(u => u.Amount).FirstOrDefaultAsync();
+                            // if (tx != null)
                             {
                                 //at the start of the game, the host was debited the max possible reward, refund whats left from the reward
                                 /*var refund = tx.Value - rewards[0];
@@ -538,11 +558,14 @@ namespace BITCORNService.Controllers
                         for (int i = 0; i < request.Players.Length; i++)
                         {
                             var userId = request.Players[i].UserId;
-
+                            var history = new BattlegroundsGameHistory();
+                            history.Add(request.Players[i]);
+                            history.GameId = activeGame.GameId;
+                            _dbContext.BattlegroundsGameHistory.Add(history);
 
                             if (users.TryGetValue(userId, out User user))
                             {
-                                if (i < rewards.Length)
+                                if (i < rewards.Length && string.IsNullOrEmpty(activeGame.TournamentId))
                                 {
                                     var reward = rewards[i];
                                     var rewardAmount = await SendfromBitcornhubTransaction(user, activeGame.GameId, reward, "Battlegrounds reward");
@@ -582,7 +605,7 @@ namespace BITCORNService.Controllers
                         {
                             await _dbContext.SaveAsync();
                         }
-                        if(!activeGame.Active && allStats.Count == 0)
+                        if (!activeGame.Active && allStats.Count == 0)
                         {
                             await _dbContext.SaveAsync();
 

@@ -1,4 +1,6 @@
-﻿namespace BITCORNService.Games.Models
+﻿using System.ComponentModel.DataAnnotations;
+
+namespace BITCORNService.Games.Models
 {
 	public class BattlegroundsGameStats
 	{
@@ -45,4 +47,12 @@
 			}
 		}
 	}
+
+	public class BattlegroundsGameHistory :BattlegroundsGameStats
+    {
+		public int GameId { get; set; }
+		public int Placement { get; set; }
+		[Key]
+		public int Id { get; set; }
+    }
 }
