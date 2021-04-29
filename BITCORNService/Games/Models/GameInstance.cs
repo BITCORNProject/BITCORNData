@@ -4,6 +4,7 @@ namespace BITCORNService.Games.Models
 {
     public class GameInstance
 	{
+		[Key]
 		public int GameId { get; set; }
 		public int HostId { get; set; }
 		public decimal Payin { get; set; }

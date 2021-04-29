@@ -68,7 +68,23 @@ namespace BITCORNService.Controllers
             //if (this.GetCachedUser() != null)
             //throw new InvalidOperationException();
             bool supportPaidGames = false;
-            var sender = this.GetCachedUser();
+            User sender = null;
+            var cachedUser = this.GetCachedUser();
+            var userMode = this.GetUserMode();
+
+            if (userMode != null && userMode.Value == 0)
+            {
+                sender = cachedUser;
+                supportPaidGames = sender.IsAdmin();
+            //    sender = 
+            }
+            else if(userMode != null && userMode.Value == 1) 
+            {
+                sender = await _dbContext.TwitchQuery(request.IrcTarget).FirstOrDefaultAsync();//this.GetCachedUser();
+                supportPaidGames = true;
+
+            }
+            /*
             if (sender == null)
             {
                 sender = await _dbContext.TwitchQuery(request.IrcTarget).FirstOrDefaultAsync();//this.GetCachedUser();
@@ -78,7 +94,7 @@ namespace BITCORNService.Controllers
             {
                 supportPaidGames = sender.IsAdmin();
             }
-
+            */
             if (sender != null)
             {
                 var platformId = BitcornUtils.GetPlatformId(request.UserPlatformId);
@@ -561,6 +577,8 @@ namespace BITCORNService.Controllers
                             var history = new BattlegroundsGameHistory();
                             history.Add(request.Players[i]);
                             history.GameId = activeGame.GameId;
+                            history.Placement = i;
+                            history.UserId = request.Players[i].UserId;
                             _dbContext.BattlegroundsGameHistory.Add(history);
 
                             if (users.TryGetValue(userId, out User user))
