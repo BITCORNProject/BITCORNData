@@ -332,12 +332,61 @@ namespace BITCORNService.Controllers
             };
         }
 
+        public class TournamentInfo
+        {
+            public List<GameSummary> MatchHistoryContainer { get; set; }
+            public int MapIndex { get; set; }
+            public bool IsComplete { get; set; }
+        }
+
+        public class GameSummary
+        {
+            public GameInstance Game { get; set; }
+            public BattlegroundsGameHistory[] Players { get; set; }
+        }
+
+        async Task<TournamentInfo> GetTournamentInfo(GameInstance activeGame)
+        {
+            Tournament tournament = null;
+            var matchHistoryContainer = new List<GameSummary>();
+
+            if (!string.IsNullOrEmpty(activeGame.TournamentId))
+            {
+                tournament = await _dbContext.Tournament.FirstOrDefaultAsync(x => x.TournamentId == activeGame.TournamentId);
+                var allPlayedTournamentGames = await _dbContext.GameInstance.Where(x => x.TournamentId == tournament.TournamentId).ToArrayAsync();
+                foreach (var played in allPlayedTournamentGames)
+                {
+                    var matchHistory = await _dbContext.BattlegroundsGameHistory
+                        .Where(x => x.GameId == played.GameId).ToArrayAsync();
+
+                    matchHistoryContainer.Add(new GameSummary() { 
+                        Game = played,
+                        Players = matchHistory,
+                      
+                    });
+                }
+
+                return new TournamentInfo() { 
+                    MatchHistoryContainer = matchHistoryContainer,
+                    MapIndex = tournament.MapIndex,
+                    IsComplete = tournament.Completed
+                };
+            }
+            else
+            {
+                return new TournamentInfo() {
+                    MatchHistoryContainer = new List<GameSummary>()
+                };
+            }
+        }
+
         [ServiceFilter(typeof(LockUserAttribute))]
         [HttpPost("create")]
         public async Task<ActionResult<object>> Create([FromBody] BattlegroundsCreateGameRequest request)
         {
             try
             {
+
                 var sender = this.GetCachedUser();
                 if (sender != null)
                 {
@@ -377,7 +426,8 @@ namespace BITCORNService.Controllers
                         {
                             IsNewGame = true,
                             Players = new string[0],
-                            ActiveGame = activeGame
+                            ActiveGame = activeGame,
+                            TournamentInfo = await GetTournamentInfo(activeGame)
                             /*GameId = activeGame.GameId,
 
 							Payin = activeGame.Payin,
@@ -389,14 +439,18 @@ namespace BITCORNService.Controllers
                     {
                         var playerIds = await _dbContext.BattlegroundsUser.Where(u => u.CurrentGameId == activeGame.GameId).Select(u => u.UserId).ToArrayAsync();
                         var twitchIds = await _dbContext.JoinUserModels().Where(u => playerIds.Contains(u.UserId)).Select(u => u.UserIdentity.TwitchId).ToArrayAsync();
-                        if (twitchIds.Length > 0)
+                        
+
+                        if (twitchIds.Length > 0 || request.Tournament)
                         {
+                           
                             return new
                             {
 
                                 IsNewGame = false,
                                 Players = twitchIds,
-                                ActiveGame = activeGame
+                                ActiveGame = activeGame,
+                                TournamentInfo = await GetTournamentInfo(activeGame)
                                 /*
                                 GameId = activeGame.GameId,
                                 Payin = activeGame.Payin,
@@ -414,7 +468,8 @@ namespace BITCORNService.Controllers
                             {
                                 IsNewGame = true,
                                 Players = new string[0],
-                                ActiveGame = game
+                                ActiveGame = game,
+                                TournamentInfo = await GetTournamentInfo(activeGame)
                                 /*GameId = activeGame.GameId,
 
                                 Payin = activeGame.Payin,
@@ -504,7 +559,7 @@ namespace BITCORNService.Controllers
         }
         [ServiceFilter(typeof(CacheUserAttribute))]
         [HttpPost("processgame")]
-        public async Task<ActionResult<decimal[]>> ProcessGame([FromBody] BattlegroundsProcessGameRequest request)
+        public async Task<ActionResult<object>> ProcessGame([FromBody] BattlegroundsProcessGameRequest request)
         {
             try
             {
@@ -519,7 +574,7 @@ namespace BITCORNService.Controllers
                             var tournament = await _dbContext.Tournament.Where(x => x.TournamentId == activeGame.TournamentId).FirstOrDefaultAsync();
                             if (tournament != null && !tournament.Completed)
                             {
-                                if(tournament.MapIndex == tournament.MapCount-1)
+                                if (tournament.MapIndex >= tournament.MapCount - 1)
                                 {
                                     tournament.Completed = true;
                                 }
@@ -630,7 +685,11 @@ namespace BITCORNService.Controllers
                         }
 
                         //if(allStats.Count == 0 && !activeGame.Active)
-                        return rewards;
+                        return new 
+                        { 
+                            rewards,
+                            tournamentInfo = await GetTournamentInfo(activeGame)
+                        };
                     }
                     return StatusCode((int)HttpStatusCode.Forbidden);
 
