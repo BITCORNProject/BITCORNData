@@ -8,5 +8,6 @@
 		public int MaxPlayerCount { get; set; }
 		public bool Tournament { get; set; }
 		public int? TournamentMapCount { get; set; }
+		public int? TournamentPointMethod { get; set; }
 	}
 }

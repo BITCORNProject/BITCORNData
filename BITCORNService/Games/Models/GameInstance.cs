@@ -15,6 +15,7 @@ namespace BITCORNService.Games.Models
 		public bool Started { get; set; }
 		public int? HostDebitCornTxId { get; set; }
 		public string TournamentId { get; set; }
+
 	}
 	public class Tournament
 	{
@@ -25,5 +26,6 @@ namespace BITCORNService.Games.Models
 		public int MapCount { get; set; }
 		public int MapIndex { get; set; }
 		public bool Completed { get; set; }
+		public int? PointMethod { get; set; }
 	}
 }
