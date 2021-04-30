@@ -434,7 +434,7 @@ namespace BITCORNService.Controllers
                                 existingTournament.TournamentId = Guid.NewGuid().ToString();
                                 existingTournament.MapIndex = 0;
                                 existingTournament.MapCount = request.TournamentMapCount.Value;
-                                existingTournament.PointMethod = request.TournamentPointMethod;
+                                existingTournament.PointMethod = request.TournamentPointMethod.HasValue ? request.TournamentPointMethod.Value : 0;
                                 _dbContext.Tournament.Add(existingTournament);
                             }
                             else
@@ -592,6 +592,7 @@ namespace BITCORNService.Controllers
         {
             try
             {
+                Tournament tournament = null;
                 var sender = this.GetCachedUser();
                 if (sender != null)
                 {
@@ -600,7 +601,7 @@ namespace BITCORNService.Controllers
                     {
                         if (!string.IsNullOrEmpty(activeGame.TournamentId))
                         {
-                            var tournament = await _dbContext.Tournament.Where(x => x.TournamentId == activeGame.TournamentId).FirstOrDefaultAsync();
+                            tournament = await _dbContext.Tournament.Where(x => x.TournamentId == activeGame.TournamentId).FirstOrDefaultAsync();
                             if (tournament != null && !tournament.Completed)
                             {
                                 if (tournament.MapIndex >= tournament.MapCount - 1)
@@ -663,6 +664,21 @@ namespace BITCORNService.Controllers
                             history.GameId = activeGame.GameId;
                             history.Placement = i;
                             history.UserId = request.Players[i].UserId;
+                            if (tournament != null)
+                            {
+                                if (tournament.PointMethod == 0)
+                                {
+                                    history.Points = request.Players.Length - i;
+                                }
+                                else
+                                {
+                                    history.Points = 0;
+                                }
+                            }
+                            else
+                            {
+                                history.Points = 0;
+                            }
                             _dbContext.BattlegroundsGameHistory.Add(history);
 
                             if (users.TryGetValue(userId, out User user))
