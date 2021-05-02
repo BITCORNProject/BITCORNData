@@ -54,6 +54,7 @@ namespace BITCORNService.Games.Models
         public int GameId { get; set; }
         public int Placement { get; set; }
         public int Points { get; set; }
+        public int? Team { get; set; }
         [Key]
         public int Id { get; set; }
 
@@ -64,6 +65,7 @@ namespace BITCORNService.Games.Models
             {
                 var gh = (BattlegroundsGameHistory)other;
                 Placement += gh.Placement;
+                Points += gh.Points;
             }
         }
     }
@@ -77,7 +79,7 @@ namespace BITCORNService.Games.Models
             UserId = g.UserId;
             twitchUsername = u.TwitchUsername;
         }
-        public int Points { get; set; }
+   
         public string twitchUsername { get; set; }
     }
 }

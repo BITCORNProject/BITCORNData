@@ -147,6 +147,30 @@ namespace BITCORNService.Controllers
 
                             if (changesMade)
                             {
+
+                                if (activeGame.EnableTeams)
+                                {
+                                    if(activeGame.LastTeamSeed == null)
+                                    {
+                                        activeGame.LastTeamSeed = 1;
+                                    }
+                                    else
+                                    {
+                                        if (activeGame.LastTeamSeed == 0) activeGame.LastTeamSeed = 1;
+                                        else activeGame.LastTeamSeed = 0;
+                                    }
+
+                                    battlegroundsProfile.Team = activeGame.LastTeamSeed;
+
+                                    if (activeGame.LastTeamSeed == 0) activeGame.LastTeamSeed = 1;
+                                    else activeGame.LastTeamSeed = 0;
+
+                                }
+                                else
+                                {
+                                    battlegroundsProfile.Team = null;
+                                }
+
                                 var aInfo = await GameUtils.GetAvatar(_dbContext, player, GameUtils.AvatarPlatformWindows);
                                 var packet = GetJoinPacket(aInfo, player, battlegroundsProfile);
                                 var result = await WebSocketsController.TryBroadcastToBattlegroundsUser(sender.UserIdentity.Auth0Id,
@@ -366,12 +390,13 @@ namespace BITCORNService.Controllers
                     matchHistoryContainer.Add(new GameSummary()
                     {
                         Game = played,
-                        Players = matchHistory.Select(x => new BattlegroundsGameHistoryOutput(played, x.g, x.u)).ToArray(),
+                        Players = matchHistory.Select(x => new BattlegroundsGameHistoryOutput(played, x.g, x.u)).OrderByDescending(x => x.Points).ToArray(),
 
                     });
                 }
 
-                Dictionary<int, BattlegroundsGameHistoryOutput> summed = new Dictionary<int, BattlegroundsGameHistoryOutput>();
+                Dictionary<int, List<BattlegroundsGameHistoryOutput>> summed = new Dictionary<int,
+                    List<BattlegroundsGameHistoryOutput>>();
 
                 for (int i = 0; i < matchHistoryContainer.Count; i++)
                 {
@@ -380,20 +405,29 @@ namespace BITCORNService.Controllers
                     {
                         if (!summed.TryGetValue(item.UserId, out var history))
                         {
-                            summed.Add(item.UserId, item);
+                            summed.Add(item.UserId, new List<BattlegroundsGameHistoryOutput>() { item });
                         }
                         else
                         {
+                            history[0].Add(item);
                             history.Add(item);
                         }
                     }
                 }
 
-
+                /*
+                foreach (var item in summed.Values)
+                {
+                    if (item.Count > 0)
+                    {
+                        item[0].Placement = item.Last().Placement;
+                    }
+                }
+                */
                 return new TournamentInfo()
                 {
                     MatchHistoryContainer = matchHistoryContainer,
-                    MatchHistorySummary = summed.Values.ToArray(),
+                    MatchHistorySummary = summed.Values.Select(x => x[0]).ToArray(),
                     MapIndex = tournament.MapIndex,
                     IsComplete = tournament.Completed,
                     IsTournament = true
@@ -530,6 +564,8 @@ namespace BITCORNService.Controllers
             //     activeGame.HostDebitCornTxId = txid;
             activeGame.RewardMultiplier = 1;//request.RewardMultiplier;
             activeGame.PlayerLimit = request.MaxPlayerCount;
+            activeGame.EnableTeams = request.EnableTeams;
+            activeGame.GameMode = request.GameMode;
             return activeGame;
         }
 
@@ -664,11 +700,18 @@ namespace BITCORNService.Controllers
                             history.GameId = activeGame.GameId;
                             history.Placement = i;
                             history.UserId = request.Players[i].UserId;
+
+                            if (allStats.TryGetValue(userId, out var statUser))
+                            {
+                                history.Team = statUser.Team;
+                            }
+
+
                             if (tournament != null)
                             {
                                 if (tournament.PointMethod == 0)
                                 {
-                                    history.Points = request.Players.Length - i;
+                                    history.Points = (request.Players.Length - i) + 1;
                                 }
                                 else
                                 {

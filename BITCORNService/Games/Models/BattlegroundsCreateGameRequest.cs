@@ -9,5 +9,7 @@
 		public bool Tournament { get; set; }
 		public int? TournamentMapCount { get; set; }
 		public int? TournamentPointMethod { get; set; }
+		public bool EnableTeams { get; set; }
+		public int GameMode { get; set; }
 	}
 }

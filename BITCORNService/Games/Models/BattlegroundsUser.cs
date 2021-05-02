@@ -18,6 +18,7 @@ namespace BITCORNService.Games.Models
 		public int TournamentWins { get; set; }
 		public int TournamentsPlayed { get; set; }
 		public int VerifiedGameId { get; set; }
+		public int? Team { get; set; }
 		public decimal TotalCornRewards { get; set; }
 	}
 }
