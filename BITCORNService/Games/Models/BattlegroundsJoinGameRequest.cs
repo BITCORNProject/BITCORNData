@@ -11,5 +11,6 @@
 	{
 		public string IrcTarget { get; set; }
 		public string UserPlatformId { get; set; }
+		public bool IsSub { get; set; }
 	}
 }

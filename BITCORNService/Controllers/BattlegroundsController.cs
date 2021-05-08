@@ -8,10 +8,12 @@ using System.Threading.Tasks;
 using BITCORNService.Games;
 using BITCORNService.Games.Models;
 using BITCORNService.Models;
+using BITCORNService.Reflection;
 using BITCORNService.Utils;
 using BITCORNService.Utils.Auth;
 using BITCORNService.Utils.DbActions;
 using BITCORNService.Utils.LockUser;
+using BITCORNService.Utils.Models;
 using BITCORNService.Utils.Tx;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
@@ -59,6 +61,61 @@ namespace BITCORNService.Controllers
                 }
             }
             return StatusCode((int)HttpStatusCode.BadRequest);
+        }
+
+        [Authorize(Policy = AuthScopes.SendTransaction)]
+        [ServiceFilter(typeof(LockUserAttribute))]
+        [HttpPost("bgrain")]
+        public async Task<ActionResult<object>> BgRain([FromBody] RainRequest rainRequest)
+        {
+            var cachedUser = this.GetCachedUser();
+            if (rainRequest == null) throw new ArgumentNullException();
+            if (rainRequest.From == null) throw new ArgumentNullException();
+            if (rainRequest.To == null) throw new ArgumentNullException();
+            if (rainRequest.Amount <= 0) return StatusCode((int)HttpStatusCode.BadRequest);
+            rainRequest.FromUser = this.GetCachedUser();
+            User host = null;
+            if (!string.IsNullOrEmpty(rainRequest.IrcTarget))
+            {
+                host = await _dbContext.TwitchQuery(rainRequest.IrcTarget).FirstOrDefaultAsync();
+            }
+
+            if (host != null)
+            {
+                var outputs = new List<(SignedTx, TxReceipt)>();
+                foreach (var item in rainRequest.To)
+                {
+                    var signedTx = await TxUtils.CreateSignedTx(_dbContext, this.GetCachedUser(), rainRequest.Amount, "BITCORNBattlegrounds", "bgrain");
+                    if (signedTx != null)
+                    {
+                        outputs.Add(signedTx.Value);
+                    }
+                }
+
+                if (outputs.Count > 0)
+                {
+                    var result = await WebSocketsController.TryBroadcastToBattlegroundsUser(host.UserIdentity.Auth0Id,
+                                       _dbContext,
+                                       "bgrain",
+                                       new
+                                       {
+                                           transactions = outputs.ToArray()
+                                       }
+                                       );
+
+                    if (result == WebSocketsController.SocketBroadcastResult.Success)
+                    {
+
+                    }
+                }
+
+                var txOutputs =  outputs.Select(x=>x.Item2).ToArray();
+                await TxUtils.AppendTxs(txOutputs, _dbContext, rainRequest.Columns);
+                //UserReflection.GetColumns(_dbContext, rainRequest.Columns, );
+                return txOutputs;
+            }
+
+            return StatusCode(404);
         }
 
         [ServiceFilter(typeof(LockUserAttribute))]
@@ -150,7 +207,7 @@ namespace BITCORNService.Controllers
 
                                 if (activeGame.EnableTeams)
                                 {
-                                    if(activeGame.LastTeamSeed == null)
+                                    if (activeGame.LastTeamSeed == null)
                                     {
                                         activeGame.LastTeamSeed = 1;
                                     }
@@ -172,7 +229,7 @@ namespace BITCORNService.Controllers
                                 }
 
                                 var aInfo = await GameUtils.GetAvatar(_dbContext, player, GameUtils.AvatarPlatformWindows);
-                                var packet = GetJoinPacket(aInfo, player, battlegroundsProfile);
+                                var packet = GetJoinPacket(aInfo, player, battlegroundsProfile, request.IsSub);
                                 var result = await WebSocketsController.TryBroadcastToBattlegroundsUser(sender.UserIdentity.Auth0Id,
                                     _dbContext,
                                     "user-join-game",
@@ -207,7 +264,7 @@ namespace BITCORNService.Controllers
                 }
 
                 var avatarInfo = await GameUtils.GetAvatar(_dbContext, player, GameUtils.AvatarPlatformWindows);
-                return GetJoinPacket(avatarInfo, player, battlegroundsProfile);
+                return GetJoinPacket(avatarInfo, player, battlegroundsProfile, request.IsSub);
                 /*
                 return new UserJoinGamePacket
                 {
@@ -219,15 +276,17 @@ namespace BITCORNService.Controllers
             throw new ArgumentException();
         }
 
-        UserJoinGamePacket GetJoinPacket(UserAvatarOutput avatarInfo, User player, BattlegroundsUser battlegroundsProfile)
+        UserJoinGamePacket GetJoinPacket(UserAvatarOutput avatarInfo, User player, BattlegroundsUser battlegroundsProfile, bool isSub)
         {
+            //if (string.IsNullOrEmpty(subTier)) subTier = "0000";
             return new UserJoinGamePacket
             {
                 avatarInfo = avatarInfo,
                 userId = player.UserId,
                 battlegroundsProfile = battlegroundsProfile,
                 twitchId = player.UserIdentity.TwitchId,
-                twitchUsername = player.UserIdentity.TwitchUsername
+                twitchUsername = player.UserIdentity.TwitchUsername,
+                isSub = isSub
             };
 
         }
@@ -239,6 +298,7 @@ namespace BITCORNService.Controllers
             public BattlegroundsUser battlegroundsProfile { get; set; }
             public string twitchId { get; set; }
             public string twitchUsername { get; set; }
+            public bool isSub { get; set; }
         }
 
         [ServiceFilter(typeof(LockUserAttribute))]

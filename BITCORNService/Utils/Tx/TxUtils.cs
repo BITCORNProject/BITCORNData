@@ -249,7 +249,7 @@ namespace BITCORNService.Utils.Tx
                     }
                 }
 
-                if(balanceUpdates.Count>0)
+                if (balanceUpdates.Count > 0)
                 {
                     await WebSocketsController.TryBroadcastToBitcornfarms(dbContext, "update-balances", balanceUpdates);
                 }
@@ -270,7 +270,7 @@ namespace BITCORNService.Utils.Tx
         public static async Task<TxReceipt> SendFromGetReceipt(User from, User to, decimal amount, string platform, string txType, BitcornContext dbContext)
         {
             var processInfo = await PrepareTransaction(from, to, amount, platform, txType, dbContext);
-            if((await processInfo.ExecuteTransaction(dbContext)))
+            if ((await processInfo.ExecuteTransaction(dbContext)))
             {
                 return processInfo.Transactions[0];
             }
@@ -292,11 +292,81 @@ namespace BITCORNService.Utils.Tx
             }
         }
 
+        public static async Task<(SignedTx, TxReceipt)?> CreateSignedTx(BitcornContext dbContext, User from, decimal amount, string platform, string txType)
+        {
+            var bitcornhub = await GetBitcornhub(dbContext);
+            var result = await SendFromGetReceipt(from, bitcornhub, amount, platform, txType, dbContext);
+            if (result != null)
+            {
+                var tx = new SignedTx();
+                tx.Id = Guid.NewGuid().ToString();
+                tx.Amount = amount;
+                tx.InCornTxId = result.TxId.Value;
+                tx.SenderUserId = from.UserId;
+                tx.Timestamp = DateTime.Now;
+                tx.TxType = txType;
+                dbContext.SignedTx.Add(tx);
+                await dbContext.SaveAsync();
+                return (tx, result);
+            }
+
+            return null;
+        }
+
+        static HashSet<string> _SignedTxLock = new HashSet<string>();
+
+        public static async Task<TxReceipt> ClaimSignedTx(BitcornContext dbContext, User to, string key)
+        {
+            lock (_SignedTxLock)
+            {
+                if (_SignedTxLock.Contains(key)) return null;
+                _SignedTxLock.Add(key);
+            }
+
+            try
+            {
+
+                var signed = await dbContext.SignedTx.FirstOrDefaultAsync(x => x.Id == key);
+                if (signed != null && signed.OutCornTxId == null)
+                {
+                    var srcTx = await dbContext.CornTx.FirstOrDefaultAsync(x=>x.CornTxId == signed.InCornTxId);
+                    if(srcTx!=null)
+                    {
+                        if (srcTx.ReceiverId == BitcornHubPK)
+                        {
+
+                            var receipt = await SendFromBitcornhubGetReceipt(to, srcTx.Amount.Value, srcTx.Platform, srcTx.TxType, dbContext);
+                            if(receipt!=null)
+                            {
+                                dbContext.Database.ExecuteSqlRaw($" update [{nameof(SignedTx)}] set [{nameof(SignedTx.OutCornTxId)}] = {receipt.TxId.Value} where [{nameof(SignedTx.Id)}] = {signed.Id}");
+                                //signed.OutCornTxId = receipt.TxId;
+                                return receipt;   
+                            }
+                        }
+                    }
+                    //SendFromBitcornhub(to, signed.Amount, signed.);
+                }
+            }
+            catch (Exception ex)
+            {
+                await BITCORNLogger.LogError(dbContext, ex, "");
+            }
+            finally
+            {
+                lock (_SignedTxLock)
+                {
+                    _SignedTxLock.Remove(key);
+                }
+            }
+
+            return null;
+        }
+
         public static async Task<bool> ShouldLockWallet(BitcornContext dbContext, User user, decimal add)
         {
             if (user.UserId != TxUtils.BitcornHubPK)
             {
-                if (user.UserId == 5957|| user.UserId == 5611) return false;
+                if (user.UserId == 5957 || user.UserId == 6051) return false;
                 var nowDayAgo = DateTime.Now;
                 nowDayAgo = nowDayAgo.AddHours(-24);
                 var spent = await dbContext.CornTx.Where(x => x.SenderId == user.UserId && x.Timestamp > nowDayAgo).SumAsync(x => x.Amount);
@@ -340,7 +410,7 @@ namespace BITCORNService.Utils.Tx
             //check if sender has enough corn to execute all transactions
             if (info.From != null && info.From.UserWallet.Balance >= totalAmountRequired)
             {
-                
+
                 if (info.From.UserWallet.IsLocked != null && info.From.UserWallet.IsLocked == true)
                 {
                     canExecuteAll = false;
