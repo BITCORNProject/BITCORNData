@@ -14,6 +14,6 @@ namespace BITCORNService.Models
         public decimal Amount { get; set; }
         public string TxType { get; set; }
         public DateTime Timestamp { get; set; }
-
+        public int? GameInstanceId { get; set; }
     }
 }

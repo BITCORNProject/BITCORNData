@@ -292,7 +292,7 @@ namespace BITCORNService.Utils.Tx
             }
         }
 
-        public static async Task<(SignedTx, TxReceipt)?> CreateSignedTx(BitcornContext dbContext, User from, decimal amount, string platform, string txType)
+        public static async Task<(SignedTx, TxReceipt)?> CreateSignedTx(BitcornContext dbContext, User from, decimal amount, string platform, string txType, int? gameId = null)
         {
             var bitcornhub = await GetBitcornhub(dbContext);
             var result = await SendFromGetReceipt(from, bitcornhub, amount, platform, txType, dbContext);
@@ -305,6 +305,7 @@ namespace BITCORNService.Utils.Tx
                 tx.SenderUserId = from.UserId;
                 tx.Timestamp = DateTime.Now;
                 tx.TxType = txType;
+                tx.GameInstanceId = gameId;
                 dbContext.SignedTx.Add(tx);
                 await dbContext.SaveAsync();
                 return (tx, result);
@@ -315,7 +316,7 @@ namespace BITCORNService.Utils.Tx
 
         static HashSet<string> _SignedTxLock = new HashSet<string>();
 
-        public static async Task<TxReceipt> ClaimSignedTx(BitcornContext dbContext, User to, string key)
+        public static async Task<TxReceipt> ClaimSignedTx(BitcornContext dbContext, User to, string key, int? gameId = null)
         {
             lock (_SignedTxLock)
             {
@@ -325,8 +326,17 @@ namespace BITCORNService.Utils.Tx
 
             try
             {
+                SignedTx signed = null;
+                if (gameId == null)
+                {
+                    signed = await dbContext.SignedTx.FirstOrDefaultAsync(x => x.Id == key);
+                    if (signed.GameInstanceId != null) throw new NotImplementedException();
+                }
+                else
+                {
+                    signed = await dbContext.SignedTx.FirstOrDefaultAsync(x=>x.Id==key && gameId == x.GameInstanceId);
+                }
 
-                var signed = await dbContext.SignedTx.FirstOrDefaultAsync(x => x.Id == key);
                 if (signed != null && signed.OutCornTxId == null)
                 {
                     var srcTx = await dbContext.CornTx.FirstOrDefaultAsync(x=>x.CornTxId == signed.InCornTxId);
@@ -338,7 +348,8 @@ namespace BITCORNService.Utils.Tx
                             var receipt = await SendFromBitcornhubGetReceipt(to, srcTx.Amount.Value, srcTx.Platform, srcTx.TxType, dbContext);
                             if(receipt!=null)
                             {
-                                dbContext.Database.ExecuteSqlRaw($" update [{nameof(SignedTx)}] set [{nameof(SignedTx.OutCornTxId)}] = {receipt.TxId.Value} where [{nameof(SignedTx.Id)}] = {signed.Id}");
+                                var cmd = $" update [{nameof(SignedTx)}] set [{nameof(SignedTx.OutCornTxId)}] = {receipt.TxId.Value} where [{nameof(SignedTx.Id)}] = '{signed.Id}' ";
+                                dbContext.Database.ExecuteSqlRaw(cmd);
                                 //signed.OutCornTxId = receipt.TxId;
                                 return receipt;   
                             }

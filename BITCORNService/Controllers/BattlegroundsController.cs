@@ -19,6 +19,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Newtonsoft.Json;
 
 namespace BITCORNService.Controllers
 {
@@ -75,17 +76,20 @@ namespace BITCORNService.Controllers
             if (rainRequest.Amount <= 0) return StatusCode((int)HttpStatusCode.BadRequest);
             rainRequest.FromUser = this.GetCachedUser();
             User host = null;
+            GameInstance activeGame = null;
             if (!string.IsNullOrEmpty(rainRequest.IrcTarget))
             {
                 host = await _dbContext.TwitchQuery(rainRequest.IrcTarget).FirstOrDefaultAsync();
+                activeGame = await _dbContext.GameInstance.FirstOrDefaultAsync(g => g.HostId == host.UserId && g.Active);
+
             }
 
-            if (host != null)
+            if (host != null && activeGame != null)
             {
                 var outputs = new List<(SignedTx, TxReceipt)>();
                 foreach (var item in rainRequest.To)
                 {
-                    var signedTx = await TxUtils.CreateSignedTx(_dbContext, this.GetCachedUser(), rainRequest.Amount, "BITCORNBattlegrounds", "bgrain");
+                    var signedTx = await TxUtils.CreateSignedTx(_dbContext, this.GetCachedUser(), rainRequest.Amount, "BITCORNBattlegrounds", "bgrain", activeGame.GameId);
                     if (signedTx != null)
                     {
                         outputs.Add(signedTx.Value);
@@ -99,7 +103,12 @@ namespace BITCORNService.Controllers
                                        "bgrain",
                                        new
                                        {
-                                           transactions = outputs.ToArray()
+                                           sender = rainRequest.FromUser.UserIdentity.TwitchUsername,
+                                           transactions = outputs.Select(x => new
+                                           {
+                                               signed = x.Item1,
+                                               tx = x.Item2
+                                           }).ToArray()
                                        }
                                        );
 
@@ -109,7 +118,7 @@ namespace BITCORNService.Controllers
                     }
                 }
 
-                var txOutputs =  outputs.Select(x=>x.Item2).ToArray();
+                var txOutputs = outputs.Select(x => x.Item2).ToArray();
                 await TxUtils.AppendTxs(txOutputs, _dbContext, rainRequest.Columns);
                 //UserReflection.GetColumns(_dbContext, rainRequest.Columns, );
                 return txOutputs;
@@ -499,6 +508,38 @@ namespace BITCORNService.Controllers
                 {
                     MatchHistoryContainer = new List<GameSummary>()
                 };
+            }
+        }
+
+        [ServiceFilter(typeof(LockUserAttribute))]
+        [HttpPost("pickupcorn")]
+        public async Task<ActionResult<object>> PickupCorn([FromBody] PickupCornRequest request)
+        {
+            try
+            {
+
+                var sender = this.GetCachedUser();
+                if (sender != null)
+                {
+                    var activeGame = await _dbContext.GameInstance.FirstOrDefaultAsync(g => g.HostId == sender.UserId && g.Active);
+                    if (activeGame != null)
+                    {
+                        var recipient = await _dbContext.JoinUserModels().FirstOrDefaultAsync(x => x.UserId == request.UserId);
+                        if (recipient != null)
+                        {
+                            var signedTx = await TxUtils.ClaimSignedTx(_dbContext, recipient, request.Key, activeGame.GameId);
+                            return signedTx;
+                        }
+                    }
+                }
+
+                return StatusCode(404);
+
+            }
+            catch (Exception e)
+            {
+                await BITCORNLogger.LogError(_dbContext, e, JsonConvert.SerializeObject(request));
+                throw e;
             }
         }
 
