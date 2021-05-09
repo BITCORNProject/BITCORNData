@@ -86,6 +86,8 @@ namespace BITCORNService.Controllers
 
             if (host != null && activeGame != null)
             {
+                var existingBgRainCount = await _dbContext.SignedTx.Where(x => x.GameInstanceId == activeGame.GameId).CountAsync();
+                if (existingBgRainCount > 50) return StatusCode(420);
                 var outputs = new List<(SignedTx, TxReceipt)>();
                 foreach (var item in rainRequest.To)
                 {
@@ -189,15 +191,28 @@ namespace BITCORNService.Controllers
                     activeGame = await _dbContext.GameInstance.FirstOrDefaultAsync(g => g.HostId == sender.UserId && g.Active);
                     if (activeGame != null)
                     {
+                        bool isInCurrentTournament = false;
+                        Tournament tournament = null;
+                        if (!string.IsNullOrEmpty(activeGame.TournamentId))
+                        {
+                            tournament = await _dbContext.Tournament.FirstOrDefaultAsync(x => x.TournamentId == activeGame.TournamentId);
+                            if (battlegroundsProfile.CurrentTournamentId == tournament.TournamentId)
+                            {
+                                isInCurrentTournament = true;
+                            }
+                        }
+
                         if (!activeGame.Started)
                         {
-                            if (activeGame.Payin > 0 && supportPaidGames)
+
+                            if (activeGame.Payin > 0 && supportPaidGames && (tournament == null || tournament != null && !isInCurrentTournament))
                             {
                                 //  (request.Payin * request.RewardMultiplier);
                                 var txid = await TxUtils.SendToBitcornhub(player, activeGame.Payin, "BITCORNBattlegrounds", "Battlegrounds payin", _dbContext);
                                 if (txid != null)
                                 {
                                     battlegroundsProfile.CurrentGameId = activeGame.GameId;
+
                                     changesMade = true;
                                 }
                                 else
@@ -213,6 +228,10 @@ namespace BITCORNService.Controllers
 
                             if (changesMade)
                             {
+                                if (tournament != null && battlegroundsProfile.CurrentTournamentId != tournament.TournamentId)
+                                {
+                                    battlegroundsProfile.CurrentTournamentId = tournament.TournamentId;
+                                }
 
                                 if (activeGame.EnableTeams)
                                 {
@@ -496,7 +515,7 @@ namespace BITCORNService.Controllers
                 return new TournamentInfo()
                 {
                     MatchHistoryContainer = matchHistoryContainer,
-                    MatchHistorySummary = summed.Values.Select(x => x[0]).ToArray(),
+                    MatchHistorySummary = summed.Values.Select(x => x[0]).OrderByDescending(x => x.Points).ToArray(),
                     MapIndex = tournament.MapIndex,
                     IsComplete = tournament.Completed,
                     IsTournament = true
@@ -553,6 +572,16 @@ namespace BITCORNService.Controllers
                 var sender = this.GetCachedUser();
                 if (sender != null)
                 {
+                    var senderProfile = await _dbContext.BattlegroundsUser.Where(x => x.UserId == sender.UserId && x.HostId == sender.UserId).FirstOrDefaultAsync();
+                    if (senderProfile == null)
+                    {
+                        senderProfile = new BattlegroundsUser();
+                        senderProfile.UserId = sender.UserId;
+                        senderProfile.HostId = sender.UserId;
+                        _dbContext.Add(senderProfile);
+                        await _dbContext.SaveAsync();
+                    }
+
                     var activeGame = await _dbContext.GameInstance.FirstOrDefaultAsync(g => g.HostId == sender.UserId && g.Active);
                     if (activeGame == null)
                     {
@@ -736,6 +765,9 @@ namespace BITCORNService.Controllers
                     var activeGame = await _dbContext.GameInstance.FirstOrDefaultAsync(g => g.HostId == sender.UserId && g.Active);
                     if (activeGame != null)
                     {
+                        var senderProfile = await _dbContext.BattlegroundsUser
+                                  .Where(x => x.UserId == sender.UserId && x.HostId == sender.UserId).FirstOrDefaultAsync();
+
                         if (!string.IsNullOrEmpty(activeGame.TournamentId))
                         {
                             tournament = await _dbContext.Tournament.Where(x => x.TournamentId == activeGame.TournamentId).FirstOrDefaultAsync();
@@ -776,23 +808,9 @@ namespace BITCORNService.Controllers
                                 //(activeGame.Payin*activeGame.RewardMultiplier)*users.Count
                                 activeGame.Payin * playerIds.Length
                             };
-                            //var tx = await _dbContext.CornTx.Where(u => u.CornTxId == activeGame.HostDebitCornTxId.Value)
-                            //.Select(u => u.Amount).FirstOrDefaultAsync();
-                            // if (tx != null)
-                            {
-                                //at the start of the game, the host was debited the max possible reward, refund whats left from the reward
-                                /*var refund = tx.Value - rewards[0];
-                                if (refund > 0)
-                                {
 
-                                    var rewardAmount = await SendfromBitcornhubTransaction(sender,
-                                        activeGame.GameId,
-                                        refund,
-                                        "Battlegrounds host refund");
-
-                                }*/
-                            }
                         }
+                        var orderedUsers = new List<User>();
                         for (int i = 0; i < request.Players.Length; i++)
                         {
                             var userId = request.Players[i].UserId;
@@ -827,33 +845,13 @@ namespace BITCORNService.Controllers
 
                             if (users.TryGetValue(userId, out User user))
                             {
-                                if (i < rewards.Length && string.IsNullOrEmpty(activeGame.TournamentId))
+                                orderedUsers.Add(user);
+                                /*if (allStats.TryGetValue(userId, out BattlegroundsUser stats) && i == 0)
                                 {
-                                    var reward = rewards[i];
-                                    var rewardAmount = await SendfromBitcornhubTransaction(user, activeGame.GameId, reward, "Battlegrounds reward");
-                                    rewards[i] = rewardAmount;
-
-                                    if (allStats.TryGetValue(userId, out BattlegroundsUser stats))
-                                    {
-                                        if (i == 0)
-                                        {
-                                            stats.Wins++;
-                                        }
-                                        if (rewardAmount > 0)
-                                        {
-                                            stats.TotalCornRewards += reward;
-
-                                        }
-                                    }
+                                    stats.Wins++;
                                 }
-                                else
-                                {
-                                    if (allStats.TryGetValue(userId, out BattlegroundsUser stats) && i == 0)
-                                    {
-                                        stats.Wins++;
-                                    }
+                                */
 
-                                }
                             }
                         }
 
@@ -861,6 +859,149 @@ namespace BITCORNService.Controllers
                         {
                             player.GamesPlayed++;
                             player.Add(playerUpdates[player.UserId]);
+                        }
+
+                        if (tournament != null)
+                        {
+                            await _dbContext.SaveAsync();
+                            var tournamentInfo = await GetTournamentInfo(activeGame);
+                            var rewardFull = rewards[0] = tournamentInfo.MatchHistorySummary.Length * activeGame.Payin;
+                            var rewardToPlayer = rewardFull * 0.9m;
+                            var rewardToHost = rewardFull * 0.1m;
+
+                            if (!activeGame.EnableTeams)
+                            {
+                                var winner = tournamentInfo.MatchHistorySummary.First();
+                                var winnerUser = await _dbContext.JoinUserModels().Where(x => x.UserId == winner.UserId).FirstOrDefaultAsync();
+                                var winnerStats = await _dbContext.BattlegroundsUser.Where(x => x.UserId == winner.UserId && x.HostId == activeGame.HostId).FirstOrDefaultAsync();
+                                winnerStats.TournamentWins++;
+
+                                var rewardAmount = await SendfromBitcornhubTransaction(winnerUser, activeGame.GameId, rewardToPlayer,
+                                           "Battlegrounds reward");
+
+                                winnerStats.TotalCornRewards += rewardAmount;
+
+                                await SendfromBitcornhubTransaction(sender, activeGame.GameId, rewardToHost,
+                                    "Battlegrounds host reward");
+
+                                senderProfile.HostCornRewards += rewardToHost;
+
+                            }
+                            else
+                            {
+                                var ids = tournamentInfo.MatchHistorySummary.Select(x => x.UserId).ToArray();
+                                var points = new int[2];
+                                foreach (var item in tournamentInfo.MatchHistorySummary)
+                                {
+                                    points[item.Team.Value] += item.Points;
+                                }
+
+                                int winningTeam = 1;
+                                if (points[0] > points[1])
+                                {
+                                    winningTeam = 0;
+                                }
+
+
+
+                                var allParticipants = await _dbContext.JoinUserModels().Where(x => ids.Contains(x.UserId)).ToDictionaryAsync(x => x.UserId, x => x);
+                                var allProfiles = await _dbContext.BattlegroundsUser.Where(x => ids.Contains(x.UserId) && x.Team == winningTeam && x.HostId == activeGame.HostId).ToDictionaryAsync(x => x.UserId, x => x);
+                                var rewardChunk = rewardToPlayer / allProfiles.Count;
+                                foreach (var item in tournamentInfo.MatchHistorySummary)
+                                {
+                                    if (allProfiles.TryGetValue(item.UserId, out var bgInfo))
+                                    {
+                                        if (allParticipants.TryGetValue(item.UserId, out var userInfo))
+
+                                        {
+
+                                            var rewardAmount = await SendfromBitcornhubTransaction(userInfo, activeGame.GameId, rewardChunk,
+                                            "Battlegrounds reward");
+
+                                            bgInfo.TournamentTeamWins++;
+                                        }
+                                    }
+                                }
+
+                                await SendfromBitcornhubTransaction(sender, activeGame.GameId, rewardToHost,
+                                  "Battlegrounds host reward");
+
+                                senderProfile.HostCornRewards += rewardToHost;
+                            }
+                            /*
+                            var tournamentParticipants = await _dbContext.BattlegroundsUser.Where(x=>x.CurrentTournamentId == tournament.TournamentId).ToArrayAsync();
+                            var ids = tournamentParticipants.Select(x=>x.UserId).ToArray();
+                            var participantUsers = await _dbContext.JoinUserModels().Where(x=>ids.Contains(x.UserId)).ToDictionaryAsync(x=>x.UserId, x=>x);
+                            foreach (var participant in tournamentParticipants)
+                            {
+                                if(participantUsers.TryGetValue(participant.UserId, out var pUser))
+                                {
+
+                                }
+                            }*/
+                        }
+                        else
+                        {
+                            if (orderedUsers.Count > 0)
+                            {
+                                var winnerStats = allStats[orderedUsers[0].UserId];
+
+                                var user = orderedUsers[0];
+                                var rewardFull = rewards[0];
+                                if (rewardFull > 0)
+                                {
+                                    var rewardToPlayer = rewardFull * 0.9m;
+                                    var rewardToHost = rewardFull * 0.1m;
+                                    if (!activeGame.EnableTeams)
+                                    {
+                                        winnerStats.Wins++;
+                                        var rewardAmount = await SendfromBitcornhubTransaction(user, activeGame.GameId, rewardToPlayer,
+                                            "Battlegrounds reward");
+
+                                        winnerStats.TotalCornRewards += rewardAmount;
+
+                                        await SendfromBitcornhubTransaction(sender, activeGame.GameId, rewardToHost,
+                                            "Battlegrounds host reward");
+
+                                        senderProfile.HostCornRewards += rewardToHost;
+                                        rewards[0] = rewardAmount;
+
+                                    }
+                                    else
+                                    {
+                                        var winners = new List<(BattlegroundsUser, User)>();
+
+
+                                        for (int i = 0; i < orderedUsers.Count; i++)
+                                        {
+                                            if (allStats.TryGetValue(orderedUsers[i].UserId, out BattlegroundsUser stats))
+                                            {
+                                                if (winnerStats.Team == stats.Team && stats.Team != null)
+                                                {
+                                                    stats.TeamWins++;
+                                                    winners.Add((stats, user));
+                                                }
+                                            }
+                                        }
+
+                                        var rewardChunk = rewardToPlayer / winners.Count;
+                                        for (int i = 0; i < winners.Count; i++)
+                                        {
+                                            var rAmount = await SendfromBitcornhubTransaction(winners[i].Item2, activeGame.GameId, rewardChunk,
+                                      "Battlegrounds reward");
+
+                                            winners[i].Item1.TotalCornRewards += rAmount;
+
+                                        }
+
+                                        await SendfromBitcornhubTransaction(sender, activeGame.GameId, rewardToHost,
+                                      "Battlegrounds host reward");
+
+                                        senderProfile.HostCornRewards += rewardToHost;
+                                    }
+                                }
+
+                            }
                         }
 
                         if (allStats.Count > 0 || !activeGame.Active)
