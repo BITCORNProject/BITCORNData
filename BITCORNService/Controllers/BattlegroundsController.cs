@@ -791,7 +791,7 @@ namespace BITCORNService.Controllers
                         var playerUpdates = request.Players.ToDictionary(u => u.UserId, u => u);
                         //var ids = playerUpdates.Keys.ToHashSet();
                         //select registered users from database
-                        var users = await _dbContext.User.Where(p => playerIds.Contains(p.UserId)).AsNoTracking().ToDictionaryAsync(u => u.UserId, u => u);
+                        var users = await _dbContext.JoinUserModels().Where(p => playerIds.Contains(p.UserId)).AsNoTracking().ToDictionaryAsync(u => u.UserId, u => u);
                         //var existingUserIds = users.Keys.ToArray();
 
                         var allStats = _dbContext.BattlegroundsUser.Where(p => playerIds.Contains(p.UserId) && p.HostId == sender.UserId).ToDictionary(u => u.UserId, u => u);
@@ -1035,6 +1035,7 @@ namespace BITCORNService.Controllers
             }
             catch (Exception e)
             {
+                await BITCORNLogger.LogError(_dbContext, e, "");
                 System.Diagnostics.Debug.WriteLine(e.Message + "::" + e.StackTrace);
                 throw e;
             }
