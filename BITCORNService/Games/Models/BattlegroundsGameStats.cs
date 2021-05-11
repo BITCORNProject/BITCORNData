@@ -66,6 +66,7 @@ namespace BITCORNService.Games.Models
                 var gh = (BattlegroundsGameHistory)other;
                 Placement += gh.Placement;
                 Points += gh.Points;
+                Team = gh.Team;
             }
         }
     }
@@ -77,6 +78,7 @@ namespace BITCORNService.Games.Models
         {
             Add(g);
             UserId = g.UserId;
+            //Team = g.Team;
             twitchUsername = u.TwitchUsername;
         }
    

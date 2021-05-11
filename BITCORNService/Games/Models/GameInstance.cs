@@ -1,4 +1,5 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using System;
+using System.ComponentModel.DataAnnotations;
 
 namespace BITCORNService.Games.Models
 {
@@ -19,7 +20,15 @@ namespace BITCORNService.Games.Models
 		public bool EnableTeams { get; set; }
 		public int? LastTeamSeed { get; set; }
 
-	}
+        public void CopySettings(GameInstance previousGame)
+        {
+			Payin = previousGame.Payin;
+			PlayerLimit = previousGame.PlayerLimit;
+			GameMode = previousGame.GameMode;
+			EnableTeams = previousGame.EnableTeams;
+			LastTeamSeed = previousGame.LastTeamSeed;
+		}
+    }
 	public class Tournament
 	{
 
@@ -30,6 +39,6 @@ namespace BITCORNService.Games.Models
 		public int MapIndex { get; set; }
 		public bool Completed { get; set; }
 		public int PointMethod { get; set; }
-
+		public int? PreviousMapId { get; set; }
 	}
 }

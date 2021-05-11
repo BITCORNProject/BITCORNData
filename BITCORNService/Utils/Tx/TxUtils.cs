@@ -5,6 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using BITCORNService.Controllers;
+using BITCORNService.Games.Models;
 using BITCORNService.Models;
 using BITCORNService.Reflection;
 using BITCORNService.Utils.DbActions;
@@ -316,7 +317,7 @@ namespace BITCORNService.Utils.Tx
 
         static HashSet<string> _SignedTxLock = new HashSet<string>();
 
-        public static async Task<TxReceipt> ClaimSignedTx(BitcornContext dbContext, User to, string key, int? gameId = null)
+        public static async Task<(SignedTx, TxReceipt)?> ClaimSignedTx(BitcornContext dbContext, User to, string key, GameInstance game = null)
         {
             lock (_SignedTxLock)
             {
@@ -327,31 +328,50 @@ namespace BITCORNService.Utils.Tx
             try
             {
                 SignedTx signed = null;
-                if (gameId == null)
+                if (game == null)
                 {
                     signed = await dbContext.SignedTx.FirstOrDefaultAsync(x => x.Id == key);
                     if (signed.GameInstanceId != null) throw new NotImplementedException();
                 }
                 else
                 {
-                    signed = await dbContext.SignedTx.FirstOrDefaultAsync(x=>x.Id==key && gameId == x.GameInstanceId);
+                    signed = await dbContext.SignedTx.FirstOrDefaultAsync(x => x.Id == key && game.GameId == x.GameInstanceId);
                 }
 
                 if (signed != null && signed.OutCornTxId == null)
                 {
-                    var srcTx = await dbContext.CornTx.FirstOrDefaultAsync(x=>x.CornTxId == signed.InCornTxId);
-                    if(srcTx!=null)
+                    var srcTx = await dbContext.CornTx.FirstOrDefaultAsync(x => x.CornTxId == signed.InCornTxId);
+                    if (srcTx != null)
                     {
                         if (srcTx.ReceiverId == BitcornHubPK)
                         {
+                            var amount = srcTx.Amount.Value;
+                            int? hostTx = null;
+                            if (game != null)
+                            {
+                                var host = await dbContext.JoinUserModels().FirstOrDefaultAsync(x => x.UserId == game.HostId);
+                                var hostReward = amount * 0.01m;
+                                amount -= hostReward;
+                                var hostReceipt = await SendFromBitcornhubGetReceipt(host, hostReward, srcTx.Platform, srcTx.TxType, dbContext);
+                                if (hostReceipt != null)
+                                {
+                                    hostTx = hostReceipt.TxId;
+                                }
+                            }
 
-                            var receipt = await SendFromBitcornhubGetReceipt(to, srcTx.Amount.Value, srcTx.Platform, srcTx.TxType, dbContext);
-                            if(receipt!=null)
+                            var receipt = await SendFromBitcornhubGetReceipt(to, amount, srcTx.Platform, srcTx.TxType, dbContext);
+                            if (receipt != null)
                             {
                                 var cmd = $" update [{nameof(SignedTx)}] set [{nameof(SignedTx.OutCornTxId)}] = {receipt.TxId.Value} where [{nameof(SignedTx.Id)}] = '{signed.Id}' ";
+                                if (hostTx != null)
+                                {
+                                    cmd += $" update [{nameof(SignedTx)}] set [{nameof(SignedTx.OutCornTxId2)}] = {hostTx.Value} where [{nameof(SignedTx.Id)}] = '{signed.Id}' ";
+
+
+                                }
                                 dbContext.Database.ExecuteSqlRaw(cmd);
                                 //signed.OutCornTxId = receipt.TxId;
-                                return receipt;   
+                                return (signed, receipt);
                             }
                         }
                     }

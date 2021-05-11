@@ -10,6 +10,8 @@ namespace BITCORNService.Models
         public int SenderUserId { get; set; }
         public int InCornTxId { get; set; }
         public int? OutCornTxId { get; set; }
+
+        public int? OutCornTxId2 { get; set; }
         public int? ReceiverUserId { get; set; }
         public decimal Amount { get; set; }
         public string TxType { get; set; }
