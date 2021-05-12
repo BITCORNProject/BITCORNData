@@ -666,11 +666,12 @@ namespace BITCORNService.Controllers
                                 existingTournament.MapCount = request.TournamentMapCount.Value;
                                 existingTournament.PointMethod = request.TournamentPointMethod.HasValue ? request.TournamentPointMethod.Value : 0;
                                 existingTournament.PreviousMapId = activeGame.GameId;
+                                existingTournament.StartTime = DateTime.Now;
                                 _dbContext.Tournament.Add(existingTournament);
                             }
                             else
                             {
-                                if (existingTournament.MapIndex > 0)
+                                //if (existingTournament.MapIndex > 0)
                                 {
                                     var previousGame = await _dbContext.GameInstance.Where(x => x.GameId == existingTournament.PreviousMapId).FirstOrDefaultAsync();
                                     if (previousGame != null)

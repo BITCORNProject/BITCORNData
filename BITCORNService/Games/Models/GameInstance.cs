@@ -40,5 +40,6 @@ namespace BITCORNService.Games.Models
 		public bool Completed { get; set; }
 		public int PointMethod { get; set; }
 		public int? PreviousMapId { get; set; }
+		public DateTime? StartTime { get; set; }
 	}
 }
