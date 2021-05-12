@@ -41,5 +41,6 @@ namespace BITCORNService.Games.Models
 		public int PointMethod { get; set; }
 		public int? PreviousMapId { get; set; }
 		public DateTime? StartTime { get; set; }
+		public string TournamentData { get; set; }
 	}
 }
