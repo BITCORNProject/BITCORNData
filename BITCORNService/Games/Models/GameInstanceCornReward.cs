@@ -5,5 +5,6 @@
 		public int Id { get; set; }
 		public int TxId { get; set; }
 		public int GameInstanceId { get; set; }
+		public int Type { get; set; }
 	}
 }

@@ -253,8 +253,13 @@ namespace BITCORNService.Controllers
                             {
                                 //  (request.Payin * request.RewardMultiplier);
                                 var txid = await TxUtils.SendToBitcornhub(player, activeGame.Payin, "BITCORNBattlegrounds", "Battlegrounds payin", _dbContext);
-                                if (txid != null)
+                                if (txid != null && txid.TxId != null)
                                 {
+                                    var txLog = new GameInstanceCornReward();
+                                    txLog.TxId = txid.TxId.Value;
+                                    txLog.GameInstanceId = activeGame.GameId;
+                                    txLog.Type = 1;
+                                    _dbContext.GameInstanceCornReward.Add(txLog);
                                     battlegroundsProfile.CurrentGameId = activeGame.GameId;
 
                                     changesMade = true;
@@ -853,6 +858,7 @@ namespace BITCORNService.Controllers
                     var link = new GameInstanceCornReward();
                     link.GameInstanceId = gameId;
                     link.TxId = receipt.TxId.Value;
+                    link.Type = 0;
                     _dbContext.GameInstanceCornReward.Add(link);
                     return amount;
                 }
@@ -977,7 +983,15 @@ namespace BITCORNService.Controllers
                             {
                                 await _dbContext.SaveAsync();
                                 var tournamentInfo = await GetTournamentInfo(activeGame);
-                                var rewardFull = tournamentInfo.MatchHistorySummary.Length * activeGame.Payin;
+                                decimal rewardFull = 0;
+                                if (activeGame.Payin > 0)
+                                {
+                                    var inTransactions = await _dbContext.GameInstanceCornReward.Join(_dbContext.GameInstance, (x => x.GameInstanceId), (x => x.GameId),
+                                        (r, g) => new { r, g }).Where(x => x.g.TournamentId == tournament.TournamentId && x.r.Type == 1).Select(x => x.r.TxId).ToArrayAsync();//tournamentInfo.MatchHistorySummary.Length * activeGame.Payin;
+
+                                    rewardFull = await _dbContext.CornTx.Where(x => inTransactions.Contains(x.CornTxId)).Select(x => x.Amount.Value).SumAsync();
+                                    //var rewardFull = 0;
+                                }
                                 //if (rewardFull > 0)
                                 {
                                     if (!tournament.Completed)
@@ -1089,7 +1103,7 @@ namespace BITCORNService.Controllers
                                 if (activeGame.EnableTeams)
                                 {
                                     var winnerStats = allStats[orderedUsers[0].UserId];
-                                   
+
                                     winningTeam = winnerStats.Team;
                                     for (int i = 0; i < orderedUsers.Count; i++)
                                     {
@@ -1112,8 +1126,15 @@ namespace BITCORNService.Controllers
                                 var winnerStats = allStats[orderedUsers[0].UserId];
 
                                 var user = orderedUsers[0];
-                                var rewardFull = playerIds.Length * activeGame.Payin;//rewards[0];
-                                                                                     // if (rewardFull > 0)
+                                decimal rewardFull = 0;//playerIds.Length * activeGame.Payin;//rewards[0];
+                                                       // if (rewardFull > 0)
+                                if (activeGame.Payin > 0)
+                                {
+                                    var inTransactions = await _dbContext.GameInstanceCornReward.Where(x=>x.GameInstanceId == activeGame.GameId).Select(x=>x.TxId).ToArrayAsync();//tournamentInfo.MatchHistorySummary.Length * activeGame.Payin;
+                                    rewardFull = await _dbContext.CornTx.Where(x => inTransactions.Contains(x.CornTxId)).Select(x => x.Amount.Value).SumAsync();
+
+                                }
+
                                 {
                                     var rewardToPlayer = rewardFull * 0.99m;
                                     var rewardToHost = rewardFull * 0.01m;
