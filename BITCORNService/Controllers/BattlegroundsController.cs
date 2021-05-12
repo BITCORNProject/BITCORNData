@@ -86,6 +86,8 @@ namespace BITCORNService.Controllers
 
             if (host != null && activeGame != null)
             {
+                if (!activeGame.Bgrains) return StatusCode(420);
+
                 var existingBgRainCount = await _dbContext.SignedTx.Where(x => x.GameInstanceId == activeGame.GameId).CountAsync();
                 if (existingBgRainCount > 50) return StatusCode(420);
                 var outputs = new List<(SignedTx, TxReceipt)>();
@@ -772,6 +774,7 @@ namespace BITCORNService.Controllers
             activeGame.Payin = request.Payin;
             activeGame.Reward = request.Reward;
             activeGame.Started = false;
+            activeGame.Bgrains = request.Bgrains;
             //     activeGame.HostDebitCornTxId = txid;
             activeGame.RewardMultiplier = 1;//request.RewardMultiplier;
             activeGame.PlayerLimit = request.MaxPlayerCount;

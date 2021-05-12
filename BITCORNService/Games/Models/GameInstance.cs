@@ -19,7 +19,7 @@ namespace BITCORNService.Games.Models
 		public int GameMode { get; set; }
 		public bool EnableTeams { get; set; }
 		public int? LastTeamSeed { get; set; }
-
+		public bool Bgrains { get; set; }
         public void CopySettings(GameInstance previousGame)
         {
 			Payin = previousGame.Payin;
