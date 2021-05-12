@@ -305,11 +305,12 @@ namespace BITCORNService.Controllers
                                         {
                                             activeGame.LastTeamSeed = 1;
                                         }
+                                        /*
                                         else
                                         {
                                             if (activeGame.LastTeamSeed == 0) activeGame.LastTeamSeed = 1;
                                             else activeGame.LastTeamSeed = 0;
-                                        }
+                                        }*/
 
                                         battlegroundsProfile.Team = activeGame.LastTeamSeed;
 
@@ -674,6 +675,7 @@ namespace BITCORNService.Controllers
                     }
 
                     var activeGame = await _dbContext.GameInstance.FirstOrDefaultAsync(g => g.HostId == sender.UserId && g.Active);
+                    Tournament existingTournament = null;
                     if (activeGame == null)
                     {
 
@@ -681,7 +683,7 @@ namespace BITCORNService.Controllers
                         activeGame = CreateGameInstance(request, sender);
                         if (request.Tournament)
                         {
-                            var existingTournament = await _dbContext.Tournament.Where(x => x.UserId == sender.UserId && !x.Completed).FirstOrDefaultAsync();
+                            existingTournament = await _dbContext.Tournament.Where(x => x.UserId == sender.UserId && !x.Completed).FirstOrDefaultAsync();
                             if (existingTournament == null)
                             {
                                 existingTournament = new Tournament();
@@ -697,6 +699,7 @@ namespace BITCORNService.Controllers
                                     Maps = request.TournamentMaps
                                 });
                                 _dbContext.Tournament.Add(existingTournament);
+
                             }
                             else
                             {
@@ -709,7 +712,7 @@ namespace BITCORNService.Controllers
                                     }
                                 }
 
-                                existingTournament.PreviousMapId = activeGame.GameId;
+
                                 existingTournament.MapIndex++;
                                 /*if (existingTournament.MapIndex == existingTournament.MapCount)
                                 {
@@ -725,6 +728,11 @@ namespace BITCORNService.Controllers
 
                         _dbContext.GameInstance.Add(activeGame);
                         await _dbContext.SaveAsync();
+                        if (existingTournament != null)
+                        {
+                            _dbContext.Database.ExecuteSqlRaw($" update [{nameof(Tournament)}] set [{nameof(Tournament.PreviousMapId)}] = {activeGame.GameId} where [{nameof(Tournament.TournamentId)}] = '{existingTournament.TournamentId}'");
+                        }
+                        //existingTournament.PreviousMapId = activeGame.GameId;
                         return new
                         {
                             IsNewGame = true,
@@ -1033,7 +1041,7 @@ namespace BITCORNService.Controllers
                                             if (points.Count < idx)
                                             {
                                                 var diff = Math.Abs(points.Count - idx);
-                                                for (int i = 0; i < diff; i++)
+                                                for (int i = 0; i < diff + 1; i++)
                                                 {
                                                     points.Add(0);
                                                 }
@@ -1130,7 +1138,7 @@ namespace BITCORNService.Controllers
                                                        // if (rewardFull > 0)
                                 if (activeGame.Payin > 0)
                                 {
-                                    var inTransactions = await _dbContext.GameInstanceCornReward.Where(x=>x.GameInstanceId == activeGame.GameId).Select(x=>x.TxId).ToArrayAsync();//tournamentInfo.MatchHistorySummary.Length * activeGame.Payin;
+                                    var inTransactions = await _dbContext.GameInstanceCornReward.Where(x => x.GameInstanceId == activeGame.GameId).Select(x => x.TxId).ToArrayAsync();//tournamentInfo.MatchHistorySummary.Length * activeGame.Payin;
                                     rewardFull = await _dbContext.CornTx.Where(x => inTransactions.Contains(x.CornTxId)).Select(x => x.Amount.Value).SumAsync();
 
                                 }
