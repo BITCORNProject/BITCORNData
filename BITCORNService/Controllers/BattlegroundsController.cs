@@ -213,6 +213,7 @@ namespace BITCORNService.Controllers
                     battlegroundsProfile = new BattlegroundsUser();
                     battlegroundsProfile.UserId = player.UserId;
                     battlegroundsProfile.HostId = sender.UserId;
+                    battlegroundsProfile.IsSub = request.IsSub;
                     _dbContext.Add(battlegroundsProfile);
                     changesMade = true;
                 }
@@ -244,6 +245,11 @@ namespace BITCORNService.Controllers
                             {
                                 battlegroundsProfile.TournamentsPlayed++;
                             }
+                        }
+
+                        if (tournament != null && !tournament.JoiningBetweenTournamentGames && tournament.MapIndex > 0)
+                        {
+                            return StatusCode(420);
                         }
 
                         if (!activeGame.Started)
@@ -281,6 +287,8 @@ namespace BITCORNService.Controllers
                                 {
                                     battlegroundsProfile.CurrentTournamentId = tournament.TournamentId;
                                 }
+
+                                battlegroundsProfile.IsSub = request.IsSub;
 
                                 if (activeGame.EnableTeams)
                                 {
@@ -325,7 +333,7 @@ namespace BITCORNService.Controllers
                                 }
 
                                 var aInfo = await GameUtils.GetAvatar(_dbContext, player, GameUtils.AvatarPlatformWindows);
-                                var packet = GetJoinPacket(aInfo, player, battlegroundsProfile, request.IsSub);
+                                var packet = GetJoinPacket(aInfo, player, battlegroundsProfile);
                                 var result = await WebSocketsController.TryBroadcastToBattlegroundsUser(sender.UserIdentity.Auth0Id,
                                     _dbContext,
                                     "user-join-game",
@@ -360,7 +368,7 @@ namespace BITCORNService.Controllers
                 }
 
                 var avatarInfo = await GameUtils.GetAvatar(_dbContext, player, GameUtils.AvatarPlatformWindows);
-                return GetJoinPacket(avatarInfo, player, battlegroundsProfile, request.IsSub);
+                return GetJoinPacket(avatarInfo, player, battlegroundsProfile);
                 /*
                 return new UserJoinGamePacket
                 {
@@ -372,7 +380,7 @@ namespace BITCORNService.Controllers
             throw new ArgumentException();
         }
 
-        UserJoinGamePacket GetJoinPacket(UserAvatarOutput avatarInfo, User player, BattlegroundsUser battlegroundsProfile, bool isSub)
+        UserJoinGamePacket GetJoinPacket(UserAvatarOutput avatarInfo, User player, BattlegroundsUser battlegroundsProfile)
         {
             //if (string.IsNullOrEmpty(subTier)) subTier = "0000";
             return new UserJoinGamePacket
@@ -382,7 +390,7 @@ namespace BITCORNService.Controllers
                 battlegroundsProfile = battlegroundsProfile,
                 twitchId = player.UserIdentity.TwitchId,
                 twitchUsername = player.UserIdentity.TwitchUsername,
-                isSub = isSub
+                isSub = battlegroundsProfile.IsSub
             };
 
         }
@@ -605,8 +613,8 @@ namespace BITCORNService.Controllers
                     foreach (var item in matchHistorySummary)
                     {
                         var idx = item.Team.Value;
-                        
-                        if(!outputs.TryGetValue(idx, out var list))
+
+                        if (!outputs.TryGetValue(idx, out var list))
                         {
                             list = new List<BattlegroundsGameHistoryOutput>();
                             outputs.Add(idx, list);
@@ -629,11 +637,11 @@ namespace BITCORNService.Controllers
                                     winningTeam = item[0].Team;
                                 }
                             }
-                            final.AddRange(item);
+                            final.AddRange(item.OrderByDescending(x => x.Points));
                         }
 
                         matchHistorySummary = final.ToArray();
-                       
+
                     }
                     /*
                     foreach (var item in outputs)
@@ -733,6 +741,18 @@ namespace BITCORNService.Controllers
         {
             public string[] Maps { get; set; }
         }
+
+        async Task<UserJoinGamePacket[]> GetPlayers(GameInstance activeGame)
+        {
+            var players = await _dbContext.JoinUserModels()
+                            .Join(_dbContext.BattlegroundsUser, (u) => u.UserId, (b) => b.UserId, (u, b) => new { u, b }).Where(x => x.b.CurrentGameId == activeGame.GameId && x.b.HostId == activeGame.HostId).ToArrayAsync();
+            //var players = await _dbContext.BattlegroundsUser.Where(u => u.CurrentGameId == activeGame.GameId).ToArrayAsync();
+            //var twitchIds = await _dbContext.JoinUserModels().Where(u => playerIds.Contains(u.UserId)).Select(u => u.UserIdentity.TwitchId).ToArrayAsync();
+            var userIds = players.Select(x => x.u.UserId).ToArray();
+            var avatars = await GameUtils.GetAvatars(_dbContext, userIds, GameUtils.AvatarPlatformWindows);
+            return players.Select(x => GetJoinPacket(avatars[x.u.UserId], x.u, x.b)).ToArray();
+        }
+
         [ServiceFilter(typeof(LockUserAttribute))]
         [HttpPost("create")]
         public async Task<ActionResult<object>> Create([FromBody] BattlegroundsCreateGameRequest request)
@@ -749,6 +769,7 @@ namespace BITCORNService.Controllers
                         senderProfile = new BattlegroundsUser();
                         senderProfile.UserId = sender.UserId;
                         senderProfile.HostId = sender.UserId;
+                        senderProfile.IsSub = true;
                         _dbContext.Add(senderProfile);
                         await _dbContext.SaveAsync();
                     }
@@ -773,6 +794,7 @@ namespace BITCORNService.Controllers
                                 existingTournament.PointMethod = request.TournamentPointMethod.HasValue ? request.TournamentPointMethod.Value : 0;
                                 existingTournament.PreviousMapId = activeGame.GameId;
                                 existingTournament.StartTime = DateTime.Now;
+                                existingTournament.JoiningBetweenTournamentGames = request.JoiningBetweenTournamentGames;
                                 existingTournament.TournamentData = JsonConvert.SerializeObject(new TournamentData()
                                 {
                                     Maps = request.TournamentMaps
@@ -793,11 +815,6 @@ namespace BITCORNService.Controllers
 
 
                                 existingTournament.MapIndex++;
-                                /*if (existingTournament.MapIndex == existingTournament.MapCount)
-                                {
-                                    //TODO: tournament completion stuff
-                                    existingTournament.Completed = true;
-                                }*/
                             }
 
 
@@ -807,17 +824,46 @@ namespace BITCORNService.Controllers
 
                         _dbContext.GameInstance.Add(activeGame);
                         await _dbContext.SaveAsync();
-                        if (existingTournament != null)
+                        void UpdatePreviousGame()
                         {
                             _dbContext.Database.ExecuteSqlRaw($" update [{nameof(Tournament)}] set [{nameof(Tournament.PreviousMapId)}] = {activeGame.GameId} where [{nameof(Tournament.TournamentId)}] = '{existingTournament.TournamentId}'");
+
+                        }
+
+                        if (existingTournament != null && !existingTournament.JoiningBetweenTournamentGames && existingTournament.MapIndex > 0)
+                        {
+                            var ps = await _dbContext.BattlegroundsUser.Where(x => x.HostId == sender.UserId && x.CurrentGameId == existingTournament.PreviousMapId).ToArrayAsync();
+                            foreach (var item in ps)
+                            {
+                                item.CurrentGameId = activeGame.GameId;
+                            }
+                            await _dbContext.SaveAsync();
+                            UpdatePreviousGame();
+                            return new
+                            {
+                                IsNewGame = true,
+                                Players = await GetPlayers(activeGame),
+                                ActiveGame = activeGame,
+                                TournamentInfo = await GetTournamentInfo(activeGame),
+                                JoiningBetweenTournamentGames = existingTournament != null ? existingTournament.JoiningBetweenTournamentGames : true
+                            };
+                        }
+
+
+                        if (existingTournament != null)
+                        {
+                            UpdatePreviousGame();
                         }
                         //existingTournament.PreviousMapId = activeGame.GameId;
+
                         return new
                         {
                             IsNewGame = true,
-                            Players = new string[0],
+                            Players = new object[0],
                             ActiveGame = activeGame,
-                            TournamentInfo = await GetTournamentInfo(activeGame)
+                            TournamentInfo = await GetTournamentInfo(activeGame),
+
+                            JoiningBetweenTournamentGames = existingTournament != null ? existingTournament.JoiningBetweenTournamentGames : true
                             /*GameId = activeGame.GameId,
 
 							Payin = activeGame.Payin,
@@ -827,21 +873,20 @@ namespace BITCORNService.Controllers
                     }
                     else
                     {
-                        var playerIds = await _dbContext.BattlegroundsUser.Where(u => u.CurrentGameId == activeGame.GameId).Select(u => u.UserId).ToArrayAsync();
-                        var twitchIds = await _dbContext.JoinUserModels().Where(u => playerIds.Contains(u.UserId)).Select(u => u.UserIdentity.TwitchId).ToArrayAsync();
-
-
-                        if (twitchIds.Length > 0 || request.Tournament)
+                        var players = await GetPlayers(activeGame);
+                        //GetJoinPacket
+                        if (players.Length > 0 || request.Tournament)
                         {
 
                             return new
                             {
 
                                 IsNewGame = false,
-                                Players = twitchIds,
+                                Players = players,//await GetPlayers(activeGame),
                                 ActiveGame = activeGame,
                                 TournamentInfo = await GetTournamentInfo(activeGame),
 
+                                JoiningBetweenTournamentGames = existingTournament != null ? existingTournament.JoiningBetweenTournamentGames : true
                                 /*
                                 GameId = activeGame.GameId,
                                 Payin = activeGame.Payin,
@@ -860,7 +905,9 @@ namespace BITCORNService.Controllers
                                 IsNewGame = true,
                                 Players = new string[0],
                                 ActiveGame = game,
-                                TournamentInfo = await GetTournamentInfo(activeGame)
+                                TournamentInfo = await GetTournamentInfo(activeGame),
+
+                                JoiningBetweenTournamentGames = existingTournament != null ? existingTournament.JoiningBetweenTournamentGames : true
                                 /*GameId = activeGame.GameId,
 
                                 Payin = activeGame.Payin,
@@ -1112,7 +1159,7 @@ namespace BITCORNService.Controllers
                                     else
                                     {
                                         var ids = tournamentInfo.MatchHistorySummary.Select(x => x.UserId).ToArray();
-                                      
+
 
                                         winningTeam = tournamentInfo.WinningTeam;
                                         /*

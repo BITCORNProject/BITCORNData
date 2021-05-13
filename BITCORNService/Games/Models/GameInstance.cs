@@ -42,5 +42,6 @@ namespace BITCORNService.Games.Models
 		public int? PreviousMapId { get; set; }
 		public DateTime? StartTime { get; set; }
 		public string TournamentData { get; set; }
+		public bool JoiningBetweenTournamentGames { get; set; }
 	}
 }

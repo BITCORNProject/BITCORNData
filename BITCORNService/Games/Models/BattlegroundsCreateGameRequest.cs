@@ -12,5 +12,6 @@
 		public bool EnableTeams { get; set; }
 		public int GameMode { get; set; }
 		public bool Bgrains { get; set; }
+		public bool JoiningBetweenTournamentGames { get; set; }
 	}
 }
