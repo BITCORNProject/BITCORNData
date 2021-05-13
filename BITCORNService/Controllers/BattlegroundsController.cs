@@ -520,6 +520,7 @@ namespace BITCORNService.Controllers
             public bool IsTournament { get; set; }
             public BattlegroundsGameHistoryOutput[] MatchHistorySummary { get; set; }
             public string[] Maps { get; set; }
+            public int? WinningTeam { get; set; }
         }
 
         public class GameSummary
@@ -594,14 +595,92 @@ namespace BITCORNService.Controllers
                     }
                 }
 
+                var matchHistorySummary = summed.Values.Select(x => x[0]).OrderByDescending(x => x.Points).ToArray();
+                int? winningTeam = null;
+                if (activeGame.EnableTeams)
+                {
+                    //var points = new List<int>();
+                    var outputs = new Dictionary<int, List<BattlegroundsGameHistoryOutput>>();
+                    //var allTeams = new List<int>();
+                    foreach (var item in matchHistorySummary)
+                    {
+                        var idx = item.Team.Value;
+                        
+                        if(!outputs.TryGetValue(idx, out var list))
+                        {
+                            list = new List<BattlegroundsGameHistoryOutput>();
+                            outputs.Add(idx, list);
+                        }
+
+                        list.Add(item);
+
+                    }
+
+                    var final = new List<BattlegroundsGameHistoryOutput>();
+                    if (outputs.Values.Count > 0)
+                    {
+                        var orderedSums = outputs.Values.OrderByDescending(x => x.Sum(s => s.Points));
+                        foreach (var item in orderedSums)
+                        {
+                            if (winningTeam == null)
+                            {
+                                if (item.Count > 0)
+                                {
+                                    winningTeam = item[0].Team;
+                                }
+                            }
+                            final.AddRange(item);
+                        }
+
+                        matchHistorySummary = final.ToArray();
+                       
+                    }
+                    /*
+                    foreach (var item in outputs)
+                    {
+                        var points = item.Value.Select(x=>x.Points).Sum();
+                   
+                    }
+                    */
+
+                    //winningTeam = 0;
+
+
+                    /*
+                    if (points.Count < idx)
+                    {
+                        var diff = Math.Abs(points.Count - idx);
+                        for (int i = 0; i < diff + 1; i++)
+                        {
+                            points.Add(0);
+                        }
+                    }
+
+                    points[idx] += item.Points;
+                    */
+                    /*if(!allTeams.Contains(item.Team.Value))
+                    {
+                        allTeams.Add(item.Team.Value);
+                    }*/
+                    /*int bestPoints = -1;
+                    for (int i = 0; i < points.Count; i++)
+                    {
+                        if (points[i] > bestPoints)
+                        {
+                            bestPoints = points[i];
+                            winningTeam = i;
+                        }
+                    }*/
+                }
                 return new TournamentInfo()
                 {
                     MatchHistoryContainer = matchHistoryContainer,
-                    MatchHistorySummary = summed.Values.Select(x => x[0]).OrderByDescending(x => x.Points).ToArray(),
+                    MatchHistorySummary = matchHistorySummary,
                     MapIndex = tournament.MapIndex,
                     IsComplete = tournament.Completed,
                     IsTournament = true,
-                    Maps = tournamentData != null ? tournamentData.Maps : new string[0]
+                    Maps = tournamentData != null ? tournamentData.Maps : new string[0],
+                    WinningTeam = winningTeam
                 };
             }
             else
@@ -1033,37 +1112,9 @@ namespace BITCORNService.Controllers
                                     else
                                     {
                                         var ids = tournamentInfo.MatchHistorySummary.Select(x => x.UserId).ToArray();
-                                        var points = new List<int>();
-                                        //var allTeams = new List<int>();
-                                        foreach (var item in tournamentInfo.MatchHistorySummary)
-                                        {
-                                            var idx = item.Team.Value;
-                                            if (points.Count < idx)
-                                            {
-                                                var diff = Math.Abs(points.Count - idx);
-                                                for (int i = 0; i < diff + 1; i++)
-                                                {
-                                                    points.Add(0);
-                                                }
-                                            }
+                                      
 
-                                            points[idx] += item.Points;
-                                            /*if(!allTeams.Contains(item.Team.Value))
-                                            {
-                                                allTeams.Add(item.Team.Value);
-                                            }*/
-                                        }
-
-                                        winningTeam = 0;
-                                        int bestPoints = -1;
-                                        for (int i = 0; i < points.Count; i++)
-                                        {
-                                            if (points[i] > bestPoints)
-                                            {
-                                                bestPoints = points[i];
-                                                winningTeam = i;
-                                            }
-                                        }
+                                        winningTeam = tournamentInfo.WinningTeam;
                                         /*
                                         winningTeam = 1;
                                         if (points[0] > points[1])
