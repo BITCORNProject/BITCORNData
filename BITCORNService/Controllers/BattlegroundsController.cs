@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Data;
 using System.Linq;
 using System.Net;
 using System.Reflection;
@@ -751,9 +752,11 @@ namespace BITCORNService.Controllers
 
                         _dbContext.GameInstance.Add(activeGame);
                         await _dbContext.SaveAsync();
-                        void UpdatePreviousGame()
+                        async Task UpdatePreviousGame()
                         {
-                            _dbContext.Database.ExecuteSqlRaw($" update [{nameof(Tournament)}] set [{nameof(Tournament.PreviousMapId)}] = {activeGame.GameId} where [{nameof(Tournament.TournamentId)}] = '{existingTournament.TournamentId}'");
+                            var sql = $" update [{nameof(Tournament)}] set [{nameof(Tournament.PreviousMapId)}] = {activeGame.GameId} where [{nameof(Tournament.TournamentId)}] = '{existingTournament.TournamentId}'";
+                            await DbOperations.ExecuteSqlRawAsync(_dbContext, sql);
+
 
                         }
 
@@ -765,7 +768,7 @@ namespace BITCORNService.Controllers
                                 item.CurrentGameId = activeGame.GameId;
                             }
                             await _dbContext.SaveAsync();
-                            UpdatePreviousGame();
+                            await UpdatePreviousGame();
                             return new
                             {
                                 IsNewGame = true,
@@ -779,7 +782,7 @@ namespace BITCORNService.Controllers
 
                         if (existingTournament != null)
                         {
-                            UpdatePreviousGame();
+                            await UpdatePreviousGame();
                         }
                         //existingTournament.PreviousMapId = activeGame.GameId;
 
@@ -926,6 +929,83 @@ namespace BITCORNService.Controllers
             }
             return 0;
         }
+
+
+
+        [ServiceFilter(typeof(LockUserAttribute))]
+        [HttpGet("abandon")]
+        public async Task<ActionResult<object>> AbandonGame()
+        {
+            var sender = this.GetCachedUser();
+            if (sender != null)
+            {
+                var activeGame = await _dbContext.GameInstance.FirstOrDefaultAsync(g => g.HostId == sender.UserId && g.Active);
+                if (activeGame != null && activeGame.Active)
+                {
+
+                    Tournament tournament = null;
+                    if (!string.IsNullOrEmpty(activeGame.TournamentId))
+                    {
+                        tournament = await _dbContext.Tournament.FirstOrDefaultAsync(x => x.TournamentId == activeGame.TournamentId);
+                        if (tournament != null)
+                        {
+                            tournament.Completed = true;
+                        }
+                    }
+
+                    activeGame.Active = false;
+                    await _dbContext.SaveAsync();
+                    int[] inTransactions = null;
+                    if (tournament == null)
+                    {
+                        inTransactions = await _dbContext.GameInstanceCornReward.Where(x => x.GameInstanceId == activeGame.GameId).Select(x => x.TxId).ToArrayAsync();//tournamentInfo.MatchHistorySummary.Length * activeGame.Payin;
+
+                    }
+                    else
+                    {
+                        inTransactions = await _dbContext.GameInstanceCornReward.Join(_dbContext.GameInstance, (x => x.GameInstanceId), (x => x.GameId),
+                                       (r, g) => new { r, g }).Where(x => x.g.TournamentId == tournament.TournamentId && x.r.Type == 1).Select(x => x.r.TxId).ToArrayAsync();//tournamentInfo.MatchHistorySummary.Length * activeGame.Payin;
+
+                    }
+                    if (inTransactions.Length > 0)
+                    {
+                        var cornTxs = await _dbContext.CornTx.Where(x => inTransactions.Contains(x.CornTxId)).ToArrayAsync();
+                        //await _dbContext.GameInstanceCornReward.Where(x=>inTransactions.Contains(x.TxId)).ToArrayAsync();
+                        if (cornTxs.Length > 0)
+                        {
+                            var recipientIds = cornTxs.Select(x => x.SenderId.Value).ToArray();
+                            var recipientUsers = await _dbContext.JoinUserModels().Where(x => recipientIds.Contains(x.UserId)).Select(x => "userid|" + x.UserId).ToArrayAsync();
+                            if (recipientUsers.Length > 0)
+                            {
+                                var bitcornhub = await TxUtils.GetBitcornhub(_dbContext);
+                                TxProcessInfo txInfo = await TxUtils.ProcessRequest(new TxRequest(bitcornhub, activeGame.Payin * 0.99m, "BITCORNBattlegrounds", "Battlegrounds payin refund", recipientUsers), _dbContext);
+                                var sql = new StringBuilder();
+                                if (txInfo.WriteTransactionOutput(sql))
+                                {
+                                    await DbOperations.ExecuteSqlRawAsync(_dbContext, sql.ToString());
+                                    await _dbContext.SaveAsync(IsolationLevel.RepeatableRead);
+                                    foreach (var receipt in txInfo.Transactions)
+                                    {
+                                        var link = new GameInstanceCornReward();
+                                        link.GameInstanceId = activeGame.GameId;
+                                        link.TxId = receipt.TxId.Value;
+                                        link.Type = 2;
+                                        _dbContext.GameInstanceCornReward.Add(link);
+                                    }
+
+                                    await _dbContext.SaveAsync();
+                                    return StatusCode(200);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            return StatusCode(404);
+
+        }
+
         [ServiceFilter(typeof(CacheUserAttribute))]
         [HttpPost("processgame")]
         public async Task<ActionResult<object>> ProcessGame([FromBody] BattlegroundsProcessGameRequest request)
