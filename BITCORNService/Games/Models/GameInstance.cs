@@ -20,7 +20,9 @@ namespace BITCORNService.Games.Models
 		public bool EnableTeams { get; set; }
 		public int? LastTeamSeed { get; set; }
 		public bool Bgrains { get; set; }
-        public void CopySettings(GameInstance previousGame)
+		public string MapId { get; set; }
+
+		public void CopySettings(GameInstance previousGame)
         {
 			Payin = previousGame.Payin;
 			PlayerLimit = previousGame.PlayerLimit;

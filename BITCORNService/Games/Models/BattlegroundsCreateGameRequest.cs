@@ -13,5 +13,6 @@
 		public int GameMode { get; set; }
 		public bool Bgrains { get; set; }
 		public bool JoiningBetweenTournamentGames { get; set; }
+		public string MapId { get; set; }
 	}
 }

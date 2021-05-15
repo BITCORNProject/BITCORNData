@@ -800,6 +800,15 @@ namespace BITCORNService.Controllers
 
 
                                 existingTournament.MapIndex++;
+                                try
+                                {
+                                    var tData = JsonConvert.DeserializeObject<TournamentData>(existingTournament.TournamentData);
+                                    activeGame.MapId = tData.Maps[existingTournament.MapIndex];
+                                }
+                                catch
+                                {
+
+                                }
                             }
 
 
@@ -913,6 +922,7 @@ namespace BITCORNService.Controllers
             activeGame.PlayerLimit = request.MaxPlayerCount;
             activeGame.EnableTeams = request.EnableTeams;
             activeGame.GameMode = request.GameMode;
+            activeGame.MapId = request.MapId;
             return activeGame;
         }
 
