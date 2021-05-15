@@ -681,13 +681,37 @@ namespace BITCORNService.Controllers
             return players.Select(x => GetJoinPacket(avatars[x.u.UserId], x.u, x.b)).ToArray();
         }
 
-        async Task<object> GetExistingGame(User sender, GameInstance activeGame = null)
+        async Task<(Tournament, GameInstance, bool)?> GetExistingGame(User sender)
         {
             if (sender == null) return null;
 
+            Tournament existingTournament = await GetActiveTournamentForHost(sender);
+            bool needsGameAlloc = false;
+            GameInstance activeGame = null;
+            if (existingTournament != null)
+            {
+                activeGame = await GetActiveGameForHost(sender);
+                if (activeGame == null)
+                {
+                    //activeGame = await GetPreviousGame(existingTournament);
+                    needsGameAlloc = true;
+                }
+            }
+            else
+            {
+                if (activeGame == null)
+                {
+                    activeGame = await GetActiveGameForHost(sender);
+
+                }
+            }
+
+            return (existingTournament, activeGame, needsGameAlloc);
+            /*
+            
             if (activeGame == null)
             {
-                activeGame = await _dbContext.GameInstance.FirstOrDefaultAsync(g => g.HostId == sender.UserId && g.Active);
+                activeGame = await GetActiveGameForHost(sender);//_dbContext.GameInstance.FirstOrDefaultAsync(g => g.HostId == sender.UserId && g.Active);
                 if (activeGame == null) return null;
             }
 
@@ -695,34 +719,72 @@ namespace BITCORNService.Controllers
             var players = await GetPlayers(activeGame);
             //GetJoinPacket
             bool isTournament = !string.IsNullOrEmpty(activeGame.TournamentId);
-            Tournament existingTournament = null;
             if (isTournament)
-                existingTournament = await _dbContext.Tournament.Where(x => x.TournamentId == activeGame.TournamentId).FirstOrDefaultAsync();
+                existingTournament = await GetActiveTournamentForHost(sender);//_dbContext.Tournament.Where(x => x.TournamentId == activeGame.TournamentId).FirstOrDefaultAsync();
             if (players.Length > 0 || isTournament)
             {
 
-                return CreateGameResponse(existingTournament, activeGame, sender, players);
+                return CreateGameResponse(existingTournament, activeGame, sender, players, false);
             }
 
             return null;
+            */
         }
 
-        [ServiceFilter(typeof(CacheUserAttribute))]
+        [ServiceFilter(typeof(LockUserAttribute))]
         [HttpGet("existinggame")]
         public async Task<ActionResult<object>> ExistingGame()
         {
-
-            var sender = this.GetCachedUser();
-            if (sender != null)
+            try
             {
-                var result = await GetExistingGame(sender);
-                if (result != null) return result;
+                var sender = this.GetCachedUser();
+                if (sender != null)
+                {
+                    var result = await GetExistingGame(sender);
+                    if (result != null)
+                    {
+                        var (existingTournament, activeGame, needsGameAlloc) = result.Value;
+                        if (needsGameAlloc)
+                        {
+                            if (activeGame != null) throw new NotImplementedException("logic error");
+                            activeGame = InitSimpleInstance(sender);
+                            _dbContext.GameInstance.Add(activeGame);
+                            await _dbContext.SaveAsync();
+                            return await ProgressTournamentWrapper(existingTournament, activeGame, sender);
+                        }
+                        if (activeGame != null)
+                        {
+                            bool isTournament = existingTournament != null;
+                            UserJoinGamePacket[] players = new UserJoinGamePacket[0];
+
+                            players = await GetPlayers(activeGame);
+
+
+                            if (players.Length > 0 || isTournament)
+                            {
+
+                                var resp = await CreateGameResponse(existingTournament, activeGame, sender, players, false);
+                                return resp;
+                            }
+                        }
+                        /*
+                        //GetJoinPacket
+                        if (isTournament)
+                            existingTournament = await GetActiveTournamentForHost(sender);//_dbContext.Tournament.Where(x => x.TournamentId == activeGame.TournamentId).FirstOrDefaultAsync();
+                       */
+                    }
+
+                }
 
             }
-
-
+            catch (Exception ex)
+            {
+                await BITCORNLogger.LogError(_dbContext, ex, "");
+                throw ex;
+            }
             return StatusCode(404);
         }
+
 
         async Task<GameInstance> GetActiveGameForHost(User sender)
         {
@@ -735,6 +797,9 @@ namespace BITCORNService.Controllers
 
 
         }
+
+
+
         [ServiceFilter(typeof(LockUserAttribute))]
         [HttpPost("create")]
         public async Task<ActionResult<object>> Create([FromBody] BattlegroundsCreateGameRequest request)
@@ -756,8 +821,58 @@ namespace BITCORNService.Controllers
                         await _dbContext.SaveAsync();
                     }
 
-                    var activeGame = await GetActiveGameForHost(sender);
-                    Tournament existingTournament = null;
+                    var result = await GetExistingGame(sender);
+                    var (existingTournament, activeGame, needsToProgressTournament) = result.Value;
+                    if (!needsToProgressTournament && activeGame != null)
+                    {
+                        return await CreateGameResponse(existingTournament, activeGame, sender, true, false);
+                    }
+
+                    activeGame = CreateGameInstance(request, sender);
+                    _dbContext.GameInstance.Add(activeGame);
+
+
+                    if (!needsToProgressTournament)
+                    {
+                        await _dbContext.SaveAsync();
+
+
+                        if (request.Tournament)
+                        {
+                            if (existingTournament != null) throw new NotImplementedException("logic error");
+
+
+                            //if (existingTournament == null)
+
+                            existingTournament = CreateTournament(request, sender, activeGame);
+                            _dbContext.Tournament.Add(existingTournament);
+
+
+                            activeGame.TournamentId = existingTournament.TournamentId;
+                        }
+
+                        await _dbContext.SaveAsync();
+                        return await CreateGameResponse(existingTournament, activeGame, sender, false, true);
+                    }
+                    else
+                    {
+                        return await ProgressTournamentWrapper(existingTournament, activeGame, sender);
+                        //}
+                    }
+                    /*
+                    if(needsGameAlloc)
+                    {
+                        activeGame = null;
+                    
+                    }
+
+                    if (existingTournament != null && needsGameAlloc)
+                    {
+                        activeGame = CreateGameInstance(request, sender);
+                        await ProgressTournament(existingTournament, sender, activeGame);
+                        activeGame.TournamentId = existingTournament.TournamentId;
+                    }*/
+                    /*
                     if (activeGame == null)
                     {
 
@@ -794,7 +909,7 @@ namespace BITCORNService.Controllers
                         }
                         //existingTournament.PreviousMapId = activeGame.GameId;
 
-                        return await CreateGameResponse(existingTournament, activeGame, sender, fetchPlayers);
+                        return await CreateGameResponse(existingTournament, activeGame, sender, fetchPlayers, true);
                     }
                     else
                     {
@@ -809,9 +924,10 @@ namespace BITCORNService.Controllers
                             var game = CreateGameInstance(request, sender);
                             _dbContext.GameInstance.Add(game);
                             await _dbContext.SaveAsync();
-                            return await CreateGameResponse(existingTournament, activeGame, sender, false);
+                            return await CreateGameResponse(existingTournament, activeGame, sender, false, true);
                         }
                     }
+                    */
                 }
                 else
                     return StatusCode((int)HttpStatusCode.Forbidden);
@@ -824,24 +940,44 @@ namespace BITCORNService.Controllers
             }
         }
 
-        private async Task<object> CreateGameResponse(Tournament existingTournament, GameInstance activeGame, User sender, bool fetchPlayers)
+        private async Task<object> ProgressTournamentWrapper(Tournament existingTournament, GameInstance activeGame, User sender)
         {
-            return await CreateGameResponse(existingTournament, activeGame, sender, fetchPlayers ? await GetPlayers(activeGame) : new UserJoinGamePacket[0]);
-           
+            //if (existingTournament != null)
+            //{
+            if (existingTournament == null)
+            {
+                throw new NotImplementedException("logic error 2");
+            }
+
+            activeGame.TournamentId = existingTournament.TournamentId;
+            await ProgressTournament(existingTournament, sender, activeGame);
+
+            bool fetchPlayers = await MigratePlayersToNextGame(existingTournament, activeGame, sender);
+            await _dbContext.SaveAsync();
+
+            await UpdatePreviousGame(existingTournament, activeGame);
+
+            return await CreateGameResponse(existingTournament, activeGame, sender, fetchPlayers, true);
         }
 
-        private async Task<object> CreateGameResponse(Tournament existingTournament, GameInstance activeGame, User sender, UserJoinGamePacket[] players)
+        private async Task<object> CreateGameResponse(Tournament existingTournament, GameInstance activeGame, User sender, bool fetchPlayers, bool newGame)
+        {
+            return await CreateGameResponse(existingTournament, activeGame, sender, fetchPlayers ? await GetPlayers(activeGame) : new UserJoinGamePacket[0], newGame);
+
+        }
+
+        private async Task<object> CreateGameResponse(Tournament existingTournament, GameInstance activeGame, User sender, UserJoinGamePacket[] players, bool newGame)
         {
 
             return new
             {
-                IsNewGame = true,
+                IsNewGame = newGame,
                 Players = players,
                 ActiveGame = activeGame,
                 TournamentInfo = await GetTournamentInfo(activeGame),
 
                 JoiningBetweenTournamentGames = existingTournament != null ? existingTournament.JoiningBetweenTournamentGames : true
-              
+
             };
         }
 
@@ -870,11 +1006,16 @@ namespace BITCORNService.Controllers
             return fetchPlayers;
         }
 
+        async Task<GameInstance> GetPreviousGame(Tournament existingTournament)
+        {
+            return await _dbContext.GameInstance.Where(x => x.GameId == existingTournament.PreviousMapId).FirstOrDefaultAsync();
+        }
+
         private async Task ProgressTournament(Tournament existingTournament, User sender, GameInstance activeGame)
         {
             //if (existingTournament.MapIndex > 0)
             {
-                var previousGame = await _dbContext.GameInstance.Where(x => x.GameId == existingTournament.PreviousMapId).FirstOrDefaultAsync();
+                var previousGame = await GetPreviousGame(existingTournament);
                 if (previousGame != null)
                 {
                     activeGame.CopySettings(previousGame);
@@ -921,17 +1062,24 @@ namespace BITCORNService.Controllers
             return existingTournament;
         }
 
-        GameInstance CreateGameInstance(BattlegroundsCreateGameRequest request, User sender)
+        GameInstance InitSimpleInstance(User sender)
         {
             var activeGame = new GameInstance();
             activeGame.Active = true;
             activeGame.HostId = sender.UserId;
-            activeGame.Payin = request.Payin;
-            activeGame.Reward = request.Reward;
             activeGame.Started = false;
+            activeGame.RewardMultiplier = 1;//request.RewardMultiplier;
+            return activeGame;
+        }
+
+        GameInstance CreateGameInstance(BattlegroundsCreateGameRequest request, User sender)
+        {
+            var activeGame = InitSimpleInstance(sender);
+            activeGame.Payin = request.Payin;
+            activeGame.Reward = 0;//request.Reward;
             activeGame.Bgrains = request.Bgrains;
             //     activeGame.HostDebitCornTxId = txid;
-            activeGame.RewardMultiplier = 1;//request.RewardMultiplier;
+
             activeGame.PlayerLimit = request.MaxPlayerCount;
             activeGame.EnableTeams = request.EnableTeams;
             activeGame.GameMode = request.GameMode;

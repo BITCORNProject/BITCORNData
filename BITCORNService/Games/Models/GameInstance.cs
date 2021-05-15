@@ -29,6 +29,7 @@ namespace BITCORNService.Games.Models
 			GameMode = previousGame.GameMode;
 			EnableTeams = previousGame.EnableTeams;
 			LastTeamSeed = previousGame.LastTeamSeed;
+			Bgrains = previousGame.Bgrains;
 		}
     }
 	public class Tournament
