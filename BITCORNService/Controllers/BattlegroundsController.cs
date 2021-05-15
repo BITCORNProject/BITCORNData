@@ -681,6 +681,63 @@ namespace BITCORNService.Controllers
             return players.Select(x => GetJoinPacket(avatars[x.u.UserId], x.u, x.b)).ToArray();
         }
 
+        async Task<object> GetExistingGame(User sender, GameInstance activeGame = null)
+        {
+            if (sender == null) return null;
+
+            if (activeGame == null)
+            {
+                activeGame = await _dbContext.GameInstance.FirstOrDefaultAsync(g => g.HostId == sender.UserId && g.Active);
+                if (activeGame == null) return null;
+            }
+
+
+            var players = await GetPlayers(activeGame);
+            //GetJoinPacket
+            bool isTournament = !string.IsNullOrEmpty(activeGame.TournamentId);
+            Tournament existingTournament = null;
+            if (isTournament)
+                existingTournament = await _dbContext.Tournament.Where(x => x.TournamentId == activeGame.TournamentId).FirstOrDefaultAsync();
+            if (players.Length > 0 || isTournament)
+            {
+
+                return new
+                {
+
+                    IsNewGame = false,
+                    Players = players,//await GetPlayers(activeGame),
+                    ActiveGame = activeGame,
+                    TournamentInfo = await GetTournamentInfo(activeGame),
+
+                    JoiningBetweenTournamentGames = existingTournament != null ? existingTournament.JoiningBetweenTournamentGames : true
+                    /*
+                    GameId = activeGame.GameId,
+                    Payin = activeGame.Payin,
+                    Reward = activeGame.Reward,
+                    PlayerLimit = activeGame.pl*/
+                };
+            }
+
+            return null;
+        }
+
+        [ServiceFilter(typeof(CacheUserAttribute))]
+        [HttpGet("existinggame")]
+        public async Task<ActionResult<object>> ExistingGame()
+        {
+
+            var sender = this.GetCachedUser();
+            if (sender != null)
+            {
+                var result = await GetExistingGame(sender);
+                if (result != null) return result;
+
+            }
+
+
+            return StatusCode(404);
+        }
+
         [ServiceFilter(typeof(LockUserAttribute))]
         [HttpPost("create")]
         public async Task<ActionResult<object>> Create([FromBody] BattlegroundsCreateGameRequest request)
@@ -803,26 +860,10 @@ namespace BITCORNService.Controllers
                     }
                     else
                     {
-                        var players = await GetPlayers(activeGame);
-                        //GetJoinPacket
-                        if (players.Length > 0 || request.Tournament)
+                        var existingResponse = await GetExistingGame(sender, activeGame);
+                        if (existingResponse != null)
                         {
-
-                            return new
-                            {
-
-                                IsNewGame = false,
-                                Players = players,//await GetPlayers(activeGame),
-                                ActiveGame = activeGame,
-                                TournamentInfo = await GetTournamentInfo(activeGame),
-
-                                JoiningBetweenTournamentGames = existingTournament != null ? existingTournament.JoiningBetweenTournamentGames : true
-                                /*
-                                GameId = activeGame.GameId,
-                                Payin = activeGame.Payin,
-                                Reward = activeGame.Reward,
-                                PlayerLimit = activeGame.pl*/
-                            };
+                            return existingResponse;
                         }
                         else
                         {
@@ -1223,7 +1264,7 @@ namespace BITCORNService.Controllers
                             {
                                 if (activeGame.EnableTeams)
                                 {
-                                    if (allStats.Count > 0 && orderedUsers.Count>0)
+                                    if (allStats.Count > 0 && orderedUsers.Count > 0)
                                     {
                                         var winnerStats = allStats[orderedUsers[0].UserId];
 
