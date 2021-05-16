@@ -291,47 +291,7 @@ namespace BITCORNService.Controllers
 
                                 battlegroundsProfile.IsSub = request.IsSub;
 
-                                if (activeGame.EnableTeams)
-                                {
-                                    bool teamAssigned = false;
-                                    if (tournament != null && activeGame.EnableTeams)
-                                    {
-                                        var history = await _dbContext.BattlegroundsGameHistory
-                                            .Join(_dbContext.GameInstance, (x => x.GameId), (x => x.GameId), (b, g) => new { b, g })
-                                            .Where(x => x.b.UserId == player.UserId && x.g.TournamentId == tournament.TournamentId).OrderByDescending(x => x.g.GameId).FirstOrDefaultAsync();
-
-                                        if (history != null)
-                                        {
-                                            battlegroundsProfile.Team = history.b.Team;
-                                            teamAssigned = true;
-                                        }
-
-                                    }
-
-                                    if (!teamAssigned)
-                                    {
-                                        if (activeGame.LastTeamSeed == null)
-                                        {
-                                            activeGame.LastTeamSeed = 1;
-                                        }
-                                        /*
-                                        else
-                                        {
-                                            if (activeGame.LastTeamSeed == 0) activeGame.LastTeamSeed = 1;
-                                            else activeGame.LastTeamSeed = 0;
-                                        }*/
-
-                                        battlegroundsProfile.Team = activeGame.LastTeamSeed;
-
-                                        if (activeGame.LastTeamSeed == 0) activeGame.LastTeamSeed = 1;
-                                        else activeGame.LastTeamSeed = 0;
-                                    }
-
-                                }
-                                else
-                                {
-                                    battlegroundsProfile.Team = null;
-                                }
+                                await AssignTeam(battlegroundsProfile, activeGame, tournament, player);
 
                                 var aInfo = await GameUtils.GetAvatar(_dbContext, player, GameUtils.AvatarPlatformWindows);
                                 var packet = GetJoinPacket(aInfo, player, battlegroundsProfile);
@@ -379,6 +339,62 @@ namespace BITCORNService.Controllers
                 };*/
             }
             throw new ArgumentException();
+        }
+
+        private async Task AssignTeam(BattlegroundsUser battlegroundsProfile, GameInstance activeGame, Tournament tournament, User player)
+        {
+            var gameMode = activeGame.GetGameMode();
+            if (gameMode != BattlegroundsGameMode.Raidboss)
+            {
+                if (activeGame.EnableTeams)
+                {
+                    bool teamAssigned = false;
+                    if (tournament != null && activeGame.EnableTeams)
+                    {
+                        var history = await _dbContext.BattlegroundsGameHistory
+                            .Join(_dbContext.GameInstance, (x => x.GameId), (x => x.GameId), (b, g) => new { b, g })
+                            .Where(x => x.b.UserId == player.UserId && x.g.TournamentId == tournament.TournamentId).OrderByDescending(x => x.g.GameId).FirstOrDefaultAsync();
+
+                        if (history != null)
+                        {
+                            battlegroundsProfile.Team = history.b.Team;
+                            teamAssigned = true;
+                        }
+
+                    }
+
+                    if (!teamAssigned)
+                    {
+                        if (activeGame.LastTeamSeed == null)
+                        {
+                            activeGame.LastTeamSeed = 1;
+                        }
+                      
+
+                        battlegroundsProfile.Team = activeGame.LastTeamSeed;
+
+                        if (activeGame.LastTeamSeed == 0) activeGame.LastTeamSeed = 1;
+                        else activeGame.LastTeamSeed = 0;
+                    }
+
+                }
+                else
+                {
+                    battlegroundsProfile.Team = null;
+                }
+            }
+            else
+            {
+                if(player.UserId == activeGame.HostId)
+                {
+                    battlegroundsProfile.Team = 0;
+                }
+                else
+                {
+                    battlegroundsProfile.Team = 1;
+
+                }
+            }
         }
 
         UserJoinGamePacket GetJoinPacket(UserAvatarOutput avatarInfo, User player, BattlegroundsUser battlegroundsProfile)
@@ -829,6 +845,7 @@ namespace BITCORNService.Controllers
                     }
 
                     activeGame = CreateGameInstance(request, sender);
+               
                     _dbContext.GameInstance.Add(activeGame);
 
 
@@ -1071,7 +1088,7 @@ namespace BITCORNService.Controllers
             activeGame.RewardMultiplier = 1;//request.RewardMultiplier;
             return activeGame;
         }
-
+        
         GameInstance CreateGameInstance(BattlegroundsCreateGameRequest request, User sender)
         {
             var activeGame = InitSimpleInstance(sender);
@@ -1079,10 +1096,13 @@ namespace BITCORNService.Controllers
             activeGame.Reward = 0;//request.Reward;
             activeGame.Bgrains = request.Bgrains;
             //     activeGame.HostDebitCornTxId = txid;
-
+            activeGame.GameMode = request.GameMode;
             activeGame.PlayerLimit = request.MaxPlayerCount;
             activeGame.EnableTeams = request.EnableTeams;
-            activeGame.GameMode = request.GameMode;
+            if(activeGame.GetGameMode() == BattlegroundsGameMode.Raidboss)
+            {
+                activeGame.EnableTeams = true;
+            }
             activeGame.MapId = request.MapId;
             return activeGame;
         }
