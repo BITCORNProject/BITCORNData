@@ -268,7 +268,7 @@ namespace BITCORNService.Controllers
                                     txLog.Type = 1;
                                     _dbContext.GameInstanceCornReward.Add(txLog);
                                     battlegroundsProfile.CurrentGameId = activeGame.GameId;
-
+                                    battlegroundsProfile.CurrentPayin = activeGame.Payin*0.99m;
                                     changesMade = true;
                                 }
                                 else
@@ -279,6 +279,7 @@ namespace BITCORNService.Controllers
                             else
                             {
                                 battlegroundsProfile.CurrentGameId = activeGame.GameId;
+                                battlegroundsProfile.CurrentPayin = 0;
                                 changesMade = true;
                             }
 

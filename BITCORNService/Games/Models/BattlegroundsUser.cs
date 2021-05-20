@@ -24,6 +24,7 @@ namespace BITCORNService.Games.Models
 		public int? Team { get; set; }
 		public decimal TotalCornRewards { get; set; }
 		public decimal HostCornRewards { get; set; }
+		public decimal CurrentPayin { get; set; }
 		public bool IsSub { get; set; }
 	}
 }
