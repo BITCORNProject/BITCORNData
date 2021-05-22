@@ -21,6 +21,7 @@ namespace BITCORNService.Games.Models
 		public int? LastTeamSeed { get; set; }
 		public bool Bgrains { get; set; }
 		public string MapId { get; set; }
+		public string Data { get; set; }
 		public BattlegroundsGameMode GetGameMode() => (BattlegroundsGameMode)GameMode;
 		public void CopySettings(GameInstance previousGame)
         {
@@ -30,6 +31,7 @@ namespace BITCORNService.Games.Models
 			EnableTeams = previousGame.EnableTeams;
 			LastTeamSeed = previousGame.LastTeamSeed;
 			Bgrains = previousGame.Bgrains;
+			Data = previousGame.Data;
 		}
     }
 	public enum BattlegroundsGameMode

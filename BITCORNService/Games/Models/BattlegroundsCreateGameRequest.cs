@@ -14,5 +14,7 @@
 		public bool Bgrains { get; set; }
 		public bool JoiningBetweenTournamentGames { get; set; }
 		public string MapId { get; set; }
+	
+		public string Data { get; set; }
 	}
 }

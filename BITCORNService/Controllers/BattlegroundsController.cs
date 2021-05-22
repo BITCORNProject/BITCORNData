@@ -823,7 +823,6 @@ namespace BITCORNService.Controllers
         {
             try
             {
-
                 var sender = this.GetCachedUser();
                 if (sender != null)
                 {
@@ -1077,6 +1076,8 @@ namespace BITCORNService.Controllers
                 Maps = request.TournamentMaps
             });
 
+            if (existingTournament.TournamentData.Length > 500) throw new ArgumentException();
+            
             return existingTournament;
         }
 
@@ -1103,8 +1104,15 @@ namespace BITCORNService.Controllers
             if(activeGame.GetGameMode() == BattlegroundsGameMode.Raidboss)
             {
                 activeGame.EnableTeams = true;
+                activeGame.Payin = 0;
             }
             activeGame.MapId = request.MapId;
+            activeGame.Data = request.Data;
+            if(activeGame.Data.Length>500)
+            {
+                throw new ArgumentException();
+            }
+
             return activeGame;
         }
 
