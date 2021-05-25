@@ -34,6 +34,43 @@ namespace BITCORNService.Controllers
         {
             _dbContext = dbContext;
         }
+        [HttpGet("{host}/hosts")]
+        public async Task<ActionResult<object>> Hosts([FromRoute] string host)
+        {
+            var hostIds = await _dbContext.BattlegroundsUser.Select(x => x.HostId).Distinct().ToArrayAsync();
+            var identities = await _dbContext.UserIdentity.Where(x => hostIds.Contains(x.UserId)).Where(x=>!string.IsNullOrEmpty(x.TwitchId)).ToArrayAsync();
+            var objs = identities.Select(x => new
+            {
+                twitchId = x.TwitchId,
+                twitchUsername = x.TwitchUsername,
+                userId = x.UserId
+            }).ToArray();
+
+            var platformId = BitcornUtils.GetPlatformId(host);
+            var user = await BitcornUtils.GetUserForPlatform(platformId, _dbContext).FirstOrDefaultAsync();
+            string selectedHost = "";
+            if (user != null)
+            {
+                selectedHost = objs.Where(x=>x.twitchId == user.UserIdentity.TwitchId).Select(x=>x.twitchId).FirstOrDefault();
+              
+            }
+
+            if (selectedHost == null)
+            {
+                if (objs.Length > 0)
+                {
+                    selectedHost = objs[0].twitchId;
+                }
+            }
+
+
+            return new
+            {
+                hosts = objs,
+                selectedHost = "twitch|"+selectedHost
+            };
+        }
+
         [HttpGet("leaderboard/{host}/{orderby}")]
         public async Task<ActionResult<object>> Leaderboard([FromRoute] string host, [FromRoute] string orderby)
         {
@@ -41,7 +78,30 @@ namespace BITCORNService.Controllers
                 .GetProperties()
                 .Select(p => p.Name.ToLower())
                 .ToArray();
-            if (int.TryParse(host, out int userId))
+
+            int userId = -1;
+
+            if (int.TryParse(host, out int Id))
+            {
+                userId = Id;
+            }
+            else
+            {
+                var platformId = BitcornUtils.GetPlatformId(host);
+                var user = await BitcornUtils.GetUserForPlatform(platformId, _dbContext).FirstOrDefaultAsync();
+                if (user != null)
+                {
+                    userId = user.UserId;
+                }
+                else
+                {
+                    userId = 43;
+                }
+            }
+
+
+            if (userId == -1) return StatusCode(404);
+
             {
                 if (properties.Contains(orderby.ToLower()))
                 {
@@ -64,6 +124,40 @@ namespace BITCORNService.Controllers
             }
             return StatusCode((int)HttpStatusCode.BadRequest);
         }
+
+        [HttpGet("stats/{host}")]
+        public async Task<ActionResult<object>> Stats([FromRoute] string host)
+        {
+            if (this.GetCachedUser() != null)
+                throw new InvalidOperationException();
+            if (string.IsNullOrWhiteSpace(host)) throw new ArgumentNullException("id");
+
+            var platformId = BitcornUtils.GetPlatformId(host);
+            var user = await BitcornUtils.GetUserForPlatform(platformId, _dbContext).FirstOrDefaultAsync();
+            if (user != null)
+            {
+                var profile = await _dbContext.BattlegroundsUser.Where(x => x.UserId == user.UserId && x.HostId == user.UserId).FirstOrDefaultAsync();
+                if (profile != null)
+                {
+                    var playedGames = await _dbContext.GameInstance.Where(x => x.HostId == user.UserId).CountAsync();
+                    var uniquePlayers = await _dbContext.BattlegroundsUser.Where(x => x.HostId == user.UserId).CountAsync();
+                    return new
+                    {
+                        bitcornEarned = profile.HostCornRewards,
+                        playedGames = playedGames,
+                        uniquePlayers = uniquePlayers
+                    };
+                }
+            }
+
+            return new
+            {
+                bitcornEarned = 0,
+                playedGames = 0,
+                uniquePlayers = 0
+            };
+        }
+
 
         [Authorize(Policy = AuthScopes.SendTransaction)]
         [ServiceFilter(typeof(LockUserAttribute))]
@@ -268,7 +362,7 @@ namespace BITCORNService.Controllers
                                     txLog.Type = 1;
                                     _dbContext.GameInstanceCornReward.Add(txLog);
                                     battlegroundsProfile.CurrentGameId = activeGame.GameId;
-                                    battlegroundsProfile.CurrentPayin = activeGame.Payin*0.99m;
+                                    battlegroundsProfile.CurrentPayin = activeGame.Payin * 0.99m;
                                     changesMade = true;
                                 }
                                 else
@@ -370,7 +464,7 @@ namespace BITCORNService.Controllers
                         {
                             activeGame.LastTeamSeed = 1;
                         }
-                      
+
 
                         battlegroundsProfile.Team = activeGame.LastTeamSeed;
 
@@ -386,7 +480,7 @@ namespace BITCORNService.Controllers
             }
             else
             {
-                if(player.UserId == activeGame.HostId)
+                if (player.UserId == activeGame.HostId)
                 {
                     battlegroundsProfile.Team = 0;
                 }
@@ -845,7 +939,7 @@ namespace BITCORNService.Controllers
                     }
 
                     activeGame = CreateGameInstance(request, sender);
-               
+
                     _dbContext.GameInstance.Add(activeGame);
 
 
@@ -1077,7 +1171,7 @@ namespace BITCORNService.Controllers
             });
 
             if (existingTournament.TournamentData.Length > 500) throw new ArgumentException();
-            
+
             return existingTournament;
         }
 
@@ -1090,7 +1184,7 @@ namespace BITCORNService.Controllers
             activeGame.RewardMultiplier = 1;//request.RewardMultiplier;
             return activeGame;
         }
-        
+
         GameInstance CreateGameInstance(BattlegroundsCreateGameRequest request, User sender)
         {
             var activeGame = InitSimpleInstance(sender);
@@ -1101,14 +1195,14 @@ namespace BITCORNService.Controllers
             activeGame.GameMode = request.GameMode;
             activeGame.PlayerLimit = request.MaxPlayerCount;
             activeGame.EnableTeams = request.EnableTeams;
-            if(activeGame.GetGameMode() == BattlegroundsGameMode.Raidboss)
+            if (activeGame.GetGameMode() == BattlegroundsGameMode.Raidboss)
             {
                 activeGame.EnableTeams = true;
                 activeGame.Payin = 0;
             }
             activeGame.MapId = request.MapId;
             activeGame.Data = request.Data;
-            if(activeGame.Data.Length>500)
+            if (activeGame.Data.Length > 500)
             {
                 throw new ArgumentException();
             }
