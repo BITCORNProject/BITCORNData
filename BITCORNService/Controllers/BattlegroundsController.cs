@@ -842,7 +842,13 @@ namespace BITCORNService.Controllers
             */
         }
 
-        [ServiceFilter(typeof(LockUserAttribute))]
+        [HttpGet("version")]
+        public async Task<ActionResult<object>> Version()
+        {
+            return 1;
+        }
+
+            [ServiceFilter(typeof(LockUserAttribute))]
         [HttpGet("existinggame")]
         public async Task<ActionResult<object>> ExistingGame()
         {
@@ -867,6 +873,7 @@ namespace BITCORNService.Controllers
                                 {
                                     senderProfile.CurrentGameId = activeGame.GameId;
                                     senderProfile.VerifiedGameId = activeGame.GameId;
+                                    senderProfile.Team = 0;
                                 }
                             }
                             await _dbContext.SaveAsync();
@@ -953,8 +960,11 @@ namespace BITCORNService.Controllers
                     {
                         if (activeGame.GetGameMode() == BattlegroundsGameMode.Raidboss)
                         {
+
+                            await _dbContext.SaveAsync();
                             senderProfile.CurrentGameId = activeGame.GameId;
                             senderProfile.VerifiedGameId = activeGame.GameId;
+                            senderProfile.Team = 0;
                             await _dbContext.SaveAsync();
                         }
                     }
@@ -988,7 +998,6 @@ namespace BITCORNService.Controllers
                     else
                     {
 
-                        await _dbContext.SaveAsync();
                         await UpdateSenderToCurrent();
                         return await ProgressTournamentWrapper(existingTournament, activeGame, sender, activeGame.GetGameMode() == BattlegroundsGameMode.Raidboss);
                         //}
