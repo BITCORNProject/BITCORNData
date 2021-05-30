@@ -164,6 +164,18 @@ namespace BITCORNService.Controllers
         [HttpPost("bgrain")]
         public async Task<ActionResult<object>> BgRain([FromBody] RainRequest rainRequest)
         {
+            var userMode = this.GetUserMode();
+
+            if (userMode != null && userMode.Value == 0)
+            {
+                throw new NotImplementedException();
+            }
+            
+            if(!CheckPaidSupport())
+            {
+                return StatusCode(420);
+            }
+
             var cachedUser = this.GetCachedUser();
             if (rainRequest == null) throw new ArgumentNullException();
             if (rainRequest.From == null) throw new ArgumentNullException();
@@ -279,6 +291,8 @@ namespace BITCORNService.Controllers
                 supportPaidGames = true;
 
             }
+
+            if (supportPaidGames) supportPaidGames = CheckPaidSupport();
             /*
             if (sender == null)
             {
@@ -522,8 +536,17 @@ namespace BITCORNService.Controllers
         [HttpGet("start")]
         public async Task<ActionResult<object>> Start()
         {
+            var userMode = this.GetUserMode();
+
+            if (userMode != null && userMode.Value != 0)
+            {
+                throw new NotImplementedException();
+            }
+
             try
             {
+                
+
                 var sender = this.GetCachedUser();
                 if (sender != null)
                 {
@@ -743,6 +766,14 @@ namespace BITCORNService.Controllers
         [HttpPost("pickupcorn")]
         public async Task<ActionResult<object>> PickupCorn([FromBody] PickupCornRequest request)
         {
+            var userMode = this.GetUserMode();
+
+            if (userMode != null && userMode.Value != 0)
+            {
+                throw new NotImplementedException();
+            }
+
+
             try
             {
 
@@ -842,16 +873,29 @@ namespace BITCORNService.Controllers
             */
         }
 
+        bool CheckPaidSupport() => SUPPORT_PAID_GAMES;
+
+        const bool SUPPORT_PAID_GAMES = true;
         [HttpGet("version")]
         public async Task<ActionResult<object>> Version()
         {
-            return 1;
+            return new  { 
+                version = 1,
+                supportsPayin = CheckPaidSupport()
+            };
         }
 
             [ServiceFilter(typeof(LockUserAttribute))]
         [HttpGet("existinggame")]
         public async Task<ActionResult<object>> ExistingGame()
         {
+            var userMode = this.GetUserMode();
+
+            if (userMode != null && userMode.Value != 0)
+            {
+                throw new NotImplementedException();
+            }
+
             try
             {
                 var sender = this.GetCachedUser();
@@ -932,6 +976,13 @@ namespace BITCORNService.Controllers
         [HttpPost("create")]
         public async Task<ActionResult<object>> Create([FromBody] BattlegroundsCreateGameRequest request)
         {
+            var userMode = this.GetUserMode();
+
+            if (userMode != null && userMode.Value != 0)
+            {
+                throw new NotImplementedException();
+            }
+
             try
             {
                 var sender = this.GetCachedUser();
@@ -1159,12 +1210,29 @@ namespace BITCORNService.Controllers
             //     activeGame.HostDebitCornTxId = txid;
             activeGame.GameMode = request.GameMode;
             activeGame.PlayerLimit = request.MaxPlayerCount;
+            if(activeGame.PlayerLimit>10000)
+            {
+                activeGame.PlayerLimit = 10000;
+            }
+
             activeGame.EnableTeams = request.EnableTeams;
             if (activeGame.GetGameMode() == BattlegroundsGameMode.Raidboss)
             {
                 activeGame.EnableTeams = true;
                 activeGame.Payin = 0;
             }
+            
+            if(!CheckPaidSupport())
+            {
+                activeGame.Bgrains = false;
+                activeGame.Payin = 0;
+            }
+
+            if(activeGame.Payin > 100_000_000)
+            {
+                activeGame.Payin = 100_000_000;
+            }
+
             activeGame.MapId = request.MapId;
             activeGame.Data = request.Data;
             if (activeGame.Data.Length > 500)
@@ -1236,6 +1304,13 @@ namespace BITCORNService.Controllers
         [HttpGet("abandon")]
         public async Task<ActionResult<object>> AbandonGame()
         {
+            var userMode = this.GetUserMode();
+
+            if (userMode != null && userMode.Value != 0)
+            {
+                throw new NotImplementedException();
+            }
+
             var sender = this.GetCachedUser();
             if (sender != null)
             {
@@ -1310,6 +1385,13 @@ namespace BITCORNService.Controllers
         [HttpPost("processgame")]
         public async Task<ActionResult<object>> ProcessGame([FromBody] BattlegroundsProcessGameRequest request)
         {
+            var userMode = this.GetUserMode();
+
+            if (userMode != null && userMode.Value != 0)
+            {
+                throw new NotImplementedException();
+            }
+
             try
             {
                 Tournament tournament = null;
