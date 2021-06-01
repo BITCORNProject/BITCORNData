@@ -382,6 +382,22 @@ namespace BITCORNService.Controllers
                                     _dbContext.GameInstanceCornReward.Add(txLog);
                                     battlegroundsProfile.CurrentGameId = activeGame.GameId;
                                     battlegroundsProfile.CurrentPayin = activeGame.Payin * 0.99m;
+                                    try
+                                    {
+                                        if (sender.UserIdentity != null && !string.IsNullOrEmpty(sender.UserIdentity.TwitchId))
+                                        {
+                                            var ircTx = new IrcTransaction();
+                                            ircTx.TxGroupId = txid.Tx.TxGroupId;
+                                            ircTx.IrcChannel = sender.UserIdentity.TwitchId;
+                                            ircTx.IrcMessage = "";
+                                            _dbContext.IrcTransaction.Add(ircTx);
+                                        }
+                                    }
+                                    catch
+                                    {
+
+                                    }
+
                                     changesMade = true;
                                 }
                                 else
@@ -513,7 +529,7 @@ namespace BITCORNService.Controllers
 
         UserJoinGamePacket GetJoinPacket(UserAvatarOutput avatarInfo, User player, BattlegroundsUser battlegroundsProfile, GameInstance game)
         {
-            if(!game.EnableTeams)
+            if (!game.EnableTeams)
             {
                 battlegroundsProfile.Team = null;
             }
@@ -1134,7 +1150,7 @@ namespace BITCORNService.Controllers
             {
                 var ps = await _dbContext.BattlegroundsUser.Where(x => x.HostId == sender.UserId && x.CurrentGameId == existingTournament.PreviousMapId).ToArrayAsync();
                 int updateCount = 0;
-                if(activeGame.GameId == 0)
+                if (activeGame.GameId == 0)
                 {
                     await _dbContext.SaveAsync();
                 }
@@ -1301,7 +1317,7 @@ namespace BITCORNService.Controllers
             }
             return output;
         }
-        async Task<decimal> SendfromBitcornhubTransaction(User user, int gameId, decimal amount, string context)
+        async Task<decimal> SendfromBitcornhubTransaction(User user, int gameId, decimal amount, string context, User host)
         {
             if (amount <= 0)
                 return 0;
@@ -1315,6 +1331,14 @@ namespace BITCORNService.Controllers
                     link.TxId = receipt.TxId.Value;
                     link.Type = 0;
                     _dbContext.GameInstanceCornReward.Add(link);
+                    if (host.UserIdentity != null && !string.IsNullOrEmpty(host.UserIdentity.TwitchId))
+                    {
+                        var ircTx = new IrcTransaction();
+                        ircTx.TxGroupId = receipt.Tx.TxGroupId;
+                        ircTx.IrcChannel = host.UserIdentity.TwitchId;
+                        ircTx.IrcMessage = "";
+                        _dbContext.IrcTransaction.Add(ircTx);
+                    }
                     return amount;
                 }
             }
@@ -1392,6 +1416,21 @@ namespace BITCORNService.Controllers
                                         link.TxId = receipt.TxId.Value;
                                         link.Type = 2;
                                         _dbContext.GameInstanceCornReward.Add(link);
+                                        try
+                                        {
+                                            if (sender.UserIdentity != null && !string.IsNullOrEmpty(sender.UserIdentity.TwitchId))
+                                            {
+                                                var ircTx = new IrcTransaction();
+                                                ircTx.TxGroupId = receipt.Tx.TxGroupId;
+                                                ircTx.IrcChannel = sender.UserIdentity.TwitchId;
+                                                ircTx.IrcMessage = "";
+                                                _dbContext.IrcTransaction.Add(ircTx);
+                                            }
+                                        }
+                                        catch
+                                        {
+
+                                        }
                                     }
 
                                     await _dbContext.SaveAsync();
@@ -1399,6 +1438,11 @@ namespace BITCORNService.Controllers
                                 }
                             }
                         }
+                    }
+                    else
+                    {
+
+                        return StatusCode(200);
                     }
                 }
             }
@@ -1563,13 +1607,13 @@ namespace BITCORNService.Controllers
                                             if (rewardFull > 0)
                                             {
                                                 var rewardAmount = await SendfromBitcornhubTransaction(winnerUser, activeGame.GameId, rewardToPlayer,
-                                                           "Battlegrounds reward");
+                                                           "Battlegrounds reward", sender);
 
                                                 rewards.Add((winnerUser.UserIdentity.TwitchUsername, rewardAmount));
                                                 winnerStats.TotalCornRewards += rewardAmount;
 
                                                 await SendfromBitcornhubTransaction(sender, activeGame.GameId, rewardToHost,
-                                                    "Battlegrounds host reward");
+                                                    "Battlegrounds host reward", sender);
 
                                                 senderProfile.HostCornRewards += rewardToHost;
                                             }
@@ -1607,7 +1651,7 @@ namespace BITCORNService.Controllers
                                                             if (rewardFull > 0)
                                                             {
                                                                 var rewardAmount = await SendfromBitcornhubTransaction(userInfo, activeGame.GameId, rewardChunk,
-                                                                "Battlegrounds reward");
+                                                                "Battlegrounds reward", sender);
 
 
                                                                 rewards.Add((userInfo.UserIdentity.TwitchUsername, rewardAmount));
@@ -1619,7 +1663,7 @@ namespace BITCORNService.Controllers
                                                 if (rewardFull > 0)
                                                 {
                                                     await SendfromBitcornhubTransaction(sender, activeGame.GameId, rewardToHost,
-                                                      "Battlegrounds host reward");
+                                                      "Battlegrounds host reward", sender);
 
                                                     senderProfile.HostCornRewards += rewardToHost;
                                                 }
@@ -1677,12 +1721,12 @@ namespace BITCORNService.Controllers
                                         if (rewardFull > 0)
                                         {
                                             var rewardAmount = await SendfromBitcornhubTransaction(user, activeGame.GameId, rewardToPlayer,
-                                                "Battlegrounds reward");
+                                                "Battlegrounds reward", sender);
 
                                             winnerStats.TotalCornRewards += rewardAmount;
                                             rewards.Add((user.UserIdentity.TwitchUsername, rewardAmount));
                                             await SendfromBitcornhubTransaction(sender, activeGame.GameId, rewardToHost,
-                                                "Battlegrounds host reward");
+                                                "Battlegrounds host reward", sender);
 
                                             senderProfile.HostCornRewards += rewardToHost;
                                             //rewards[0] = rewardAmount;
@@ -1711,7 +1755,7 @@ namespace BITCORNService.Controllers
                                             if (rewardChunk > 0)
                                             {
                                                 var rAmount = await SendfromBitcornhubTransaction(winners[i].Item2, activeGame.GameId, rewardChunk,
-                                          "Battlegrounds reward");
+                                          "Battlegrounds reward", sender);
 
                                                 winners[i].Item1.TotalCornRewards += rAmount;
                                                 rewards.Add((winners[i].Item2.UserIdentity.TwitchUsername, rAmount));
@@ -1721,7 +1765,7 @@ namespace BITCORNService.Controllers
                                         if (rewardToHost > 0)
                                         {
                                             await SendfromBitcornhubTransaction(sender, activeGame.GameId, rewardToHost,
-                                          "Battlegrounds host reward");
+                                          "Battlegrounds host reward", sender);
 
                                             senderProfile.HostCornRewards += rewardToHost;
                                         }
