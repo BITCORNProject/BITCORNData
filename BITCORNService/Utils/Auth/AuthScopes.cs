@@ -17,5 +17,6 @@ namespace BITCORNService.Utils.Auth
         public const string ReadUser = "user:read";
         public const string CreateOrder = "create:order";
         public const string AuthorizeOrder = "authorize:order";
+        public const string BuyCorn = "transaction:buy";
     }
 }

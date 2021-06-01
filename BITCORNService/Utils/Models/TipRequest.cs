@@ -64,4 +64,5 @@ namespace BITCORNService.Utils.Models
             return "bit-donation";
         }
     }
+
 }

@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using BITCORNService.Models;
 using BITCORNService.Utils.DbActions;
 using BITCORNService.Utils.Models;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -24,7 +25,7 @@ namespace BITCORNService.Utils.LockUser
         public async Task OnActionExecutionAsync(ActionExecutingContext context, ActionExecutionDelegate next)
         {
             User user = await CacheUserAttribute.ReadUser(_config, _dbContext, context);
-;
+            ;
             try
             {
                 await next();
@@ -34,20 +35,19 @@ namespace BITCORNService.Utils.LockUser
                 await BITCORNLogger.LogError(_dbContext, e, null);
             }
         }
-        
-        public static async Task<User> ReadUser(IConfiguration config, BitcornContext dbContext, ActionExecutingContext context)
+        public static async Task<User> ReadUser(IConfiguration config, BitcornContext dbContext, HttpContext context)
         {
-            var identity = context.HttpContext.User.Identities.First();
+            var identity = context.User.Identities.First();
             var claim = identity.Claims.FirstOrDefault(c => c.Type == config["Config:IdKey"]);
             if (claim == default(Claim)) return null;
             var split = claim.Value.Split('@');
             if (split.Length == 1)
             {
-                var user= await dbContext.Auth0Query(claim.Value).FirstOrDefaultAsync();
+                var user = await dbContext.Auth0Query(claim.Value).FirstOrDefaultAsync();
                 if (user != null)
                 {
-                    context.HttpContext.Items.Add("user", user);
-                    context.HttpContext.Items.Add("usermode", 0);
+                    context.Items.Add("user", user);
+                    context.Items.Add("usermode", 0);
 
                 }
                 else
@@ -63,25 +63,29 @@ namespace BITCORNService.Utils.LockUser
                             }, 0);
                             dbContext.User.Add(user);
                             await dbContext.SaveAsync();
-                            context.HttpContext.Items.Add("user", user);
-                            context.HttpContext.Items.Add("usermode", 0);
+                            context.Items.Add("user", user);
+                            context.Items.Add("usermode", 0);
                         }
                         catch (Exception e)
                         {
                             user = null;
-                            await BITCORNLogger.LogError(dbContext,e,claim.Value);
+                            await BITCORNLogger.LogError(dbContext, e, claim.Value);
                             return null;
                         }
                     }
                 }
                 //await BITCORNLogger.LogError(dbContext, new Exception(""),
-                    //Newtonsoft.Json.JsonConvert.SerializeObject(new { userId = claim.Value, isNull=user==null }));
+                //Newtonsoft.Json.JsonConvert.SerializeObject(new { userId = claim.Value, isNull=user==null }));
                 return user;
             }
             else
             {
                 return null;
             }
+        }
+        public static async Task<User> ReadUser(IConfiguration config, BitcornContext dbContext, ActionExecutingContext context)
+        {
+            return await ReadUser(config, dbContext, context.HttpContext);
 
         }
     }

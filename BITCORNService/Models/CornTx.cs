@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Newtonsoft.Json;
+using System;
 using System.Collections.Generic;
 
 namespace BITCORNService.Models
@@ -22,7 +23,7 @@ namespace BITCORNService.Models
         public string BlockchainTxId { get; set; }
         public string CornAddy { get; set; }
         public string TxGroupId { get; set; }
-
+        [JsonIgnore]
         public virtual ICollection<UnclaimedTx> UnclaimedTx { get; set; }
     }
 }

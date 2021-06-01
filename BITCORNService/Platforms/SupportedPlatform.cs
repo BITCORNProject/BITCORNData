@@ -98,14 +98,26 @@ namespace BITCORNService.Platforms
               
             };
         }
-        protected PlatformSyncResponse GetSyncOutput(DateTime? socialCreationTime, User user, bool isMigration)
+        public PlatformSyncResponse GetSyncOutput(DateTime? socialCreationTime, User user, bool isMigration)
         {
-            return new PlatformSyncResponse()
+            if (user != null)
             {
-                IsMigration = isMigration,
-                User = BitcornUtils.GetFullUser(user, user.UserIdentity, user.UserWallet, user.UserStat),
-                SocialCreationTime = socialCreationTime
-            };
+                return new PlatformSyncResponse()
+                {
+                    IsMigration = isMigration,
+                    User = BitcornUtils.GetFullUser(user, user.UserIdentity, user.UserWallet, user.UserStat),
+                    SocialCreationTime = socialCreationTime
+                };
+            }
+            else
+            {
+                return new PlatformSyncResponse()
+                {
+                    IsMigration = isMigration,
+                    User = new FullUser(),
+                    SocialCreationTime = socialCreationTime
+                };
+            }
         }
         /// <summary>
         /// method to migrate pre auth0 user sync info

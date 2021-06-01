@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IdentityModel.Tokens.Jwt;
 using System.IO;
 using System.Linq;
 using System.Net.WebSockets;
@@ -9,12 +10,16 @@ using System.Threading.Tasks;
 using BITCORNService.Models;
 using BITCORNService.Utils;
 using BITCORNService.Utils.Auth;
+using BITCORNService.Utils.LockUser;
 using BITCORNService.WebSockets.Utils;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
+using Microsoft.IdentityModel.Logging;
+using Microsoft.IdentityModel.Tokens;
 using Newtonsoft.Json;
+using RestSharp;
 
 namespace BITCORNService.Controllers
 {
@@ -37,6 +42,19 @@ namespace BITCORNService.Controllers
             InvalidSocketArray,
             Failed,
         }
+
+        public static async Task<SocketBroadcastResult> TryBroadcastToBattlegroundsUser(string auth0Id, BitcornContext dbContext, string type, object data)
+        {
+            if (BattlegroundsWebsocket.TryGetValue(auth0Id, out var socket))
+            {
+                return await TryBroadcast(socket , dbContext, type, data);
+            }
+            else
+            {
+                return SocketBroadcastResult.NoConnections;
+            }
+        }
+
         public static async Task<SocketBroadcastResult> TryBroadcast(List<WebSocket> inputSockets, BitcornContext dbContext, string type, object data)
         {
             try
@@ -124,32 +142,35 @@ namespace BITCORNService.Controllers
         }
 
 
-        public static void GetSocketArgs<T>(string v)
-        {
-
-        }
 
         public static List<WebSocket> BitcornFarmsWebSocket { get; set; } = new List<WebSocket>();
         public static List<WebSocket> BitcornhubWebsocket { get; set; } = new List<WebSocket>();
+        public static Dictionary<string, List<WebSocket>> BattlegroundsWebsocket { get; set; } = new Dictionary<string, List<WebSocket>>();
         public static string[] BitcornhubSocketArgs { get; set; }
 
-        [Authorize(Policy = AuthScopes.SendTransaction)]
 
+        [ServiceFilter(typeof(CacheUserAttribute))]
+        [Authorize(Policy = AuthScopes.SendTransaction)]
         [HttpGet("/bitcornhub")]
         public async Task GetBitcornhub([FromQuery] string settingsColumns)
         {
+            if (this.GetCachedUser() != null)
+                throw new InvalidOperationException();
+
             if (HttpContext.WebSockets.IsWebSocketRequest)
             {
 
-                using var webSocket = await HttpContext.WebSockets.AcceptWebSocketAsync();
+                using var webSocket = await HttpContext.WebSockets.AcceptWebSocketAsync("client");
                 await SocketReceiverHandler<BitcornhubSocketReceiver>(webSocket, settingsColumns);
             }
             else
             {
                 HttpContext.Response.StatusCode = 400;
             }
+
         }
 
+        [ServiceFilter(typeof(CacheUserAttribute))]
         [Authorize(Policy = AuthScopes.SendTransaction)]
 
         [HttpGet("/bitcornfarms")]
@@ -158,7 +179,7 @@ namespace BITCORNService.Controllers
             if (HttpContext.WebSockets.IsWebSocketRequest)
             {
 
-                using var webSocket = await HttpContext.WebSockets.AcceptWebSocketAsync();
+                using var webSocket = await HttpContext.WebSockets.AcceptWebSocketAsync("client");
                 await SocketReceiverHandler<BitcornfarmsSocketReceiver>(webSocket, null);
             }
             else
@@ -166,6 +187,43 @@ namespace BITCORNService.Controllers
                 HttpContext.Response.StatusCode = 400;
             }
         }
+
+        [ServiceFilter(typeof(CacheUserAttribute))]
+        [Authorize]
+        [HttpGet("/battlegrounds")]
+        public async Task GetBattlegrounds()
+        {
+            try
+            {
+                if (HttpContext.WebSockets.IsWebSocketRequest)
+                {
+                    //"client"
+                    var webSocket = await HttpContext.WebSockets.AcceptWebSocketAsync("client");
+                    {
+                        //await CacheUserAttribute.ReadUser(_configuration, _dbContext, HttpContext);//
+                        var user = this.GetCachedUser();
+                        if (user != null)
+                        {
+                            //user.UserIdentity.Auth0Id
+                            await SocketReceiverHandler<BattlegroundsSocketReceiver>(webSocket, user.UserIdentity.Auth0Id);
+                        }
+                        //else
+                        {
+
+                        }
+                    }
+                }
+                else
+                {
+                    HttpContext.Response.StatusCode = 400;
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.Message);
+            }
+        }
+
 
         private async Task SocketReceiverHandler<T>(WebSocket webSocket, string args) where T : SocketReceiver, new()
         {
@@ -177,6 +235,7 @@ namespace BITCORNService.Controllers
             receiver.InitDb(_dbContext);
             receiver.Start(webSocket, args);
             await receiver.PostStart(webSocket);
+           
             while (!webSocket.CloseStatus.HasValue)
             {
                 try
@@ -198,7 +257,7 @@ namespace BITCORNService.Controllers
                         await receiver.Process(webSocket, message);
                     }
                 }
-                catch(WebSocketException ex)
+                catch (WebSocketException ex)
                 {
                     break;
                 }

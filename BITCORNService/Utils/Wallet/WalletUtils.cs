@@ -256,6 +256,14 @@ namespace BITCORNService.Utils.Wallet
                         {
                             cornResponse.WalletAvailable = false;
                         }
+                        try
+                        {
+                            await BITCORNLogger.LogError(dbContext, new Exception("wallet withdraw failed"), JsonConvert.SerializeObject(new { error = error, amount, cornAddy }));
+                        }
+                        catch (Exception ex)
+                        {
+
+                        }
                     }
                 }
             }

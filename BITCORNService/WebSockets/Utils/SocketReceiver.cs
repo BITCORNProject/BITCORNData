@@ -48,6 +48,66 @@ namespace BITCORNService.WebSockets.Utils
         }
     }
 
+    public class BattlegroundsSocketReceiver : SocketReceiver
+    {
+        WebSocket _socket = null;
+
+        public override async Task PostStart(WebSocket socket)
+        {
+            
+            /*
+            while (!socket.CloseStatus.HasValue)
+            {
+                await Task.Delay(2000);
+                await Send(socket, JsonConvert.SerializeObject(new
+                {
+                    type = "testing",
+                    payload = new { 
+                        stuff = "123"
+                    }
+                }));
+            }
+            */
+            
+        }
+        string _authId = null;
+        public override void Start(WebSocket socket, string args)
+        {
+            _socket = socket;
+            _authId = args;
+            //lock (WebSocketsController.BitcornhubWebsocket)
+            if(!string.IsNullOrEmpty(args))
+            {
+                lock (WebSocketsController.BattlegroundsWebsocket)
+                {
+                    if(!WebSocketsController.BattlegroundsWebsocket.TryGetValue(args,out var list))
+                    {
+                        list = new List<WebSocket>();
+                        WebSocketsController.BattlegroundsWebsocket.Add(args,list);
+                    }
+
+                    list.Add(socket);
+                    //WebSocketsController.BattlegroundsWebsocket.Add(args, socket);
+                }
+            }
+
+        }
+        public override void OnClose()
+        {
+
+            if (!string.IsNullOrEmpty(_authId))
+            {
+                lock (WebSocketsController.BattlegroundsWebsocket)
+                {
+                    WebSocketsController.BattlegroundsWebsocket.Remove(_authId);
+                    _socket.Dispose();
+                    //WebSocketsController.BitcornhubWebsocket = null;
+                }
+            }
+        }
+    }
+
+
     public class BitcornfarmsSocketReceiver : SocketReceiver
     {
         public override async Task PostStart(WebSocket socket)
@@ -63,7 +123,7 @@ namespace BITCORNService.WebSockets.Utils
         }
         public override void Start(WebSocket socket, string args)
         {
-            
+
             //lock (WebSocketsController.BitcornhubWebsocket)
             {
                 lock (WebSocketsController.BitcornFarmsWebSocket)
@@ -71,7 +131,7 @@ namespace BITCORNService.WebSockets.Utils
                     WebSocketsController.BitcornFarmsWebSocket.Add(socket);
                 }
             }
-            
+
         }
         public override void OnClose()
         {
@@ -85,12 +145,12 @@ namespace BITCORNService.WebSockets.Utils
 
         public override async Task Process(WebSocket socket, string data)
         {
-           
+
         }
     }
     public class BitcornhubSocketReceiver : SocketReceiver
     {
-        
+
         public override void Start(WebSocket socket, string args)
         {
             //lock (WebSocketsController.BitcornhubWebsocket)
@@ -119,7 +179,7 @@ namespace BITCORNService.WebSockets.Utils
 
                 }
             }
-       
+
         }
 
         public override async Task PostStart(WebSocket socket)
@@ -133,7 +193,7 @@ namespace BITCORNService.WebSockets.Utils
                     payload = settings
                 }));
             }
-            catch(Exception e)
+            catch (Exception e)
             {
                 Console.WriteLine(e.Message);
             }

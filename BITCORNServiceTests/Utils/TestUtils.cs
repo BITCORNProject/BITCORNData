@@ -292,11 +292,11 @@ namespace BITCORNServiceTests.Utils
             var context = controller.ControllerContext.HttpContext = new DefaultHttpContext();
             var testPlatformId = $"{platform}|{platformId}";
 
-            var res = await controller.Register(new RegistrationData()
+            var res = (await controller.Register(new RegistrationData()
             {
                 Auth0Id = testAuth0Id,
                 PlatformId = testPlatformId
-            });
+            })).Value;
 
             var outputId = string.Empty;
             if (platform == "twitch") outputId = res.User.TwitchId;

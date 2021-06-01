@@ -348,6 +348,7 @@ namespace BITCORNService.Controllers
             public decimal Tier3IdlePerMinute { get; set; }
             public decimal Tier2IdlePerMinute { get; set; }
             public decimal Tier1IdlePerMinute { get; set; }
+            public decimal TotalBitcornPaidViaIdling { get; set; }
             public bool IsPartner { get; set; }
             public bool IrcPayments { get; set; }
 
@@ -381,6 +382,7 @@ namespace BITCORNService.Controllers
                 GiveawayEntryFee = stream.GiveawayEntryFee;
                 GiveawayOpen = stream.GiveawayOpen;
                 GiveawayText = stream.GiveawayText;
+                TotalBitcornPaidViaIdling = stream.TotalBitcornPaidViaIdling;
                 if (ticket != null)
                 {
                     hasTicket = true;
@@ -405,7 +407,7 @@ namespace BITCORNService.Controllers
 
             }
 
-            return channels.OrderByDescending(x => x.AmountOfRainsSent).ToArray();
+            return channels.OrderByDescending(x => x.AmountOfRainsSent).Take(99).ToArray();
         }
 
         public class UpdateUserRefreshTokenRequest
@@ -757,6 +759,8 @@ namespace BITCORNService.Controllers
         }
 
         */
+
+
         [ServiceFilter(typeof(LockUserAttribute))]
         [HttpPost("{id}/setlivestream")]
         [Authorize(Policy = AuthScopes.ChangeUser)]
@@ -776,6 +780,11 @@ namespace BITCORNService.Controllers
                     var liveStream = await _dbContext.UserLivestream.FirstOrDefaultAsync(u => u.UserId == user.UserId);
                     if (liveStream == null)
                     {
+                        if (body.RainAlgorithm != 1 && body.RainAlgorithm != 0)
+                        {
+                            body.RainAlgorithm = 0;
+                        }
+
                         liveStream = new UserLivestream()
                         {
                             Enabled = true,//body.Enabled,
@@ -785,8 +794,8 @@ namespace BITCORNService.Controllers
                             IrcTarget = "#" + user.UserIdentity.TwitchUsername,
                             TxCooldownPerUser = body.TxCooldownPerUser,
                             RainAlgorithm = body.RainAlgorithm,
-                            MinRainAmount = body.MinRainAmount,
-                            MinTipAmount = body.MinTipAmount,
+                            MinRainAmount = 100,//body.MinRainAmount,
+                            MinTipAmount = 100,//body.MinTipAmount,
                             TxMessages = body.TxMessages,
                             IrcEventPayments = body.IrcEventPayments,
                             BitcornPerBit = 0.1m,
@@ -859,9 +868,9 @@ namespace BITCORNService.Controllers
                             if (body.MinRainAmount != liveStream.MinRainAmount)
                             {
                                 liveStream.MinRainAmount = body.MinRainAmount;
-                                if (liveStream.MinRainAmount <= 0)
+                                if (liveStream.MinRainAmount <= 100)
                                 {
-                                    liveStream.MinRainAmount = 1;
+                                    liveStream.MinRainAmount = 100;
                                 }
                                 changes = true;
                             }
@@ -869,9 +878,9 @@ namespace BITCORNService.Controllers
                             if (body.MinTipAmount != liveStream.MinTipAmount)
                             {
                                 liveStream.MinTipAmount = body.MinTipAmount;
-                                if (liveStream.MinTipAmount <= 0)
+                                if (liveStream.MinTipAmount <= 100)
                                 {
-                                    liveStream.MinTipAmount = 1;
+                                    liveStream.MinTipAmount = 100;
                                 }
 
                                 changes = true;
@@ -1087,7 +1096,7 @@ namespace BITCORNService.Controllers
         [ServiceFilter(typeof(CacheUserAttribute))]
         [HttpGet("{id}/getmfastate")]
         [Authorize(Policy = AuthScopes.ChangeUser)]
-        public async Task<ActionResult<object>> GetMFAState([FromRoute] string id, [FromBody] SetMFAState body)
+        public async Task<ActionResult<object>> GetMFAState([FromRoute] string id)
         {
             if (this.GetCachedUser() != null)
                 throw new InvalidOperationException();
@@ -1252,19 +1261,20 @@ namespace BITCORNService.Controllers
                             if (srcMission.Faucet == now)
                             {
                                 int replicate = 1;
+                                /*
                                 if (previousClaimTime != null && (now - previousClaimTime.Value).TotalDays > 15)
                                 {
                                     userMission.FaucetClaimCount += 14;
                                     replicate = 15;
                                 }
-
+                                */
                                 var reward = 4166.666m; ;
                                 var amount = reward * replicate;
 
                                 decimal bonus = 0;
                                 if (userMission.FaucetClaimStreak > 1)
                                 {
-                                    bonus = amount * 0.25m;
+                                    //bonus = amount * 0.25m;
                                 }
 
                                 amount += bonus;
@@ -1548,11 +1558,11 @@ namespace BITCORNService.Controllers
                 //.Join(_dbContext.User, identity => identity.UserId, us => us.UserId, (id, u) => u)
                 .FirstOrDefaultAsync();
             */
-            var user = await _dbContext.UserIdentity.Where(x=>x.Auth0Id==auth0IdUsername.Auth0Id).FirstOrDefaultAsync();
+            var user = await _dbContext.UserIdentity.Where(x => x.Auth0Id == auth0IdUsername.Auth0Id).FirstOrDefaultAsync();
             if (user != null)
             {
                 user.Username = auth0IdUsername.Username;
-                
+
                 int count = await _dbContext.SaveAsync();
                 return true;
             }

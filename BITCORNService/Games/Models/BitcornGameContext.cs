@@ -24,7 +24,9 @@ namespace BITCORNService.Games.Models
         public virtual DbSet<AvatarConfig> AvatarConfig { get; set; }
         public virtual DbSet<BattlegroundsUser> BattlegroundsUser { get; set; }
         public virtual DbSet<GameInstance> GameInstance { get; set; }
+        public virtual DbSet<Tournament> Tournament { get; set; }
         public virtual DbSet<GameInstanceCornReward> GameInstanceCornReward { get; set; }
+        public virtual DbSet<BattlegroundsGameHistory> BattlegroundsGameHistory { get; set; }
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {
             base.OnConfiguring(optionsBuilder);
@@ -34,11 +36,21 @@ namespace BITCORNService.Games.Models
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
-            modelBuilder.Entity<GameInstanceCornReward>(entity=> {
-                entity.HasKey(e=>e.Id);
-                entity.Property(e=>e.GameInstanceId);
+            modelBuilder.Entity<UserAvatar>(entity => {
+                entity.HasKey(e => e.UserId)
+                        .HasName("PK__UserAvatar__1788CC4C85ECFC41");
+
+                entity.Property(e => e.UserId).ValueGeneratedNever();
+                entity.Property(e => e.AvatarAddress).HasMaxLength(100);
+            });
+
+            modelBuilder.Entity<GameInstanceCornReward>(entity => {
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.GameInstanceId);
                 entity.Property(e => e.TxId);
             });
+            return;
+            
             modelBuilder.Entity<GameInstance>(entity=> {
                 entity.HasKey(e=>e.GameId);
                 entity.Property(e=>e.HostId);
@@ -48,7 +60,7 @@ namespace BITCORNService.Games.Models
                 entity.Property(e=>e.HostDebitCornTxId);
                 entity.Property(e=>e.RewardMultiplier);
                 entity.Property(e=>e.PlayerLimit);
-               
+                entity.Property(e=>e.Started);
             });
             modelBuilder.Entity<ItemPrefab>(entity => {
                 entity.HasKey(e => e.Id);

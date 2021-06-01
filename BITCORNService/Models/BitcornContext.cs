@@ -49,6 +49,7 @@ namespace BITCORNService.Models
         //public virtual DbSet<UserTts> UserTts { get; set; }
         //public virtual DbSet<UserGiveawayTicket> UserGiveawayTicket { get; set; }
         public virtual DbSet<CornPurchase> CornPurchase { get; set; }
+        public virtual DbSet<SignedTx> SignedTx { get; set; }
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {
         }

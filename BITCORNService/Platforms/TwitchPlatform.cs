@@ -23,13 +23,15 @@ namespace BITCORNService.Platforms
             request.Resource = "oauth2/token";
             request.AddQueryParameter("grant_type", "refresh_token");
             request.AddQueryParameter("refresh_token", user.TwitchRefreshToken);
-            request.AddQueryParameter("client_id", config.GetSection("Config").GetSection("TwitchClientIdSub").Value);
-            request.AddQueryParameter("client_secret", config.GetSection("Config").GetSection("TwitchClientSecretSub").Value);
+            var clientId = config.GetSection("Config").GetSection("TwitchClientIdSub").Value;
+            request.AddQueryParameter("client_id", clientId);
+            var clientSecret = config.GetSection("Config").GetSection("TwitchClientSecretSub").Value;
+            request.AddQueryParameter("client_secret", clientSecret);
             request.AddQueryParameter("scope", "openid channel:read:subscriptions channel:read:redemptions channel:manage:redemptions");
 
             var response = restClient.Execute(request);
             var twitchRefreshData = JsonConvert.DeserializeObject<TwitchRefreshToken>(response.Content);
-
+            //await BITCORNLogger.LogError(dbContext, new Exception("refresh token debug"), response.Content + "::" + user.TwitchRefreshToken+"::"+clientId + "::" + clientSecret.Substring(0, clientSecret.Length / 2));
 
             if (!string.IsNullOrWhiteSpace(twitchRefreshData?.AccessToken) && !string.IsNullOrWhiteSpace(twitchRefreshData?.RefreshToken))
             {

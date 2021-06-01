@@ -320,7 +320,7 @@ namespace BITCORNService.Controllers
                                 recipientUser,
                                 cornOrderSum,
                                 client.ClientId,
-                                "$tipcorn",
+                                "app:order",
                                 _dbContext);
 
                             var paymentSuccess = await processInfo.ExecuteTransaction(_dbContext);
@@ -360,7 +360,7 @@ namespace BITCORNService.Controllers
                                     }
 
                                     var restResponse =  restClient.Execute(restRequest);
-                                
+                                    await BITCORNLogger.LogError(_dbContext, new Exception("Order hook callback"), restResponse.Content);
                                     return (new
                                     {
                                         redirect= redirectUrl,

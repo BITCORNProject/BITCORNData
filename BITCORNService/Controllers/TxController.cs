@@ -514,8 +514,11 @@ namespace BITCORNService.Controllers
             public string ReceiptNumber { get; set; }
             public decimal UsdAmount { get; set; }
             public decimal CornAmount { get; set; }
+            public DateTime CreatedAt { get; set; }
+            public string Token { get; set; }
         }
         static HashSet<string> s_LockedPayments = new HashSet<string>();
+        static HashSet<string> s_PurchaseTokens = new HashSet<string>();
         static bool TryLockPayment(string l)
         {
             lock (s_LockedPayments)
@@ -535,85 +538,228 @@ namespace BITCORNService.Controllers
             public string Auth0Id { get; set; }
             public int CornPurchaseId { get; set; }
             public string PaymentId { get; set; }
+            public string Token { get; set; }
+        }
+
+        public class CloseBuycornResponse
+        {
+            public bool Success { get; set; }
+            public int? PurchaseCloseId { get; set; }
+            public string PaymentId { get; set; }
         }
 
         [ServiceFilter(typeof(CacheUserAttribute))]
         [HttpPost("completebuycorn")]
-        public async Task<ActionResult<object>> CloseBuycorn([FromBody] CompleteBuyCornRequest completeRequest)
+        [Authorize(Policy = AuthScopes.BuyCorn)]
+        public async Task<ActionResult<CloseBuycornResponse>> CloseBuycorn([FromBody] CompleteBuyCornRequest completeRequest)
         {
+            //return StatusCode(200);
             if (this.GetCachedUser() != null)
                 throw new InvalidOperationException();
-            if (!string.IsNullOrEmpty(completeRequest.PaymentId))
+            try
             {
-                if (!TryLockPayment(completeRequest.PaymentId))
+                if (!string.IsNullOrEmpty(completeRequest.PaymentId) && !string.IsNullOrEmpty(completeRequest.Token))
                 {
-                    return StatusCode(420);
-                }
-
-                try
-                {
-                    var platformId = BitcornUtils.GetPlatformId(completeRequest.Auth0Id);
-                    var user = await BitcornUtils.GetUserForPlatform(platformId, _dbContext).FirstOrDefaultAsync();
-                    if (user != null)
+                    lock (s_PurchaseTokens)
                     {
-                        var purchase = await _dbContext.CornPurchase.Where(x => x.PaymentId == completeRequest.PaymentId && x.UserId == user.UserId).FirstOrDefaultAsync();
-                        if (purchase != null && purchase.CornTxId == null)
-                        {
-                            //var prices = await ProbitApi.GetPricesAsync();
-                            //var (cornBtc, btcUsdt, cornPrice) = prices;
-                            //var costDiff = Math.Abs(purchase.UsdAmount-(purchase.CornAmount*cornPrice));
-                            //if (costDiff < 2)
-                            {
-                                var value = await TxUtils.SendFromBitcornhubGetReceipt(user, purchase.CornAmount, "BITCORNFarms", "corn-purchase", _dbContext);
-                                if (value != null && value.Tx != null)
-                                {
-                                    purchase.CornTxId = value.TxId.Value;
-                                    await _dbContext.SaveAsync();
-                                    return new
-                                    {
-                                        success = true,
+                        if (!s_PurchaseTokens.Contains(completeRequest.Token)) return StatusCode(420);
+                    }
 
-                                        purchaseCloseId = purchase.CornPurchaseId,
-                                        paymentId = purchase.PaymentId
-                                    };
+                    if (!TryLockPayment(completeRequest.PaymentId))
+                    {
+                        return StatusCode(420);
+                    }
+
+                    try
+                    {
+                        var platformId = BitcornUtils.GetPlatformId(completeRequest.Auth0Id);
+                        var user = await BitcornUtils.GetUserForPlatform(platformId, _dbContext).FirstOrDefaultAsync();
+                        if (user != null)
+                        {
+                            var purchase = await _dbContext.CornPurchase.Where(x => x.PaymentId == completeRequest.PaymentId && x.UserId == user.UserId && x.CornPurchaseId == completeRequest.CornPurchaseId).FirstOrDefaultAsync();
+                            if (purchase != null && purchase.CornTxId == null)
+                            {
+                                if (purchase.CornAmount <= 0 || purchase.UsdAmount <= 0)
+                                {
+                                    return StatusCode(400);
+                                }
+                                //var prices = await ProbitApi.GetPricesAsync();
+                                //var (cornBtc, btcUsdt, cornPrice) = prices;
+                                //var costDiff = Math.Abs(purchase.UsdAmount-(purchase.CornAmount*cornPrice));
+                                //if (costDiff < 2)
+                                {
+                                    var amount = purchase.CornAmount;
+                                    var taxAmount = 0.3m;
+                                    if (purchase.UsdAmount >= 50)
+                                    {
+                                        taxAmount = 0.2m;
+                                    }
+                                    amount -= amount * taxAmount;
+
+                                    var value = await TxUtils.SendFromBitcornhubGetReceipt(user, amount, "BITCORNFarms", "corn-purchase", _dbContext);
+                                    if (value != null && value.Tx != null)
+                                    {
+                                        purchase.CornTxId = value.TxId.Value;
+                                        await _dbContext.SaveAsync();
+                                        return new CloseBuycornResponse
+                                        {
+                                            Success = true,
+
+                                            PurchaseCloseId = purchase.CornPurchaseId,
+                                            PaymentId = purchase.PaymentId
+                                        };
+                                    }
                                 }
                             }
                         }
+                        return new CloseBuycornResponse
+                        {
+                            Success = false,
+
+                        };
                     }
-                    return new
+                    catch (Exception ex)
                     {
-                        success = false,
+                        await BITCORNLogger.LogError(_dbContext, ex, JsonConvert.SerializeObject(completeRequest));
+                        return new CloseBuycornResponse
+                        {
+                            Success = false
+                        };
+                    }
+                    finally
+                    {
+                        lock (s_LockedPayments)
+                        {
+                            s_LockedPayments.Remove(completeRequest.PaymentId);
+                        }
 
-                    };
-                }
-                catch (Exception ex)
-                {
-                    await BITCORNLogger.LogError(_dbContext, ex, JsonConvert.SerializeObject(completeRequest));
-                    return new
-                    {
-                        success = false
-                    };
-                }
-                finally
-                {
-                    lock (s_LockedPayments)
-                    {
-                        s_LockedPayments.Remove(completeRequest.PaymentId);
+
                     }
 
 
                 }
-
+                return StatusCode(400);
 
             }
-            return StatusCode(400);
+            catch (Exception ex)
+            {
+                throw ex;
+            }
+            finally
+            {
+                lock (s_PurchaseTokens)
+                {
+                    s_PurchaseTokens.Remove(completeRequest.Token);
+                }
+            }
 
+        }
+
+        public class CanBuyCornResponse
+        {
+            public bool HasFunds { get; set; }
+            public bool Success { get; set; }
+            public bool GlobalCooldown { get; set; }
+            public bool Cooldown { get; set; }
+            public string Token { get; set; }
+        }
+
+        public const decimal SELL_CORN_CAP_24H = 50_000_000;
+
+        [ServiceFilter(typeof(CacheUserAttribute))]
+        [HttpGet("{authid}/canbuycorn/{amount}")]
+
+        [Authorize(Policy = AuthScopes.BuyCorn)]
+        public async Task<ActionResult<CanBuyCornResponse>> CanBuycorn([FromRoute] string authid, [FromRoute] long amount)
+        {
+            var buyAmount = amount;
+            var platformId = BitcornUtils.GetPlatformId(authid);
+            var user = await BitcornUtils.GetUserForPlatform(platformId, _dbContext).FirstOrDefaultAsync();
+            if (user != null && !user.IsBanned)
+            {
+
+                var soldAmount24h = await TxUtils.GetSoldCorn24h(_dbContext);
+                var sellCap = SELL_CORN_CAP_24H;
+                if (soldAmount24h + buyAmount > sellCap || Math.Abs(sellCap - soldAmount24h) < 10_000_00)
+                {
+                    return new CanBuyCornResponse
+                    {
+
+                        HasFunds = true,
+                        Success = false,
+                        GlobalCooldown = true,
+                        Cooldown = false
+                    };
+                }
+                else
+                {
+                    var cooldown = await _dbContext.CornPurchase.Where(x => x.UserId == user.UserId && x.CreatedAt > DateTime.Now.AddMinutes(-1) && x.CornTxId != null).CountAsync();
+                    if (cooldown <= 0 && buyAmount >= 1)
+                    {
+                        var bitcornhub = await TxUtils.GetBitcornhub(_dbContext);
+                        if (bitcornhub.UserWallet.Balance > buyAmount)
+                        {
+                            string purchaseToken = string.Empty;
+                            lock (s_PurchaseTokens)
+                            {
+                                purchaseToken = Guid.NewGuid().ToString();
+                                s_PurchaseTokens.Add(purchaseToken);
+                            }
+
+                            return new CanBuyCornResponse
+                            {
+                                HasFunds = true,
+                                Success = true,
+                                GlobalCooldown = false,
+                                Cooldown = false,
+                                Token = purchaseToken
+                            };
+                        }
+                        else
+                        {
+                            return new CanBuyCornResponse
+                            {
+                                HasFunds = false,
+                                Success = false,
+                                GlobalCooldown = false,
+                                Cooldown = false
+                            };
+                        }
+                    }
+                    else
+                    {
+                        return new CanBuyCornResponse
+                        {
+                            HasFunds = true,
+                            Success = false,
+                            GlobalCooldown = false,
+                            Cooldown = false
+                        };
+                    }
+                }
+            }
+            else
+            {
+                return StatusCode(404);
+            }
+
+        }
+
+        public class PrepBuyCornResponse
+        {
+            public bool Success { get; set; }
+            public string PaymentId { get; set; }
+            public int PurchaseCloseId { get; set; }
         }
 
         [ServiceFilter(typeof(CacheUserAttribute))]
         [HttpPost("prepbuycorn")]
-        public async Task<ActionResult<object>> Buycorn([FromBody] BuyCornRequest request)
+
+        [Authorize(Policy = AuthScopes.BuyCorn)]
+        public async Task<ActionResult<PrepBuyCornResponse>> Buycorn([FromBody] BuyCornRequest request)
         {
+
+            //return StatusCode(200);
             if (this.GetCachedUser() != null)
                 throw new InvalidOperationException();
 
@@ -621,6 +767,19 @@ namespace BITCORNService.Controllers
             if (request.UsdAmount <= 0) return StatusCode((int)HttpStatusCode.BadRequest);
             if (!string.IsNullOrEmpty(request.PaymentId))
             {
+                if (string.IsNullOrEmpty(request.Token))
+                {
+                    return StatusCode(420);
+                }
+
+                lock (s_PurchaseTokens)
+                {
+                    if (!s_PurchaseTokens.Contains(request.Token))
+                    {
+                        return StatusCode(420);
+                    }
+                }
+
                 if (!TryLockPayment(request.PaymentId))
                 {
                     return StatusCode(420);
@@ -632,41 +791,66 @@ namespace BITCORNService.Controllers
                     var user = await BitcornUtils.GetUserForPlatform(platformId, _dbContext).FirstOrDefaultAsync();
                     if (user != null)
                     {
+
                         var prices = await ProbitApi.GetPricesAsync(_dbContext);
                         var (cornBtc, btcUsdt, cornPrice) = prices;
-                        var costDiff = Math.Abs(request.UsdAmount - (request.CornAmount * cornPrice));
-                        if (costDiff < 2)
+                        var costDiff = 0.0m;
+                        var expectedCost = cornPrice * request.CornAmount;
+
+                        if (expectedCost > 0 && request.CornAmount > 0 && request.UsdAmount > 0)
                         {
-                            var purchase = new CornPurchase();
-                            purchase.OrderId = request.OrderId;
-                            purchase.PaymentId = request.PaymentId;
-                            purchase.ReceiptNumber = request.ReceiptNumber;
-                            purchase.UsdAmount = request.UsdAmount;
-                            purchase.CornAmount = request.CornAmount;
-                            purchase.Fingerprint = request.Fingerprint;
-                            purchase.UserId = user.UserId;
-                            _dbContext.CornPurchase.Add(purchase);
-                            int count = await _dbContext.SaveAsync();
-                            return new
+                            if (expectedCost < request.UsdAmount)
                             {
-                                success = count > 0,
-                                purchaseCloseId = purchase.CornPurchaseId,
-                                paymentId = request.PaymentId
-                            };
+                                costDiff = 1 - (expectedCost / request.UsdAmount);
+                            }
+                            else if (request.UsdAmount < expectedCost)
+                            {
+                                costDiff = 1 - (request.UsdAmount / expectedCost);
+                            }
+                            else
+                            {
+                                costDiff = 0;
+                            }
+
+                            var existingPurhcase = await _dbContext.CornPurchase.Where(x => x.OrderId == request.OrderId).FirstOrDefaultAsync();
+
+                            //Math.Abs(request.UsdAmount - (request.CornAmount * cornPrice));
+                            if (costDiff < 0.001m && existingPurhcase == null)
+                            {
+                                var purchase = new CornPurchase();
+                                purchase.OrderId = request.OrderId;
+                                purchase.PaymentId = request.PaymentId;
+                                purchase.ReceiptNumber = request.ReceiptNumber;
+                                purchase.UsdAmount = request.UsdAmount;
+                                purchase.CornAmount = request.CornAmount;
+                                purchase.Fingerprint = request.Fingerprint;
+                                purchase.UserId = user.UserId;
+                                purchase.CreatedAt = request.CreatedAt;
+                                _dbContext.CornPurchase.Add(purchase);
+                                int count = await _dbContext.SaveAsync();
+                                return new PrepBuyCornResponse
+                                {
+                                    Success = count > 0,
+                                    PurchaseCloseId = purchase.CornPurchaseId,
+                                    PaymentId = request.PaymentId
+                                };
+                            }
                         }
                     }
-                    return new
+                    return new PrepBuyCornResponse
                     {
-                        success = false,
-                        purchaseCloseId = -1//purchase.CornPurchaseId
+                        Success = false,
+                        PurchaseCloseId = -1//purchase.CornPurchaseId
                     };
                 }
                 catch (Exception ex)
                 {
                     await BITCORNLogger.LogError(_dbContext, ex, JsonConvert.SerializeObject(request));
-                    return new
+                    return new PrepBuyCornResponse
                     {
-                        success = false
+                        Success = false,
+                        PurchaseCloseId = -1//purchase.CornPurchaseId
+
                     };
                 }
                 finally
@@ -710,6 +894,7 @@ namespace BITCORNService.Controllers
                     tipRequest.FromUser = await TxUtils.GetBitcornhub(_dbContext);
                 }
                 tipRequest.Amount = tipRequest.BitAmount * liveStream.BitcornPerBit;
+                if (tipRequest.Amount <= 0) return StatusCode((int)HttpStatusCode.BadRequest);
                 var processInfo = await TxUtils.ProcessRequest(tipRequest, _dbContext);
                 var transactions = processInfo.Transactions;
                 if (transactions != null && transactions.Length > 0)
@@ -882,6 +1067,7 @@ namespace BITCORNService.Controllers
                     tipRequest.FromUser = await TxUtils.GetBitcornhub(_dbContext);
                 }
                 tipRequest.Amount = tipRequest.ChannelPointAmount * liveStream.BitcornPerChannelpointsRedemption;
+                if (tipRequest.Amount <= 0) return StatusCode((int)HttpStatusCode.BadRequest);
                 var processInfo = await TxUtils.ProcessRequest(tipRequest, _dbContext);
                 var transactions = processInfo.Transactions;
                 if (transactions != null && transactions.Length > 0)
@@ -930,6 +1116,7 @@ namespace BITCORNService.Controllers
             }
 
         }
+
 
         [ServiceFilter(typeof(LockUserAttribute))]
         [HttpPost("tipcorn")]
