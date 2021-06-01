@@ -38,7 +38,7 @@ namespace BITCORNService.Controllers
         public async Task<ActionResult<object>> Hosts([FromRoute] string host)
         {
             var hostIds = await _dbContext.BattlegroundsUser.Select(x => x.HostId).Distinct().ToArrayAsync();
-            var identities = await _dbContext.UserIdentity.Where(x => hostIds.Contains(x.UserId)).Where(x=>!string.IsNullOrEmpty(x.TwitchId)).ToArrayAsync();
+            var identities = await _dbContext.UserIdentity.Where(x => hostIds.Contains(x.UserId)).Where(x => !string.IsNullOrEmpty(x.TwitchId)).ToArrayAsync();
             var objs = identities.Select(x => new
             {
                 twitchId = x.TwitchId,
@@ -51,8 +51,8 @@ namespace BITCORNService.Controllers
             string selectedHost = "";
             if (user != null)
             {
-                selectedHost = objs.Where(x=>x.twitchId == user.UserIdentity.TwitchId).Select(x=>x.twitchId).FirstOrDefault();
-              
+                selectedHost = objs.Where(x => x.twitchId == user.UserIdentity.TwitchId).Select(x => x.twitchId).FirstOrDefault();
+
             }
 
             if (selectedHost == null)
@@ -67,7 +67,7 @@ namespace BITCORNService.Controllers
             return new
             {
                 hosts = objs,
-                selectedHost = "twitch|"+selectedHost
+                selectedHost = "twitch|" + selectedHost
             };
         }
 
@@ -170,8 +170,8 @@ namespace BITCORNService.Controllers
             {
                 throw new NotImplementedException();
             }
-            
-            if(!CheckPaidSupport())
+
+            if (!CheckPaidSupport())
             {
                 return StatusCode(420);
             }
@@ -187,6 +187,8 @@ namespace BITCORNService.Controllers
             if (!string.IsNullOrEmpty(rainRequest.IrcTarget))
             {
                 host = await _dbContext.TwitchQuery(rainRequest.IrcTarget).FirstOrDefaultAsync();
+
+                if (host != null && host.IsBanned) return StatusCode(404);
                 activeGame = await _dbContext.GameInstance.FirstOrDefaultAsync(g => g.HostId == host.UserId && g.Active);
 
             }
@@ -252,6 +254,7 @@ namespace BITCORNService.Controllers
             if (sender != null)
             {
 
+                if (sender.IsBanned) return StatusCode(404);
                 var activeGame = await _dbContext.GameInstance.FirstOrDefaultAsync(g => g.HostId == sender.UserId && g.Active);
                 if (activeGame != null)
                 {
@@ -306,6 +309,8 @@ namespace BITCORNService.Controllers
             */
             if (sender != null)
             {
+
+                if (sender.IsBanned) return StatusCode(404);
                 var platformId = BitcornUtils.GetPlatformId(request.UserPlatformId);
                 var player = await BitcornUtils.GetUserForPlatform(platformId, _dbContext).AsNoTracking().FirstOrDefaultAsync();
                 if (player == null)
@@ -403,7 +408,7 @@ namespace BITCORNService.Controllers
                                 await AssignTeam(battlegroundsProfile, activeGame, tournament, player);
 
                                 var aInfo = await GameUtils.GetAvatar(_dbContext, player, GameUtils.AvatarPlatformWindows);
-                                var packet = GetJoinPacket(aInfo, player, battlegroundsProfile);
+                                var packet = GetJoinPacket(aInfo, player, battlegroundsProfile, activeGame);
                                 var result = await WebSocketsController.TryBroadcastToBattlegroundsUser(sender.UserIdentity.Auth0Id,
                                     _dbContext,
                                     "user-join-game",
@@ -438,7 +443,7 @@ namespace BITCORNService.Controllers
                 }
 
                 var avatarInfo = await GameUtils.GetAvatar(_dbContext, player, GameUtils.AvatarPlatformWindows);
-                return GetJoinPacket(avatarInfo, player, battlegroundsProfile);
+                return GetJoinPacket(avatarInfo, player, battlegroundsProfile, activeGame);
                 /*
                 return new UserJoinGamePacket
                 {
@@ -506,8 +511,12 @@ namespace BITCORNService.Controllers
             }
         }
 
-        UserJoinGamePacket GetJoinPacket(UserAvatarOutput avatarInfo, User player, BattlegroundsUser battlegroundsProfile)
+        UserJoinGamePacket GetJoinPacket(UserAvatarOutput avatarInfo, User player, BattlegroundsUser battlegroundsProfile, GameInstance game)
         {
+            if(!game.EnableTeams)
+            {
+                battlegroundsProfile.Team = null;
+            }
             //if (string.IsNullOrEmpty(subTier)) subTier = "0000";
             return new UserJoinGamePacket
             {
@@ -545,11 +554,13 @@ namespace BITCORNService.Controllers
 
             try
             {
-                
+
 
                 var sender = this.GetCachedUser();
                 if (sender != null)
                 {
+
+                    if (sender.IsBanned) return StatusCode(404);
                     var activeGame = await _dbContext.GameInstance.FirstOrDefaultAsync(g => g.HostId == sender.UserId && g.Active);
                     if (activeGame != null)
                     {
@@ -780,6 +791,8 @@ namespace BITCORNService.Controllers
                 var sender = this.GetCachedUser();
                 if (sender != null)
                 {
+
+                    if (sender.IsBanned) return StatusCode(404);
                     var activeGame = await _dbContext.GameInstance.FirstOrDefaultAsync(g => g.HostId == sender.UserId && g.Active);
                     if (activeGame != null)
                     {
@@ -820,7 +833,7 @@ namespace BITCORNService.Controllers
             //var twitchIds = await _dbContext.JoinUserModels().Where(u => playerIds.Contains(u.UserId)).Select(u => u.UserIdentity.TwitchId).ToArrayAsync();
             var userIds = players.Select(x => x.u.UserId).ToArray();
             var avatars = await GameUtils.GetAvatars(_dbContext, userIds, GameUtils.AvatarPlatformWindows);
-            return players.Select(x => GetJoinPacket(avatars[x.u.UserId], x.u, x.b)).ToArray();
+            return players.Select(x => GetJoinPacket(avatars[x.u.UserId], x.u, x.b, activeGame)).ToArray();
         }
 
         async Task<(Tournament, GameInstance, bool)?> GetExistingGame(User sender)
@@ -875,17 +888,18 @@ namespace BITCORNService.Controllers
 
         bool CheckPaidSupport() => SUPPORT_PAID_GAMES;
 
-        const bool SUPPORT_PAID_GAMES = true;
+        const bool SUPPORT_PAID_GAMES = true;//true;
         [HttpGet("version")]
         public async Task<ActionResult<object>> Version()
         {
-            return new  { 
+            return new
+            {
                 version = 1,
                 supportsPayin = CheckPaidSupport()
             };
         }
 
-            [ServiceFilter(typeof(LockUserAttribute))]
+        [ServiceFilter(typeof(LockUserAttribute))]
         [HttpGet("existinggame")]
         public async Task<ActionResult<object>> ExistingGame()
         {
@@ -901,6 +915,8 @@ namespace BITCORNService.Controllers
                 var sender = this.GetCachedUser();
                 if (sender != null)
                 {
+
+                    if (sender.IsBanned) return StatusCode(404);
                     var result = await GetExistingGame(sender);
                     if (result != null)
                     {
@@ -988,6 +1004,8 @@ namespace BITCORNService.Controllers
                 var sender = this.GetCachedUser();
                 if (sender != null)
                 {
+
+                    if (sender.IsBanned) return StatusCode(404);
                     var senderProfile = await _dbContext.BattlegroundsUser.Where(x => x.UserId == sender.UserId && x.HostId == sender.UserId).FirstOrDefaultAsync();
                     if (senderProfile == null)
                     {
@@ -1053,7 +1071,7 @@ namespace BITCORNService.Controllers
                         return await ProgressTournamentWrapper(existingTournament, activeGame, sender, activeGame.GetGameMode() == BattlegroundsGameMode.Raidboss);
                         //}
                     }
-              
+
                 }
                 else
                     return StatusCode((int)HttpStatusCode.Forbidden);
@@ -1116,6 +1134,11 @@ namespace BITCORNService.Controllers
             {
                 var ps = await _dbContext.BattlegroundsUser.Where(x => x.HostId == sender.UserId && x.CurrentGameId == existingTournament.PreviousMapId).ToArrayAsync();
                 int updateCount = 0;
+                if(activeGame.GameId == 0)
+                {
+                    await _dbContext.SaveAsync();
+                }
+
                 foreach (var item in ps)
                 {
                     item.CurrentGameId = activeGame.GameId;
@@ -1210,7 +1233,7 @@ namespace BITCORNService.Controllers
             //     activeGame.HostDebitCornTxId = txid;
             activeGame.GameMode = request.GameMode;
             activeGame.PlayerLimit = request.MaxPlayerCount;
-            if(activeGame.PlayerLimit>10000)
+            if (activeGame.PlayerLimit > 10000)
             {
                 activeGame.PlayerLimit = 10000;
             }
@@ -1221,14 +1244,14 @@ namespace BITCORNService.Controllers
                 activeGame.EnableTeams = true;
                 activeGame.Payin = 0;
             }
-            
-            if(!CheckPaidSupport())
+
+            if (!CheckPaidSupport())
             {
                 activeGame.Bgrains = false;
                 activeGame.Payin = 0;
             }
 
-            if(activeGame.Payin > 100_000_000)
+            if (activeGame.Payin > 100_000_000)
             {
                 activeGame.Payin = 100_000_000;
             }
@@ -1314,6 +1337,9 @@ namespace BITCORNService.Controllers
             var sender = this.GetCachedUser();
             if (sender != null)
             {
+
+                if (sender.IsBanned) return StatusCode(404);
+
                 var activeGame = await GetActiveGameForHost(sender);//_dbContext.GameInstance.FirstOrDefaultAsync(g => g.HostId == sender.UserId && g.Active);
                 if (activeGame != null && activeGame.Active)
                 {
@@ -1398,6 +1424,7 @@ namespace BITCORNService.Controllers
                 var sender = this.GetCachedUser();
                 if (sender != null)
                 {
+                    if (sender.IsBanned) return StatusCode(404);
                     var activeGame = await GetActiveGameForHost(sender);//_dbContext.GameInstance.FirstOrDefaultAsync(g => g.HostId == sender.UserId && g.Active);
                     if (activeGame != null)
                     {
