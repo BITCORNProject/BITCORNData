@@ -9,6 +9,7 @@ using BITCORNService.Utils.DbActions;
 using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
 using RestSharp;
+using BITCORNService.Utils.Twitch;
 
 namespace BITCORNService.Platforms
 {
@@ -46,7 +47,8 @@ namespace BITCORNService.Platforms
         }
         public override async Task<PlatformSyncResponse> SyncPlatform(RegistrationData registrationData, User auth0DbUser, PlatformId platformId, string auth0Id)
         {
-            var twitchUser = await TwitchKraken.GetTwitchUser(platformId.Id);
+            var twitchApi = new Helix(_configuration, _dbContext, Helix.GetAccessToken(_configuration));
+            var twitchUser = await twitchApi.GetTwitchUser(platformId.Id);
 
             var twitchDbUser = await _dbContext.TwitchQuery(platformId.Id).FirstOrDefaultAsync();
 
