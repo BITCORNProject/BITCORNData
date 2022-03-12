@@ -17,5 +17,8 @@ namespace BITCORNService.Utils.Models
         public int view_count { get; set; }
         public string email { get; set; }
         public DateTime created_at { get; set; }
+
+        public string _id { get; set; }
+        public string name { get; set; }
     }
 }

@@ -84,6 +84,8 @@ namespace BITCORNService.Platforms
                 await BITCORNLogger.LogError(_dbContext, e, JsonConvert.SerializeObject(registrationData));
                 throw e;
             }
+            twitchUser._id = twitchUser.id;
+            twitchUser.name = twitchUser.login;
 
             var twitchDbUser = await _dbContext.TwitchQuery(platformId.Id).FirstOrDefaultAsync();
 
