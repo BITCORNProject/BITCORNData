@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Linq;
 using System.Threading.Tasks;
 using BITCORNService.Models;
 using BITCORNService.Utils;
@@ -9,6 +10,7 @@ using BITCORNService.Utils.DbActions;
 using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
 using RestSharp;
+using BITCORNService.Utils.Twitch;
 
 namespace BITCORNService.Platforms
 {
@@ -44,9 +46,44 @@ namespace BITCORNService.Platforms
             return twitchRefreshData.AccessToken;
 
         }
+
+        public static IConfigurationRoot GetConfig()
+        {
+            return new ConfigurationBuilder().AddJsonFile("appsettings.json").Build();
+        }
+
+        public static BitcornContext CreateDatabase()
+        {
+            DbContextOptions<BitcornContext> dbOptions = new DbContextOptionsBuilder<BitcornContext>()
+               .UseSqlServer(GetConfig()["Config:ConnectionString"])
+               .EnableSensitiveDataLogging()
+               .Options;
+
+            return new BitcornContext(dbOptions);
+        }
+
+        public static async Task<UserIdentity> GetUserIdentity(string twitchId)
+        {
+            BitcornContext dbContext = CreateDatabase();
+            UserIdentity streamQuery = await dbContext.UserIdentity
+                .Where(x => x.TwitchId == twitchId).FirstOrDefaultAsync();
+
+            return streamQuery;
+        }
+
         public override async Task<PlatformSyncResponse> SyncPlatform(RegistrationData registrationData, User auth0DbUser, PlatformId platformId, string auth0Id)
         {
-            var twitchUser = await TwitchKraken.GetTwitchUser(platformId.Id);
+            //var twitchUser = await TwitchKraken.GetTwitchUser(platformId.Id);
+
+            string clientId = _configuration.GetSection("Config").GetSection("TwitchClientIdSub").Value;
+            string twitchAccessToken = await TwitchPlatform.RefreshToken(_dbContext, auth0DbUser.UserIdentity, _configuration);
+            TwitchUserHelix twitchUser = TwitchHelix.GetTwitchUser(clientId, platformId.Id, twitchAccessToken);          
+            if(twitchUser != null)
+            {
+                Exception e = new Exception($"Failed to fetch Twitch user {platformId.Id} {auth0Id}");
+                await BITCORNLogger.LogError(_dbContext, e, JsonConvert.SerializeObject(registrationData));
+                throw e;
+            }
 
             var twitchDbUser = await _dbContext.TwitchQuery(platformId.Id).FirstOrDefaultAsync();
 
@@ -65,7 +102,8 @@ namespace BITCORNService.Platforms
             else if (twitchDbUser == null && auth0DbUser != null)
             {
                 auth0DbUser.UserIdentity.TwitchId = platformId.Id;
-                auth0DbUser.UserIdentity.TwitchUsername = twitchUser.name;
+                //auth0DbUser.UserIdentity.TwitchUsername = twitchUser.name;
+                auth0DbUser.UserIdentity.TwitchUsername = twitchUser.login;
                 auth0DbUser.UserIdentity.TwitchRefreshToken = registrationData.Token;
                 await _dbContext.SaveAsync();
                 return GetSyncOutput(twitchUser.created_at, auth0DbUser, false);

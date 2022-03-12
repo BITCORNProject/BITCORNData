@@ -1,4 +1,5 @@
 ﻿using BITCORNService.Models;
+using BITCORNService.Utils.Models;
 using Microsoft.Extensions.Configuration;
 using Newtonsoft.Json;
 using RestSharp;
@@ -100,6 +101,13 @@ namespace BITCORNService.Utils.Twitch
 
         }
     }
+
+
+    public class HelixUserResponse
+    {
+        public TwitchUserHelix[] data { get; set; }
+    }
+
     public class HelixSubResponse
     {
         public Sub[] data { get; set; }
