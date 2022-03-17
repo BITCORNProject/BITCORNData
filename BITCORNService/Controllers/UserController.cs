@@ -63,6 +63,36 @@ namespace BITCORNService.Controllers
             }
         }
 
+
+
+
+
+        [HttpGet("{id}/rallywallets")]
+        [Authorize(Policy = AuthScopes.ReadUser)]
+        public async Task<ActionResult<object>> RallyWallets([FromRoute] string id)
+        {
+            if (this.GetCachedUser() != null)
+                throw new InvalidOperationException();
+            if (string.IsNullOrWhiteSpace(id)) throw new ArgumentNullException("id");
+
+            var platformId = BitcornUtils.GetPlatformId(id);
+            var user = await BitcornUtils.GetUserForPlatform(platformId, _dbContext).FirstOrDefaultAsync();
+            if (user != null)
+            {
+                var rally = new Rally(_config);
+                if (!string.IsNullOrWhiteSpace(user.UserIdentity.RallyId))
+                {
+                    return rally.GetWallets(user.UserIdentity.RallyId);
+                }
+                else return new object[] { };
+            }
+            else
+            {
+                return StatusCode(404);
+            }
+        }
+
+
         [ServiceFilter(typeof(CacheUserAttribute))]
 
         [HttpGet("{id}/nicknames")]
@@ -1435,7 +1465,19 @@ namespace BITCORNService.Controllers
                 var referral = _dbContext.Referrer.FirstOrDefault(r => r.UserId == user.UserId);
                 bool isGuest = id != reader;
                 user.UserIdentity.TwitchRefreshToken = null;
-                return BitcornUtils.SelectUserProperties(user, user.UserIdentity, user.UserWallet, user.UserStat, user.UserReferral, referral, isGuest);
+                var props = BitcornUtils.SelectUserProperties(user, user.UserIdentity, user.UserWallet, user.UserStat, user.UserReferral, referral, isGuest);
+                if (!string.IsNullOrEmpty(user.UserIdentity.RallyId))
+                {
+                    var rally = new Rally(_config);
+                    var wallets = rally.GetWallets(user.UserIdentity.RallyId);
+                    props.Add("wallets", wallets);
+                }
+                else
+                {
+                    props.Add("wallets", new object[0]);
+                }
+
+                return props;
             }
             else
             {

@@ -93,6 +93,7 @@ namespace BITCORNService.Utils.LockUser
             }
             if (!UserLockCollection.Lock(user))
             {
+               // await BITCORNLogger.LogError(_dbContext, new Exception("failed to lock user: user isnull:"+(user!=null)), "");
                 context.Result = new ContentResult()
                 {
                     StatusCode = UserLockCollection.UserLockedReturnCode,

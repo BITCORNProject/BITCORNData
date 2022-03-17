@@ -18,6 +18,11 @@ namespace BITCORNService.Models
         public string TwitterId { get; set; }
         public string RedditId { get; set; }
         public string TwitchRefreshToken { get; set; }
+        public string RallyId { get; set; }
+        public string RallyUsername { get; set; }
+        public string YoutubeId { get; set; }
+        public string YoutubeRefreshToken { get; set; }
+        public string YoutubeUsername { get; set; }
         public virtual User User { get; set; }
     }
 }

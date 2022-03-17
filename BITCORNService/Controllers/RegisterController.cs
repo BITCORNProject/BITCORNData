@@ -33,12 +33,12 @@ namespace BITCORNService.Controllers
         [ServiceFilter(typeof(CacheUserAttribute))]
         [Authorize(Policy = AuthScopes.AddUser)]
         [HttpPost("newuser")]
-        public async Task<ActionResult<FullUser>> RegisterNewUser([FromBody]Auth0User auth0User, [FromQuery] string referral = null)
+        public async Task<ActionResult<FullUser>> RegisterNewUser([FromBody] Auth0User auth0User, [FromQuery] string referral = null)
         {
             if (this.GetCachedUser() != null)
                 throw new InvalidOperationException();
             if (auth0User == null) throw new ArgumentNullException();
-            if(!StaticLockCollection.Lock(auth0User.Auth0Id))
+            if (!StaticLockCollection.Lock(auth0User.Auth0Id))
             {
                 return StatusCode(UserLockCollection.UserLockedReturnCode);
             }
@@ -51,7 +51,15 @@ namespace BITCORNService.Controllers
                 var userWallet = _dbContext.UserWallet.FirstOrDefault(u => u.UserId == existingUserIdentity.UserId);
                 var userStat = _dbContext.UserStat.FirstOrDefault(u => u.UserId == existingUserIdentity.UserId);
                 StaticLockCollection.Release(auth0User.Auth0Id);
-                return BitcornUtils.GetFullUser(user, existingUserIdentity, userWallet, userStat);
+                var fullUser = BitcornUtils.GetFullUser(user, existingUserIdentity, userWallet, userStat);
+                if (!string.IsNullOrEmpty(fullUser.RallyId))
+                {
+                    var rally = new Rally(_configuration);
+                    var wallets = rally.GetWallets(user.UserIdentity.RallyId);
+
+                    fullUser.wallets = wallets;
+                }
+                return fullUser;
             }
 
             int referralId;
@@ -74,7 +82,7 @@ namespace BITCORNService.Controllers
                     if (ReferralUtils.IsValidReferrer(referrer))
                     {
                         var referrerUser = await _dbContext.User.FirstOrDefaultAsync(u => u.UserId == referrer.UserId);
-                        if (referrerUser!=null&&!referrerUser.IsBanned)
+                        if (referrerUser != null && !referrerUser.IsBanned)
                         {
                             var referralPayoutTotal = await ReferralUtils.TotalReward(_dbContext, referrer);
                             var referrerRegistrationReward = await TxUtils.SendFromBitcornhub(referrerUser, referralPayoutTotal, "BITCORNFarms", "Registrations reward", _dbContext);
@@ -114,7 +122,15 @@ namespace BITCORNService.Controllers
 
                 await _dbContext.SaveAsync();
 
-                return BitcornUtils.GetFullUser(user, user.UserIdentity, user.UserWallet, user.UserStat);
+                var fullUser = BitcornUtils.GetFullUser(user, user.UserIdentity, user.UserWallet, user.UserStat);
+                if (!string.IsNullOrEmpty(fullUser.RallyId))
+                {
+                    var rally = new Rally(_configuration);
+                    var wallets = rally.GetWallets(user.UserIdentity.RallyId);
+
+                    fullUser.wallets = wallets;
+                }
+                return fullUser;
             }
             catch (Exception e)
             {
@@ -130,7 +146,7 @@ namespace BITCORNService.Controllers
         [Authorize(Policy = AuthScopes.ChangeUser)]
         [ServiceFilter(typeof(CacheUserAttribute))]
         [HttpPost]
-        public async Task<ActionResult<PlatformSyncResponse>> Register([FromBody] RegistrationData registrationData)
+        public async Task<ActionResult<PlatformSyncResponse>> Register([FromBody] RegistrationData registrationData, [FromQuery] string name)
         {
             if (registrationData == null) throw new ArgumentNullException("registrationData");
             if (registrationData.Auth0Id == null) throw new ArgumentNullException("registrationData.Auth0Id");
@@ -148,8 +164,13 @@ namespace BITCORNService.Controllers
                 var registerController = SupportedPlatform.AllocateController(_dbContext, platformId, _configuration);
                 if (registerController != null)
                 {
-                    if (!string.IsNullOrEmpty(platformId.Id) && platformId.Id.ToLower()!="undefined")
+                    if (!string.IsNullOrEmpty(platformId.Id) && platformId.Id.ToLower() != "undefined")
                     {
+                        if (!string.IsNullOrEmpty(name))
+                        {
+                            registerController.SyncName = name;
+                        }
+
                         var result = await registerController.SyncPlatform(registrationData, auth0DbUser, platformId, auth0Id);
                         if (result != null)
                         {
@@ -168,7 +189,7 @@ namespace BITCORNService.Controllers
                 {
                     return StatusCode((int)HttpStatusCode.BadRequest);
                 }
-                
+
             }
             catch (Exception e)
             {
@@ -177,7 +198,7 @@ namespace BITCORNService.Controllers
             throw new Exception("HOW THE FUCK DID YOU GET HERE");
         }
 
-        public static User CreateUser(Auth0User auth0User,int referralId)
+        public static User CreateUser(Auth0User auth0User, int referralId)
         {
             var user = new User
             {

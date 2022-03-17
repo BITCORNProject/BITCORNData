@@ -73,6 +73,11 @@ namespace BITCORNService.Utils
                     return dbContext.Auth0Query(platformId.Id);
                 case "twitch":
                     return dbContext.TwitchQuery(platformId.Id);
+                case "youtube":
+                    return dbContext.YoutubeQuery(platformId.Id);
+                case "rally":
+                    return dbContext.RallyQuery(platformId.Id);
+
                 case "stream":
                     return dbContext.TwitchQuery(platformId.Id);
                 case "twitchusername":
@@ -122,6 +127,11 @@ namespace BITCORNService.Utils
                     return await query.ToDictionaryAsync(u => u.UserIdentity.Auth0Id, u => u);
                 case "twitch":
                     return await query.ToDictionaryAsync(u => u.UserIdentity.TwitchId, u => u);
+                case "rally":
+                    return await query.ToDictionaryAsync(u => u.UserIdentity.RallyId, u => u);
+                case "youtube":
+                    return await query.ToDictionaryAsync(u => u.UserIdentity.YoutubeId, u => u);
+
                 case "twitchusername":
                     return await query.ToDictionaryAsync(u => u.UserIdentity.TwitchUsername, u => u);
 
@@ -149,6 +159,11 @@ namespace BITCORNService.Utils
                     return dbContext.Auth0ManyQuery(ids);
                 case "twitch":
                     return dbContext.TwitchManyQuery(ids);
+                case "youtube":
+                    return dbContext.YoutubeManyQuery(ids);
+
+                case "rally":
+                    return dbContext.RallyManyQuery(ids);
                 case "twitchusername":
                     return dbContext.TwitchUsernameManyQuery(ids);
                 case "stream":
@@ -199,6 +214,20 @@ namespace BITCORNService.Utils
                     userIdentity.TwitchRefreshToken = null;
                     await dbContext.SaveAsync();
                     break;
+                case "rally":
+                    /*
+                    userIdentity.RallyId = null;
+                    userIdentity.RallyUsername = null;
+                    */
+                    //await dbContext.SaveAsync();
+                    break;
+                case "youtube":
+                    userIdentity.YoutubeId = null;
+                    userIdentity.YoutubeUsername = null;
+                    userIdentity.YoutubeRefreshToken = null;
+                    await dbContext.SaveAsync();
+                    break;
+
                 case "discord":
                     userIdentity.DiscordId = null;
                     userIdentity.DiscordUsername = null;
@@ -265,6 +294,10 @@ namespace BITCORNService.Utils
                 DiscordId = userIdentity.DiscordId,
                 TwitterId = userIdentity.TwitterId,
                 RedditId = userIdentity.RedditId,
+                YoutubeId = userIdentity.YoutubeId,
+                YoutubeUsername = userIdentity.YoutubeUsername,
+                RallyId = userIdentity.RallyId,
+                RallyUsername = userIdentity.RallyUsername,
                 WalletServer = userWallet.WalletServer,
                 CornAddy = userWallet.CornAddy,
                 Balance = userWallet.Balance,
@@ -321,7 +354,7 @@ namespace BITCORNService.Utils
             }
         }
 
-        public static object SelectUserProperties(User user,
+        public static Dictionary<string, object> SelectUserProperties(User user,
             UserIdentity userIdentity,
             UserWallet userWallet,
             UserStat userStats,
@@ -403,7 +436,10 @@ namespace BITCORNService.Utils
                 DiscordId = userIdentity.DiscordId,
                 TwitterId = userIdentity.TwitterId,
                 RedditId = userIdentity.RedditId,
-                
+                YoutubeId = userIdentity.YoutubeId,
+                YoutubeUsername = userIdentity.YoutubeUsername,
+                RallyId = userIdentity.RallyId,
+                RallyUsername = userIdentity.RallyUsername,
                 //UserWallet
                 WalletServer = userWallet.WalletServer,
                 CornAddy = userWallet.CornAddy,

@@ -81,6 +81,16 @@ namespace BITCORNService.Utils.DbActions
             return JoinUserModels(dbContext).Where(u => ids.Contains(u.UserIdentity.DiscordId));
         }
 
+        public static IQueryable<User> YoutubeManyQuery(this BitcornContext dbContext, HashSet<string> ids)
+        {
+            return JoinUserModels(dbContext).Where(u => ids.Contains(u.UserIdentity.YoutubeId));
+        }
+
+        public static IQueryable<User> RallyManyQuery(this BitcornContext dbContext, HashSet<string> ids)
+        {
+            return JoinUserModels(dbContext).Where(u => ids.Contains(u.UserIdentity.RallyId));
+        }
+
         public static IQueryable<User> TwitterManyQuery(this BitcornContext dbContext, HashSet<string> ids)
         {
             return JoinUserModels(dbContext).Where(u => ids.Contains(u.UserIdentity.TwitterId));
@@ -106,6 +116,16 @@ namespace BITCORNService.Utils.DbActions
         public static IQueryable<User> TwitchQuery(this BitcornContext dbContext, string twitchId)
         {
             return JoinUserModels(dbContext).Where(u => !string.IsNullOrEmpty(u.UserIdentity.TwitchId) && u.UserIdentity.TwitchId == twitchId);
+        }
+
+        public static IQueryable<User> RallyQuery(this BitcornContext dbContext, string id)
+        {
+            return JoinUserModels(dbContext).Where(u => !string.IsNullOrEmpty(u.UserIdentity.RallyId) && u.UserIdentity.RallyId == id);
+        }
+
+        public static IQueryable<User> YoutubeQuery(this BitcornContext dbContext, string id)
+        {
+            return JoinUserModels(dbContext).Where(u => !string.IsNullOrEmpty(u.UserIdentity.YoutubeId) && u.UserIdentity.YoutubeId == id);
         }
 
         public static IQueryable<User> TwitchUsernameQuery(this BitcornContext dbContext, string twitchUsername)

@@ -12,6 +12,7 @@ using Newtonsoft.Json;
 
 namespace BITCORNService.Platforms
 {
+
     public class RedditPlatform : SupportedPlatform
     {
         public override async Task<PlatformSyncResponse> SyncPlatform(RegistrationData registrationData, User auth0DbUser, PlatformId platformId, string auth0Id)
@@ -38,7 +39,7 @@ namespace BITCORNService.Platforms
                 }
                 else if (redditDbUser?.UserIdentity.Auth0Id != null)
                 {
-                    var obj = GetSyncOutput(DateTime.Now,redditDbUser, false);
+                    var obj = GetSyncOutput(DateTime.Now, redditDbUser, false);
                     obj.ProfileAlreadySynced = true;
                     return obj;
                     /*

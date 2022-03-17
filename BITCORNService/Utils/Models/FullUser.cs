@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Microsoft.AspNetCore.Mvc;
+using System;
 
 namespace BITCORNService.Utils.Models
 {
@@ -42,5 +43,10 @@ namespace BITCORNService.Utils.Models
         public bool IsBanned { get; set; }
         public DateTime? CreationTime { get; set; }
         public bool Mfa { get; set; }
+        public string YoutubeId { get; set; }
+        public string YoutubeUsername { get; set; }
+        public string RallyId { get; set; }
+        public string RallyUsername { get; set; }
+        public RallyUserWallet[] wallets { get; set; } = new RallyUserWallet[0];
     }
 }

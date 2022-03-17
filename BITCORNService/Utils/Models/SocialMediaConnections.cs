@@ -15,10 +15,22 @@ namespace BITCORNService.Utils.Models
         public SocialMediaConnection Twitter { get; set; }
         public SocialMediaConnection Reddit { get; set; }
         public SocialMediaConnection Stream { get; set; }
+        public SocialMediaConnection Rally { get; set; }
+        public SocialMediaConnection Youtube { get; set; }
         public static SocialMediaConnections FromUser(User user)
         {
             return new SocialMediaConnections
             {
+                Rally = new SocialMediaConnection()
+                {
+                    Value = user.UserIdentity.RallyId,
+                    Name = user.UserIdentity.RallyUsername
+                },
+                Youtube = new SocialMediaConnection()
+                {
+                    Value = user.UserIdentity.YoutubeId,
+                    Name = user.UserIdentity.YoutubeUsername
+                },
                 Bitcorn = new SocialMediaConnection
                 {
                     Name = user.UserWallet.CornAddy,

@@ -21,6 +21,8 @@ namespace BITCORNService.Platforms
 
         static Dictionary<string, Type> _supportedPlatforms;
 
+        public string SyncName { get; set; }
+
         //TODO: user this for platform queries so to add a new platform to the system, you only need to implement SupportedPlatform
         public static SupportedPlatform AllocateQueryController(BitcornContext dbContext, PlatformId platformId)
         {
